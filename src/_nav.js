@@ -1,6 +1,12 @@
 export default [
   {
     component: 'CNavItem',
+    name: 'Home',
+    to: '/home',
+    icon: 'cil-home',
+  },
+  {
+    component: 'CNavItem',
     name: 'Dashboard',
     to: '/dashboard',
     icon: 'cil-speedometer',

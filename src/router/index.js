@@ -6,7 +6,7 @@ import DefaultLayout from '@/layouts/DefaultLayout'
 const routes = [
   {
     path: '/',
-    name: 'Home',
+    name: 'App',
     component: DefaultLayout,
     redirect: '/dashboard',
     children: [
@@ -20,6 +20,11 @@ const routes = [
           import(
             /* webpackChunkName: "dashboard" */ '@/views/dashboard/Dashboard.vue'
           ),
+      },
+      {
+        path: '/home',
+        name: 'Home',
+        component: () => import('@/views/pages/Home.vue'),
       },
       {
         path: '/theme',
@@ -335,7 +340,7 @@ router.beforeEach(async (to, from, next) => {
   if (!isAuthenticated && !isPublic) {
     next('/pages/login');
   } else if (isAuthenticated && to.path === '/pages/login') {
-    next('/dashboard');
+    next('/home');
   } else {
     next();
   }

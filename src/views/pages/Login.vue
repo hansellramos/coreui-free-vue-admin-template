@@ -90,7 +90,7 @@ const handleLogin = async () => {
   if (error) {
     errorMessage.value = error.message;
   } else {
-    router.push("/dashboard");
+    router.push("/pages/home");
   }
 };
 </script>
