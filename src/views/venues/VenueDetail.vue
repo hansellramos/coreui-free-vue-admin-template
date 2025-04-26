@@ -3,17 +3,17 @@
     <CCol :xs="12" md="8" lg="6" class="mx-auto">
       <CCard class="mb-4">
         <CCardHeader>
-          <strong>Organization Details</strong>
+          <strong>Venue Details</strong>
         </CCardHeader>
         <CCardBody>
-          <template v-if="organization">
-            <p class="d-none"><strong>ID:</strong> <span class="text-body-secondary">{{ organization.id }}</span></p>
-            <p><strong>Name:</strong> <span class="text-body-secondary">{{ organization.name }}</span></p>
+          <template v-if="venue">
+            <p class="d-none"><strong>ID:</strong> <span class="text-body-secondary">{{ venue.id }}</span></p>
+            <p><strong>Name:</strong> <span class="text-body-secondary">{{ venue.name }}</span></p>
             <div class="mt-4">
-              <RouterLink :to="`/business/organizations/${organization.id}/edit`">
+              <RouterLink :to="`/business/venues/${venue.id}/edit`">
                 <CButton color="primary" size="sm">Edit</CButton>
               </RouterLink>
-              <RouterLink to="/business/organizations">
+              <RouterLink to="/business/venues">
                 <CButton color="secondary" size="sm" variant="outline" class="ms-2">Back to List</CButton>
               </RouterLink>
             </div>
@@ -30,12 +30,12 @@
 <script setup>
 import { ref, onMounted } from 'vue'
 import { useRoute } from 'vue-router'
-import { getOrganizationById } from '@/services/organizationService'
+import { getVenueById } from '@/services/venueService'
 
 const route = useRoute()
-const organization = ref(null)
+const venue = ref(null)
 
 onMounted(async () => {
-  organization.value = await getOrganizationById(route.params.id)
+  venue.value = await getVenueById(route.params.id)
 })
 </script>

@@ -20,10 +20,24 @@ export default [
     name: 'Business',
   },
   {
-    component: 'CNavItem',
-    name: 'Organizations',
-    to: '/business/organizations',
+    component: 'CNavGroup',
+    name: 'Business',
+    to: '/business',
     icon: 'cil-briefcase',
+    items: [
+      {
+        component: 'CNavItem',
+        name: 'Organizations',
+        to: '/business/organizations',
+        icon: 'cil-briefcase',
+      },
+      {
+        component: 'CNavItem',
+        name: 'Venues',
+        to: '/business/venues',
+        icon: 'cil-location-pin',
+      },
+    ],
   },
   {
     component: 'CNavTitle',
