@@ -276,6 +276,41 @@ const routes = [
         name: 'Widgets',
         component: () => import('@/views/widgets/Widgets.vue'),
       },
+      // Business logic routes
+      {
+        path: '/business',
+        name: 'Business',
+        children: [
+          {
+            path: 'organizations',
+            name: 'Organizations',
+            component: () => import('@/views/organizations/OrganizationsList.vue'),
+          },
+          {
+            path: 'organizations/create',
+            name: 'OrganizationCreate',
+            component: () => import('@/views/organizations/OrganizationFormView.vue'),
+          },
+          {
+            path: 'organizations/:id',
+            name: 'OrganizationDetail',
+            component: () => import('@/views/organizations/OrganizationDetail.vue'),
+            props: true,
+          },
+          {
+            path: 'organizations/:id/read',
+            name: 'OrganizationRead',
+            component: () => import('@/views/organizations/OrganizationDetail.vue'),
+            props: true,
+          },
+          {
+            path: 'organizations/:id/edit',
+            name: 'OrganizationEdit',
+            component: () => import('@/views/organizations/OrganizationFormView.vue'),
+            props: true,
+          },
+        ],
+      },
     ],
   },
   {

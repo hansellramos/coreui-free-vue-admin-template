@@ -17,6 +17,16 @@ export default [
   },
   {
     component: 'CNavTitle',
+    name: 'Business',
+  },
+  {
+    component: 'CNavItem',
+    name: 'Organizations',
+    to: '/business/organizations',
+    icon: 'cil-briefcase',
+  },
+  {
+    component: 'CNavTitle',
     name: 'Theme',
   },
   {
