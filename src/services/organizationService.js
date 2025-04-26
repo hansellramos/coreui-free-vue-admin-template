@@ -1,53 +1,31 @@
 // Service for organizations CRUD operations
 // Here you will implement functions to interact with the API or Supabase
 
-// Mock data for organizations
-const mockOrganizations = [
-  { id: 'uuid-1', name: 'Organization One' },
-  { id: 'uuid-2', name: 'Organization Two' },
-]
+import supabase from '@/lib/supabase'
 
 export async function fetchOrganizations() {
-  // Simulate API delay
-  return new Promise((resolve) => {
-    setTimeout(() => resolve([...mockOrganizations]), 200)
-  })
+  const { data, error } = await supabase.from('organizations').select('*').order('name', { ascending: true })
+  if (error) throw error
+  return data || []
 }
 
 export async function getOrganizationById(id) {
-  return new Promise((resolve) => {
-    setTimeout(() => {
-      resolve(mockOrganizations.find(org => org.id === id) || null)
-    }, 200)
-  })
+  const { data, error } = await supabase.from('organizations').select('*').eq('id', id).single()
+  if (error) throw error
+  return data
 }
 
 export async function createOrganization(data) {
-  // Simulate creation (no real persistence)
-  return new Promise((resolve) => {
-    setTimeout(() => {
-      mockOrganizations.push({ id: `uuid-${mockOrganizations.length + 1}`, ...data })
-      resolve()
-    }, 200)
-  })
+  const { error } = await supabase.from('organizations').insert([data])
+  if (error) throw error
 }
 
 export async function updateOrganization(id, data) {
-  return new Promise((resolve) => {
-    setTimeout(() => {
-      const idx = mockOrganizations.findIndex(org => org.id === id)
-      if (idx !== -1) mockOrganizations[idx] = { ...mockOrganizations[idx], ...data }
-      resolve()
-    }, 200)
-  })
+  const { error } = await supabase.from('organizations').update(data).eq('id', id)
+  if (error) throw error
 }
 
 export async function deleteOrganization(id) {
-  return new Promise((resolve) => {
-    setTimeout(() => {
-      const idx = mockOrganizations.findIndex(org => org.id === id)
-      if (idx !== -1) mockOrganizations.splice(idx, 1)
-      resolve()
-    }, 200)
-  })
+  const { error } = await supabase.from('organizations').delete().eq('id', id)
+  if (error) throw error
 }
