@@ -9,6 +9,16 @@
           <template v-if="venue">
             <p class="d-none"><strong>ID:</strong> <span class="text-body-secondary">{{ venue.id }}</span></p>
             <p><strong>Name:</strong> <span class="text-body-secondary">{{ venue.name }}</span></p>
+            <p><strong>WhatsApp:</strong> <span class="text-body-secondary">{{ venue.whatsapp }}</span></p>
+            <p><strong>Address:</strong> <span class="text-body-secondary">{{ venue.address }}</span></p>
+            <p><strong>ZIP Code:</strong> <span class="text-body-secondary">{{ venue.zi_code }}</span></p>
+            <p><strong>Latitude:</strong> <span class="text-body-secondary">{{ venue.latitude }}</span></p>
+            <p><strong>Longitude:</strong> <span class="text-body-secondary">{{ venue.longitude }}</span></p>
+            <p><strong>City:</strong> <span class="text-body-secondary">{{ venue.city }}</span></p>
+            <p><strong>Country:</strong> <span class="text-body-secondary">{{ venue.country }}</span></p>
+            <p><strong>Department:</strong> <span class="text-body-secondary">{{ venue.deparment }}</span></p>
+            <p><strong>Suburb:</strong> <span class="text-body-secondary">{{ venue.suburb }}</span></p>
+            <p><strong>Address Reference:</strong> <span class="text-body-secondary">{{ venue.address_reference }}</span></p>
             <div class="mt-4">
               <RouterLink :to="`/business/venues/${venue.id}/edit`">
                 <CButton color="primary" size="sm">Edit</CButton>

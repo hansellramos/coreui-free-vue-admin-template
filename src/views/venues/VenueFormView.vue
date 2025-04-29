@@ -27,13 +27,25 @@ import { getVenueById, createVenue, updateVenue } from '@/services/venueService'
 
 const route = useRoute()
 const router = useRouter()
-let form = ref({ name: '' })
+let form = ref({
+  name: '',
+  whatsapp: '',
+  address: '',
+  zi_code: '',
+  latitude: '',
+  longitude: '',
+  city: '',
+  country: '',
+  deparment: '',
+  suburb: '',
+  address_reference: ''
+})
 const isEdit = computed(() => !!route.params.id)
 
 onMounted(async () => {
   if (isEdit.value) {
     const venue = await getVenueById(route.params.id)
-    if (venue) form.value = { name: venue.name }
+    if (venue) form.value = { ...venue }
   }
 })
 
