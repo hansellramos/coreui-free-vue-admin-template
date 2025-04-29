@@ -3,7 +3,7 @@ import supabase from '@/lib/supabase'
 export async function fetchUsersByOrganization(orgId) {
   const { data, error } = await supabase
     .from('user_organization')
-    .select('user_id, users:auth.users(email, id)')
+    .select('user_id, users(email, id)')
     .eq('organization_id', orgId)
   if (error) throw error
   // Flatten users
