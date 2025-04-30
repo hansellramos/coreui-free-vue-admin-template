@@ -37,6 +37,12 @@ export default [
         to: '/business/venues',
         icon: 'cil-location-pin',
       },
+      {
+        component: 'CNavItem',
+        name: 'Contacts',
+        to: '/business/contacts',
+        icon: 'cil-user',
+      },
     ],
   },
   {
