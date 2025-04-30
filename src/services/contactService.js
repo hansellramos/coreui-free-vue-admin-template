@@ -26,3 +26,17 @@ export async function deleteContact(id) {
   const { error } = await supabase.from('contacts').delete().eq('id', id)
   if (error) throw error
 }
+
+export async function fetchCountries() {
+  const { data, error } = await supabase.from('countries').select('*').order('name', { ascending: true })
+  if (error) throw error
+  return data || []
+}
+
+export async function fetchStatesByCountry(countryIso3) {
+  if (!countryIso3) return []
+  const iso = countryIso3.toUpperCase()
+  const { data, error } = await supabase.from('states').select('*').eq('country', iso).order('name', { ascending: true })
+  if (error) throw error
+  return data || []
+}

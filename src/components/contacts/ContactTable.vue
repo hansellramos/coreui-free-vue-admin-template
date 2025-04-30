@@ -12,9 +12,9 @@
           <CTableRow>
             <CTableHeaderCell scope="col">Full Name</CTableHeaderCell>
             <CTableHeaderCell scope="col">WhatsApp</CTableHeaderCell>
-            <CTableHeaderCell scope="col">City</CTableHeaderCell>
-            <CTableHeaderCell scope="col">State</CTableHeaderCell>
             <CTableHeaderCell scope="col">Country</CTableHeaderCell>
+            <CTableHeaderCell scope="col">State</CTableHeaderCell>
+            <CTableHeaderCell scope="col">City</CTableHeaderCell>
             <CTableHeaderCell scope="col">Actions</CTableHeaderCell>
           </CTableRow>
         </CTableHead>
@@ -26,9 +26,9 @@
               </RouterLink>
             </CTableDataCell>
             <CTableDataCell>{{ contact.whatsapp }}</CTableDataCell>
-            <CTableDataCell>{{ contact.city }}</CTableDataCell>
-            <CTableDataCell>{{ contact.state }}</CTableDataCell>
             <CTableDataCell>{{ contact.country }}</CTableDataCell>
+            <CTableDataCell>{{ contact.state }}</CTableDataCell>
+            <CTableDataCell>{{ contact.city }}</CTableDataCell>
             <CTableDataCell>
               <CButton color="primary" size="sm" @click="onEdit(contact)">Edit</CButton>
               <CButton color="danger" size="sm" class="ms-2" @click="onDelete(contact)">Delete</CButton>
