@@ -2,6 +2,7 @@ import { h, resolveComponent } from 'vue'
 import { createRouter, createWebHashHistory } from 'vue-router'
 
 import DefaultLayout from '@/layouts/DefaultLayout'
+import accommodationsRoutes from './routes/accommodations'
 
 const routes = [
   {
@@ -367,6 +368,7 @@ const routes = [
           },
         ],
       },
+      ...accommodationsRoutes,
     ],
   },
   {

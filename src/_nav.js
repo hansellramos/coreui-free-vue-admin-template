@@ -43,6 +43,12 @@ export default [
         to: '/business/contacts',
         icon: 'cil-user',
       },
+      {
+        component: 'CNavItem',
+        name: 'Accommodations',
+        to: '/business/accommodations',
+        icon: 'cil-calendar',
+      },
     ],
   },
   {
