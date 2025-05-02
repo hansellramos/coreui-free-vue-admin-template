@@ -1,7 +1,24 @@
 <script setup>
 import avatar from '@/assets/images/avatars/8.jpg'
+import { ref, onMounted } from 'vue'
+import { useRouter } from 'vue-router'
+import supabase from '@/lib/supabase'
 
 const itemsCount = 42
+const router = useRouter()
+const userName = ref('Account')
+
+onMounted(async () => {
+  const { data } = await supabase.auth.getUser()
+  if (data.user) {
+    userName.value = data.user.user_metadata?.displayName || data.user.email || 'Account'
+  }
+})
+
+const handleLogout = async () => {
+  await supabase.auth.signOut()
+  router.push('/pages/login')
+}
 </script>
 
 <template>
@@ -14,7 +31,7 @@ const itemsCount = 42
         component="h6"
         class="bg-body-secondary text-body-secondary fw-semibold mb-2 rounded-top"
       >
-        Account
+        {{ userName }}
       </CDropdownHeader>
       <CDropdownItem>
         <CIcon icon="cil-bell" /> Updates
@@ -50,7 +67,9 @@ const itemsCount = 42
       </CDropdownItem>
       <CDropdownDivider />
       <CDropdownItem> <CIcon icon="cil-shield-alt" /> Lock Account </CDropdownItem>
-      <CDropdownItem> <CIcon icon="cil-lock-locked" /> Logout </CDropdownItem>
+      <CDropdownItem @click="handleLogout">
+        <CIcon icon="cil-lock-locked" /> Logout
+      </CDropdownItem>
     </CDropdownMenu>
   </CDropdown>
 </template>

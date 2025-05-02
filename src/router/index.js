@@ -316,4 +316,29 @@ const router = createRouter({
   },
 })
 
+// Navigation guard to protect routes
+router.beforeEach(async (to, from, next) => {
+  // Public pages that do not require authentication
+  const publicPages = [
+    '/pages/login',
+    '/pages/register',
+    '/pages/404',
+    '/pages/500',
+    '/pages/auth-callback',
+  ];
+  const isPublic = publicPages.includes(to.path);
+
+  // Check Supabase session
+  const { data } = await import('@/lib/supabase').then(m => m.default.auth.getSession());
+  const isAuthenticated = !!data.session;
+
+  if (!isAuthenticated && !isPublic) {
+    next('/pages/login');
+  } else if (isAuthenticated && to.path === '/pages/login') {
+    next('/dashboard');
+  } else {
+    next();
+  }
+});
+
 export default router
