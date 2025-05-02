@@ -2,11 +2,12 @@ import { h, resolveComponent } from 'vue'
 import { createRouter, createWebHashHistory } from 'vue-router'
 
 import DefaultLayout from '@/layouts/DefaultLayout'
+import accommodationsRoutes from './routes/accommodations'
 
 const routes = [
   {
     path: '/',
-    name: 'Home',
+    name: 'App',
     component: DefaultLayout,
     redirect: '/dashboard',
     children: [
@@ -20,6 +21,11 @@ const routes = [
           import(
             /* webpackChunkName: "dashboard" */ '@/views/dashboard/Dashboard.vue'
           ),
+      },
+      {
+        path: '/home',
+        name: 'Home',
+        component: () => import('@/views/pages/Home.vue'),
       },
       {
         path: '/theme',
@@ -271,6 +277,98 @@ const routes = [
         name: 'Widgets',
         component: () => import('@/views/widgets/Widgets.vue'),
       },
+      // Business logic routes
+      {
+        path: '/business',
+        name: 'Business',
+        children: [
+          {
+            path: 'organizations',
+            name: 'Organizations',
+            component: () => import('@/views/organizations/OrganizationsList.vue'),
+          },
+          {
+            path: 'organizations/create',
+            name: 'OrganizationCreate',
+            component: () => import('@/views/organizations/OrganizationFormView.vue'),
+          },
+          {
+            path: 'organizations/:id',
+            name: 'OrganizationDetail',
+            component: () => import('@/views/organizations/OrganizationDetail.vue'),
+            props: true,
+          },
+          {
+            path: 'organizations/:id/read',
+            name: 'OrganizationRead',
+            component: () => import('@/views/organizations/OrganizationDetail.vue'),
+            props: true,
+          },
+          {
+            path: 'organizations/:id/edit',
+            name: 'OrganizationEdit',
+            component: () => import('@/views/organizations/OrganizationFormView.vue'),
+            props: true,
+          },
+          {
+            path: 'venues',
+            name: 'Venues',
+            component: () => import('@/views/venues/VenuesList.vue'),
+          },
+          {
+            path: 'venues/create',
+            name: 'VenueCreate',
+            component: () => import('@/views/venues/VenueFormView.vue'),
+          },
+          {
+            path: 'venues/:id',
+            name: 'VenueDetail',
+            component: () => import('@/views/venues/VenueDetail.vue'),
+            props: true,
+          },
+          {
+            path: 'venues/:id/read',
+            name: 'VenueRead',
+            component: () => import('@/views/venues/VenueDetail.vue'),
+            props: true,
+          },
+          {
+            path: 'venues/:id/edit',
+            name: 'VenueEdit',
+            component: () => import('@/views/venues/VenueFormView.vue'),
+            props: true,
+          },
+          {
+            path: 'contacts',
+            name: 'Contacts',
+            component: () => import('@/views/contacts/ContactsList.vue'),
+          },
+          {
+            path: 'contacts/create',
+            name: 'ContactCreate',
+            component: () => import('@/views/contacts/ContactFormView.vue'),
+          },
+          {
+            path: 'contacts/:id',
+            name: 'ContactDetail',
+            component: () => import('@/views/contacts/ContactDetail.vue'),
+            props: true,
+          },
+          {
+            path: 'contacts/:id/read',
+            name: 'ContactRead',
+            component: () => import('@/views/contacts/ContactDetail.vue'),
+            props: true,
+          },
+          {
+            path: 'contacts/:id/edit',
+            name: 'ContactEdit',
+            component: () => import('@/views/contacts/ContactFormView.vue'),
+            props: true,
+          },
+        ],
+      },
+      ...accommodationsRoutes,
     ],
   },
   {
@@ -335,7 +433,7 @@ router.beforeEach(async (to, from, next) => {
   if (!isAuthenticated && !isPublic) {
     next('/pages/login');
   } else if (isAuthenticated && to.path === '/pages/login') {
-    next('/dashboard');
+    next('/home');
   } else {
     next();
   }

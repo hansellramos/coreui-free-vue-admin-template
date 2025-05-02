@@ -1,6 +1,12 @@
 export default [
   {
     component: 'CNavItem',
+    name: 'Home',
+    to: '/home',
+    icon: 'cil-home',
+  },
+  {
+    component: 'CNavItem',
     name: 'Dashboard',
     to: '/dashboard',
     icon: 'cil-speedometer',
@@ -8,6 +14,42 @@ export default [
       color: 'primary',
       text: 'NEW',
     },
+  },
+  {
+    component: 'CNavTitle',
+    name: 'Business',
+  },
+  {
+    component: 'CNavGroup',
+    name: 'Business',
+    to: '/business',
+    icon: 'cil-briefcase',
+    items: [
+      {
+        component: 'CNavItem',
+        name: 'Organizations',
+        to: '/business/organizations',
+        icon: 'cil-briefcase',
+      },
+      {
+        component: 'CNavItem',
+        name: 'Venues',
+        to: '/business/venues',
+        icon: 'cil-location-pin',
+      },
+      {
+        component: 'CNavItem',
+        name: 'Contacts',
+        to: '/business/contacts',
+        icon: 'cil-user',
+      },
+      {
+        component: 'CNavItem',
+        name: 'Accommodations',
+        to: '/business/accommodations',
+        icon: 'cil-calendar',
+      },
+    ],
   },
   {
     component: 'CNavTitle',
