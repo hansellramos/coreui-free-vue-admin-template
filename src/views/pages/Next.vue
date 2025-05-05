@@ -1,6 +1,40 @@
 <template>
   <div class="p-4">
-    <h1 class="mb-4">Upcoming Reservations</h1>
+    <div class="d-flex align-items-center justify-content-between mb-4">
+      <h1 class="m-0">Upcoming Reservations</h1>
+      <div class="venue-search position-relative">
+        <CInputGroup>
+          <CFormInput
+            v-model="venueSearch"
+            placeholder="Search by venue"
+            @input="onVenueSearchInput"
+            autocomplete="off"
+          />
+        </CInputGroup>
+        <div v-if="venueSearch && filteredVenues.length" class="venue-dropdown">
+          <div 
+            v-for="venue in filteredVenues" 
+            :key="venue.id" 
+            class="venue-option" 
+            @click="selectVenue(venue)"
+          >
+            {{ venue.name }}
+          </div>
+        </div>
+      </div>
+    </div>
+    
+    <div v-if="selectedVenues.length > 0" class="d-flex align-items-center justify-content-end mb-4">
+      <CButton color="secondary" size="sm" class="clear-all-btn me-2" @click="clearAllVenueFilters">
+        <span class="me-1">Clear All</span><i class="cil-x-circle"></i>
+      </CButton>
+      <div class="selected-venues">
+        <div v-for="venue in selectedVenues" :key="venue.id" class="venue-chip">
+          {{ venue.name }}
+          <span class="venue-chip-close" @click="removeVenue(venue)">&times;</span>
+        </div>
+      </div>
+    </div>
     
     <div v-for="(groupedItems, date) in groupedAccommodations" :key="date" class="mb-4">
       <div class="day-header d-flex align-items-center mb-2">
@@ -35,22 +69,121 @@
 </template>
 
 <script setup>
-import { ref, onMounted, computed } from 'vue'
+import { ref, onMounted, computed, watch } from 'vue'
+import { useRouter, useRoute } from 'vue-router'
 import supabase from '@/lib/supabase'
-import { CCard, CCardBody } from '@coreui/vue'
+import { CCard, CCardBody, CInputGroup, CFormInput, CButton } from '@coreui/vue'
+
+const router = useRouter()
+const route = useRoute()
 
 const accommodations = ref([])
+const allVenues = ref([])
+const venueSearch = ref('')
+const selectedVenues = ref([])
+const filteredVenues = ref([])
+
+const fetchVenues = async () => {
+  const { data, error } = await supabase
+    .from('venues')
+    .select('id, name')
+    .order('name')
+  if (error) {
+    console.error('Error fetching venues:', error)
+  } else {
+    allVenues.value = data
+  }
+}
 
 const fetchAccommodations = async () => {
-  const { data, error } = await supabase
+  let query = supabase
     .from('accommodations')
-    .select('id, date, duration, time, venue:venues(name), customer:contacts(fullname)')
+    .select('id, date, duration, time, venue:venues(id, name), customer:contacts(fullname)')
     .order('date', { ascending: true })
+  
+  if (selectedVenues.value.length > 0) {
+    // Filtrar por múltiples venues usando la condición in
+    const venueIds = selectedVenues.value.map(venue => venue.id)
+    query = query.in('venue', venueIds)
+  }
+
+  const { data, error } = await query
   if (error) {
     console.error('Error fetching accommodations:', error)
   } else {
     accommodations.value = data
   }
+}
+
+const onVenueSearchInput = () => {
+  if (!venueSearch.value) {
+    filteredVenues.value = []
+    return
+  }
+  
+  const search = venueSearch.value.toLowerCase()
+  // Filtrar venues que ya están seleccionados
+  const alreadySelectedIds = selectedVenues.value.map(v => v.id)
+  filteredVenues.value = allVenues.value
+    .filter(venue => 
+      venue.name.toLowerCase().includes(search) && 
+      !alreadySelectedIds.includes(venue.id)
+    ).slice(0, 8)  // Limitar a 8 resultados para mejor UX
+}
+
+// Función para actualizar la URL con los venues seleccionados
+const updateUrlParams = () => {
+  const query = { ...route.query }
+  
+  if (selectedVenues.value.length > 0) {
+    // Crear un string con los IDs separados por comas
+    query.venues = selectedVenues.value.map(v => v.id).join(',')
+  } else {
+    // Si no hay venues seleccionados, eliminar el parámetro
+    delete query.venues
+  }
+  
+  // Actualizar la URL sin recargar la página
+  router.replace({ query })
+}
+
+// Función para cargar venues desde la URL
+const loadVenuesFromUrl = async () => {
+  if (route.query.venues && allVenues.value.length > 0) {
+    const venueIds = route.query.venues.split(',')
+    
+    // Filtrar solo los venues que existen en nuestra lista
+    const venuesFromUrl = allVenues.value.filter(v => venueIds.includes(v.id))
+    
+    if (venuesFromUrl.length > 0) {
+      selectedVenues.value = venuesFromUrl
+      fetchAccommodations()
+    }
+  }
+}
+
+const selectVenue = (venue) => {
+  // Agregar el venue a la lista de seleccionados
+  selectedVenues.value.push(venue)
+  venueSearch.value = ''
+  filteredVenues.value = []
+  fetchAccommodations()
+  updateUrlParams()
+}
+
+const removeVenue = (venue) => {
+  // Eliminar un venue específico
+  selectedVenues.value = selectedVenues.value.filter(v => v.id !== venue.id)
+  fetchAccommodations()
+  updateUrlParams()
+}
+
+const clearAllVenueFilters = () => {
+  // Limpiar todos los venues seleccionados
+  selectedVenues.value = []
+  venueSearch.value = ''
+  fetchAccommodations()
+  updateUrlParams()
 }
 
 const groupedAccommodations = computed(() => {
@@ -104,9 +237,27 @@ const formatDurationHuman = (duration) => {
   }
 }
 
-onMounted(() => {
-  fetchAccommodations()
+onMounted(async () => {
+  await fetchVenues()
+  // Después de cargar los venues, verificar si hay alguno en la URL
+  await loadVenuesFromUrl()
+  // Si no hay venues en la URL, cargar todas las reservas
+  if (selectedVenues.value.length === 0) {
+    await fetchAccommodations()
+  }
 })
+
+// Observar cambios en el query string de la URL
+watch(
+  () => route.query.venues,
+  async (newVenues) => {
+    if (!newVenues && selectedVenues.value.length > 0) {
+      // Si el parámetro se eliminó manualmente de la URL, limpiar los filtros
+      selectedVenues.value = []
+      await fetchAccommodations()
+    }
+  }
+)
 </script>
 
 <style scoped>
@@ -127,29 +278,69 @@ onMounted(() => {
   width: 100%;
 }
 
-.event-item {
-  /* min-width: 320px;
-  max-width: 400px; */
+.venue-search {
+  width: 300px;
 }
 
-.venue-name {
-  /* color: #000000;
-  font-weight: 700;
-  font-size: 1.4rem;
-  writing-mode: horizontal-tb;
-  text-align: center;
-  padding: 0 15px;
-  min-width: 120px;
-  width: auto;
-  flex-shrink: 0;
-  flex-grow: 1;
+.venue-dropdown {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  background-color: white;
+  border: 1px solid #ced4da;
+  border-radius: 0.25rem;
+  max-height: 250px;
+  overflow-y: auto;
+  z-index: 1000;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+}
+
+.venue-option {
+  padding: 8px 12px;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.venue-option:hover {
+  background-color: #f8f9fa;
+}
+
+.clear-filter-btn {
+  font-weight: 500;
   display: flex;
   align-items: center;
-  justify-content: center;
-  height: 100%;
-  white-space: normal;
-  overflow-wrap: break-word;
-  word-break: break-word; */
+  padding: 0.375rem 0.75rem;
+}
+
+.selected-venues {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  justify-content: flex-end;
+}
+
+.venue-chip {
+  display: inline-flex;
+  align-items: center;
+  background-color: #4285f4;
+  color: white;
+  padding: 4px 12px;
+  border-radius: 16px;
+  font-size: 0.875rem;
+  font-weight: 500;
+}
+
+.venue-chip-close {
+  margin-left: 6px;
+  font-size: 1.25rem;
+  line-height: 1;
+  cursor: pointer;
+  opacity: 0.8;
+}
+
+.venue-chip-close:hover {
+  opacity: 1;
 }
 
 .event-card {
