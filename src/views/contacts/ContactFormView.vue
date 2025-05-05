@@ -38,8 +38,12 @@ onMounted(async () => {
 })
 
 async function handleSubmit(data) {
-  if (isEdit.value) await updateContact(route.params.id, data)
-  else await createContact(data)
+  // Eliminar campos que no son columnas en la tabla 'contacts'
+  const contactData = { ...data }
+  delete contactData.users
+  
+  if (isEdit.value) await updateContact(route.params.id, contactData)
+  else await createContact(contactData)
   router.push('/business/contacts')
 }
 

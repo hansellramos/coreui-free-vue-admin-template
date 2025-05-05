@@ -9,7 +9,7 @@ export async function fetchContacts() {
 export async function getContactById(id) {
   const { data, error } = await supabase
     .from('contacts')
-    .select('*, user: user (id, email, display_name)')
+    .select('*, users!contacts_user_fkey (id, email, display_name)')
     .eq('id', id)
     .single()
   if (error) throw error

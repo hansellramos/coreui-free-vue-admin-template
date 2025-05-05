@@ -12,11 +12,11 @@
             <p><strong>Country:</strong> <span class="text-body-secondary">{{ contact.country }}</span></p>
             <p><strong>State:</strong> <span class="text-body-secondary">{{ contact.state }}</span></p>
             <p><strong>City:</strong> <span class="text-body-secondary">{{ contact.city }}</span></p>
-            <p v-if="contact.user">
+            <p v-if="contact.users">
               <strong>Linked User:</strong>
               <span class="text-body-secondary">
-                {{ contact.user.display_name || contact.user.email }}
-                <span v-if="contact.user.email"> ({{ contact.user.email }})</span>
+                {{ contact.users.display_name || contact.users.email }}
+                <span v-if="contact.users.email"> ({{ contact.users.email }})</span>
               </span>
             </p>
             <div class="mt-4">
