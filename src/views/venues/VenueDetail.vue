@@ -14,6 +14,9 @@
             <p><strong>ZIP Code:</strong> <span class="text-body-secondary">{{ venue.zi_code }}</span></p>
             <p><strong>Latitude:</strong> <span class="text-body-secondary">{{ venue.latitude }}</span></p>
             <p><strong>Longitude:</strong> <span class="text-body-secondary">{{ venue.longitude }}</span></p>
+            <div class="mb-3">
+              <div ref="mapContainer" class="map-container"></div>
+            </div>
             <p><strong>City:</strong> <span class="text-body-secondary">{{ venue.city }}</span></p>
             <p><strong>Country:</strong> <span class="text-body-secondary">{{ venue.country }}</span></p>
             <p><strong>Department:</strong> <span class="text-body-secondary">{{ venue.deparment }}</span></p>
@@ -38,14 +41,36 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, watch, nextTick } from 'vue'
 import { useRoute } from 'vue-router'
 import { getVenueById } from '@/services/venueService'
+import mapboxgl from 'mapbox-gl'
+import 'mapbox-gl/dist/mapbox-gl.css'
 
 const route = useRoute()
 const venue = ref(null)
+const mapContainer = ref(null)
+const token = import.meta.env.VITE_MAPBOX_ACCESS_TOKEN
 
 onMounted(async () => {
   venue.value = await getVenueById(route.params.id)
 })
+
+watch(venue, async (val) => {
+  if (val && val.latitude && val.longitude) {
+    await nextTick()
+    mapboxgl.accessToken = token
+    const map = new mapboxgl.Map({
+      style: 'mapbox://styles/mapbox/streets-v11',
+      container: mapContainer.value,
+      center: [val.longitude, val.latitude],
+      zoom: 12
+    })
+    new mapboxgl.Marker().setLngLat([val.longitude, val.latitude]).addTo(map)
+  }
+})
 </script>
+
+<style scoped>
+.map-container { width: 100%; height: 300px; border: 1px solid #ccc; border-radius: 4px; }
+</style>
