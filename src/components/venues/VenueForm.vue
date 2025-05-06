@@ -19,6 +19,29 @@
         placeholder="Enter WhatsApp number"
       />
     </div>
+    <!-- Mapbox map and geocoder -->
+    <div class="mb-3">
+      <CFormLabel>Ubicación</CFormLabel>
+      <div ref="mapContainer" class="map-container"></div>
+      <div class="mb-3">
+        <CFormLabel for="venueLatitude">Latitude</CFormLabel>
+        <CFormInput
+          id="venueLatitude"
+          v-model="form.latitude"
+          type="text"
+          readonly
+        />
+      </div>
+      <div class="mb-3">
+        <CFormLabel for="venueLongitude">Longitude</CFormLabel>
+        <CFormInput
+          id="venueLongitude"
+          v-model="form.longitude"
+          type="text"
+          readonly
+        />
+      </div>
+    </div>
     <div class="mb-3">
       <CFormLabel for="venueAddress">Address</CFormLabel>
       <CFormInput
@@ -35,24 +58,6 @@
         v-model="form.zip_code"
         type="text"
         placeholder="Enter ZIP code"
-      />
-    </div>
-    <div class="mb-3">
-      <CFormLabel for="venueLatitude">Latitude</CFormLabel>
-      <CFormInput
-        id="venueLatitude"
-        v-model="form.latitude"
-        type="text"
-        placeholder="Enter latitude"
-      />
-    </div>
-    <div class="mb-3">
-      <CFormLabel for="venueLongitude">Longitude</CFormLabel>
-      <CFormInput
-        id="venueLongitude"
-        v-model="form.longitude"
-        type="text"
-        placeholder="Enter longitude"
       />
     </div>
     <div class="mb-3">
@@ -106,7 +111,11 @@
 </template>
 
 <script setup>
-import { ref, watch, defineProps, defineEmits } from 'vue'
+import { ref, watch, defineProps, defineEmits, onMounted } from 'vue'
+import mapboxgl from 'mapbox-gl'
+import MapboxGeocoder from '@mapbox/mapbox-gl-geocoder'
+import 'mapbox-gl/dist/mapbox-gl.css'
+import '@mapbox/mapbox-gl-geocoder/dist/mapbox-gl-geocoder.css'
 
 const props = defineProps({
   modelValue: {
@@ -121,6 +130,8 @@ const props = defineProps({
 const emit = defineEmits(['update:modelValue', 'submit', 'cancel'])
 
 const form = ref({ ...props.modelValue })
+const mapContainer = ref(null)
+const token = import.meta.env.VITE_MAPBOX_ACCESS_TOKEN
 
 watch(
   () => props.modelValue,
@@ -136,4 +147,44 @@ function handleSubmit() {
 function onCancel() {
   emit('cancel')
 }
+
+onMounted(() => {
+  mapboxgl.accessToken = token
+  const initialCenter = form.value.longitude && form.value.latitude
+    ? [form.value.longitude, form.value.latitude]
+    : [-74.7813, 10.9685]
+  const map = new mapboxgl.Map({
+    style: 'mapbox://styles/mapbox/streets-v11',
+    container: mapContainer.value,
+    center: initialCenter,
+    zoom: 12
+  })
+  // Limitar bounds al departamento del Atlántico
+  map.setMaxBounds([[-75.0, 10.28], [-74.15, 11.03]])
+  const geocoder = new MapboxGeocoder({
+    accessToken: token,
+    mapboxgl,
+    placeholder: 'Buscar lugar...',
+    // Restringir búsqueda a direcciones dentro del departamento del Atlántico
+    bbox: [-75.0, 10.28, -74.15, 11.03]
+  })
+  map.addControl(geocoder)
+  const marker = new mapboxgl.Marker({ draggable: false }).setLngLat(initialCenter).addTo(map)
+  map.on('moveend', () => {
+    const center = map.getCenter()
+    marker.setLngLat(center)
+    form.value.longitude = center.lng
+    form.value.latitude = center.lat
+  })
+  geocoder.on('result', ev => {
+    const [lng, lat] = ev.result.center
+    form.value.longitude = lng
+    form.value.latitude = lat
+    marker.setLngLat([lng, lat])
+  })
+})
 </script>
+
+<style scoped>
+.map-container { width: 100%; height: 300px; border: 1px solid #ccc; border-radius: 4px; }
+</style>
