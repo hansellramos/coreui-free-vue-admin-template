@@ -32,7 +32,7 @@
       <CFormLabel for="venueZip">ZIP Code</CFormLabel>
       <CFormInput
         id="venueZip"
-        v-model="form.zi_code"
+        v-model="form.zip_code"
         type="text"
         placeholder="Enter ZIP code"
       />
@@ -77,7 +77,7 @@
       <CFormLabel for="venueDepartment">Department</CFormLabel>
       <CFormInput
         id="venueDepartment"
-        v-model="form.deparment"
+        v-model="form.department"
         type="text"
         placeholder="Enter department"
       />

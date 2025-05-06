@@ -31,12 +31,12 @@ let form = ref({
   name: '',
   whatsapp: '',
   address: '',
-  zi_code: '',
+  zip_code: '',
   latitude: '',
   longitude: '',
   city: '',
   country: '',
-  deparment: '',
+  department: '',
   suburb: '',
   address_reference: ''
 })
@@ -50,10 +50,17 @@ onMounted(async () => {
 })
 
 async function handleSubmit(data) {
+  // Preparar datos, convertir campos numéricos vacíos a null
+  const venueData = { ...data };
+  
+  // Latitude y longitude deben ser valores numéricos o null
+  if (venueData.latitude === '') venueData.latitude = null;
+  if (venueData.longitude === '') venueData.longitude = null;
+  
   if (isEdit.value) {
-    await updateVenue(route.params.id, data)
+    await updateVenue(route.params.id, venueData)
   } else {
-    await createVenue(data)
+    await createVenue(venueData)
   }
   router.push('/business/venues')
 }

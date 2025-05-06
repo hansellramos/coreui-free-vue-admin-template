@@ -28,6 +28,11 @@ const routes = [
         component: () => import('@/views/pages/Home.vue'),
       },
       {
+        path: '/next',
+        name: 'Next',
+        component: () => import('@/views/pages/Next.vue'),
+      },
+      {
         path: '/theme',
         name: 'Theme',
         redirect: '/theme/typography',

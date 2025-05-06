@@ -7,6 +7,19 @@
       </RouterLink>
     </CCardHeader>
     <CCardBody>
+      <div class="mb-3 position-relative">
+        <label class="form-label">Filter by Name:</label>
+        <input type="text" v-model="nameInput" @input="onNameInput" class="form-control" placeholder="Search venue name" />
+        <ul v-if="filteredNames.length" class="list-group position-absolute z-3 w-100">
+          <li v-for="name in filteredNames" :key="name" class="list-group-item list-group-item-action" @click="selectName(name)">{{ name }}</li>
+        </ul>
+        <div v-if="selectedNames.length" class="d-flex align-items-center flex-wrap mt-2">
+          <div v-for="name in selectedNames" :key="name" class="filter-chip me-2 mb-2">
+            {{ name }} <span class="filter-chip-close" @click="removeName(name)">&times;</span>
+          </div>
+          <CButton size="sm" color="secondary" class="ms-2 mb-2" @click="clearAllNames">Clear All</CButton>
+        </div>
+      </div>
       <CTable hover responsive>
         <CTableHead>
           <CTableRow>
@@ -25,6 +38,7 @@
             </CTableDataCell>
             <CTableDataCell>
               <CButton color="primary" size="sm" @click="onEdit(venue)">Edit</CButton>
+              <CButton color="info" size="sm" class="ms-2" @click="viewUpcoming(venue)">Upcoming</CButton>
               <CButton color="danger" size="sm" class="ms-2" @click="onDelete(venue)">Delete</CButton>
             </CTableDataCell>
           </CTableRow>
@@ -40,20 +54,81 @@ import { RouterLink, useRouter } from 'vue-router'
 import { fetchVenues, deleteVenue } from '@/services/venueService'
 
 const venues = ref([])
+const allVenues = ref([])
+const nameInput = ref('')
+const filteredNames = ref([])
+const selectedNames = ref([])
 const router = useRouter()
 
+async function loadVenues(names = []) {
+  venues.value = await fetchVenues(names)
+}
+
+async function loadAllVenues() {
+  allVenues.value = await fetchVenues()
+}
+
+function onNameInput() {
+  if (!nameInput.value) { filteredNames.value = []; return }
+  const search = nameInput.value.toLowerCase()
+  filteredNames.value = allVenues.value
+    .map(v => v.name)
+    .filter(n => n.toLowerCase().includes(search) && !selectedNames.value.includes(n))
+}
+
+function selectName(name) {
+  selectedNames.value.push(name)
+  nameInput.value = ''
+  filteredNames.value = []
+  loadVenues(selectedNames.value)
+}
+
+function removeName(name) {
+  selectedNames.value = selectedNames.value.filter(n => n !== name)
+  loadVenues(selectedNames.value)
+}
+
+function clearAllNames() {
+  selectedNames.value = []
+  loadVenues()
+}
+
 onMounted(async () => {
-  venues.value = await fetchVenues()
+  await loadAllVenues()
+  await loadVenues()
 })
 
 function onEdit(venue) {
   router.push(`/business/venues/${venue.id}/edit`)
 }
 
+function viewUpcoming(venue) {
+  // Redireccionar a la página Next con el ID del venue como parámetro en la URL
+  router.push({
+    path: '/next',
+    query: { venues: venue.id }
+  })
+}
+
 async function onDelete(venue) {
   if (confirm(`Are you sure you want to delete the venue "${venue.name}"?`)) {
     await deleteVenue(venue.id)
-    venues.value = await fetchVenues()
+    await loadVenues(selectedNames.value)
   }
 }
 </script>
+
+<style scoped>
+.filter-chip {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.25rem 0.5rem;
+  background-color: #e9ecef;
+  border-radius: 0.25rem;
+  font-size: 0.875rem;
+}
+.filter-chip-close {
+  cursor: pointer;
+  margin-left: 0.25rem;
+}
+</style>
