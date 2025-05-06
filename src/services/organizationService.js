@@ -3,8 +3,12 @@
 
 import supabase from '@/lib/supabase'
 
-export async function fetchOrganizations() {
-  const { data, error } = await supabase.from('organizations').select('*').order('name', { ascending: true })
+export async function fetchOrganizations(filterNames = []) {
+  let query = supabase.from('organizations').select('*')
+  if (Array.isArray(filterNames) && filterNames.length > 0) {
+    query = query.in('name', filterNames)
+  }
+  const { data, error } = await query.order('name', { ascending: true })
   if (error) throw error
   return data || []
 }

@@ -1,7 +1,11 @@
 import supabase from '@/lib/supabase'
 
-export async function fetchVenues() {
-  const { data, error } = await supabase.from('venues').select('*').order('name', { ascending: true })
+export async function fetchVenues(filterNames = []) {
+  let query = supabase.from('venues').select('*')
+  if (Array.isArray(filterNames) && filterNames.length > 0) {
+    query = query.in('name', filterNames)
+  }
+  const { data, error } = await query.order('name', { ascending: true })
   if (error) throw error
   return data || []
 }

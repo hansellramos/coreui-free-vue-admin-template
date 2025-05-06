@@ -194,6 +194,10 @@ const groupedAccommodations = computed(() => {
     }
     grouped[item.date].push(item)
   })
+  // Ordenar por hora dentro de cada fecha
+  Object.keys(grouped).forEach(date => {
+    grouped[date].sort((a, b) => (a.time || '').localeCompare(b.time || ''))
+  })
   return grouped
 })
 

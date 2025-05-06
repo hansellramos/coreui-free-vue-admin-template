@@ -1,5 +1,16 @@
 <template>
   <div>
+    <div class="mb-3">
+      <label for="dateFilter" class="form-label">Filter by Date:</label>
+      <input id="dateFilter" type="date" v-model="dateInput" class="form-control" @change="addDate" />
+      <div v-if="selectedDates.length" class="d-flex align-items-center flex-wrap mt-2">
+        <div v-for="date in selectedDates" :key="date" class="filter-chip me-2 mb-2">
+          {{ date }}
+          <span class="filter-chip-close" @click="removeDate(date)">&times;</span>
+        </div>
+      </div>
+      <CButton v-if="selectedDates.length" size="sm" color="secondary" class="mt-2" @click="clearAllDates">Clear All</CButton>
+    </div>
     <CButton color="primary" class="mb-3" @click="$router.push('/business/accommodations/create')">New Accommodation</CButton>
     <CTable>
       <thead>
@@ -33,13 +44,33 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, watch } from 'vue'
 import { fetchAccommodations, deleteAccommodation } from '@/services/accommodationService'
 
 const accommodations = ref([])
+const dateInput = ref('')
+const selectedDates = ref([])
 
 async function load() {
-  accommodations.value = await fetchAccommodations()
+  accommodations.value = await fetchAccommodations(selectedDates.value)
+}
+
+function addDate() {
+  if (dateInput.value && !selectedDates.value.includes(dateInput.value)) {
+    selectedDates.value.push(dateInput.value)
+  }
+  dateInput.value = ''
+  load()
+}
+
+function removeDate(date) {
+  selectedDates.value = selectedDates.value.filter(d => d !== date)
+  load()
+}
+
+function clearAllDates() {
+  selectedDates.value = []
+  load()
 }
 
 async function onDelete(item) {
@@ -60,9 +91,11 @@ function formatDuration(seconds) {
   }
   return seconds + 's'
 }
+
 function formatCheckIn(time) {
   return time ? time.slice(0,5) : '—'
 }
+
 function calcCheckout(time, duration, date) {
   if (!time || !duration || !date) return '—'
   const [h, m] = time.split(':').map(Number)
@@ -78,3 +111,18 @@ function calcCheckout(time, duration, date) {
 
 onMounted(load)
 </script>
+
+<style scoped>
+.filter-chip {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.25rem 0.5rem;
+  background-color: #e9ecef;
+  border-radius: 0.25rem;
+  font-size: 0.875rem;
+}
+.filter-chip-close {
+  cursor: pointer;
+  margin-left: 0.25rem;
+}
+</style>

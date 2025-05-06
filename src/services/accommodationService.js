@@ -1,10 +1,13 @@
 import supabase from '@/lib/supabase'
 
-export async function fetchAccommodations() {
-  const { data, error } = await supabase
+export async function fetchAccommodations(filterDates = []) {
+  let query = supabase
     .from('accommodations')
     .select('*, venues:venue (id, name), contacts:customer (id, fullname, users!contacts_user_fkey (email))')
-    .order('date', { ascending: false })
+  if (Array.isArray(filterDates) && filterDates.length > 0) {
+    query = query.in('date', filterDates)
+  }
+  const { data, error } = await query.order('date', { ascending: false })
   if (error) throw error
   return data || []
 }

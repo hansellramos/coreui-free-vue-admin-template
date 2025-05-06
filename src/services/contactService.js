@@ -1,7 +1,11 @@
 import supabase from '@/lib/supabase'
 
-export async function fetchContacts() {
-  const { data, error } = await supabase.from('contacts').select('*').order('fullname', { ascending: true })
+export async function fetchContacts(filterNames = []) {
+  let query = supabase.from('contacts').select('*')
+  if (Array.isArray(filterNames) && filterNames.length > 0) {
+    query = query.in('fullname', filterNames)
+  }
+  const { data, error } = await query.order('fullname', { ascending: true })
   if (error) throw error
   return data || []
 }
