@@ -39,7 +39,7 @@ export async function createVenueWithPackages(venueData, packages = []) {
   if (error) throw error
   // Insert associated packages
   if (Array.isArray(packages) && packages.length > 0) {
-    const pkgRecords = packages.map(p => ({ name: p.name, description: p.description, venue: venue.id }))
+    const pkgRecords = packages.map(p => ({ name: p.name, description: p.description, venue: venue.id, features: p.features || [] }))
     const { error: pkgError } = await supabase.from('venue_packages').insert(pkgRecords)
     if (pkgError) throw pkgError
   }
@@ -56,7 +56,7 @@ export async function updateVenueWithPackages(id, venueData, packages = []) {
   if (delError) throw delError
   // Insert new packages
   if (Array.isArray(packages) && packages.length > 0) {
-    const pkgRecords = packages.map(p => ({ name: p.name, description: p.description, venue: id }))
+    const pkgRecords = packages.map(p => ({ name: p.name, description: p.description, venue: id, features: p.features || [] }))
     const { error: pkgError } = await supabase.from('venue_packages').insert(pkgRecords)
     if (pkgError) throw pkgError
   }

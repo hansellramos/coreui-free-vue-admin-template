@@ -28,6 +28,9 @@
               <ul>
                 <li v-for="pkg in packages" :key="pkg.id">
                   <strong>{{ pkg.name }}</strong>: {{ pkg.description }}
+                  <ul class="ms-3">
+                    <li v-for="feature in pkg.features" :key="feature">{{ feature }}</li>
+                  </ul>
                 </li>
               </ul>
             </div>

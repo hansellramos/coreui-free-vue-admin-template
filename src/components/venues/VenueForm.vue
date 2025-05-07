@@ -124,6 +124,20 @@
             <CFormLabel for="pkgDescription">Description</CFormLabel>
             <CFormTextarea id="pkgDescription" v-model="pkg.description" placeholder="Enter package description" />
             <CButton color="danger" size="sm" @click="removePackage(i)">Remove</CButton>
+            <!-- Features checkboxes -->
+            <div class="mt-2 mb-2">
+              <strong>Features:</strong>
+              <div class="row">
+                <div class="col-6 col-md-4" v-for="feature in featuresOptions" :key="feature">
+                  <CFormCheck
+                    type="checkbox"
+                    :label="feature"
+                    :value="feature"
+                    v-model="pkg.features"
+                  />
+                </div>
+              </div>
+            </div>
             <hr />
           </div>
           <CButton color="primary" size="sm" @click="addPackage">+ Add Package</CButton>
@@ -137,7 +151,7 @@
 
 <script setup>
 import { ref, watch, onMounted } from 'vue'
-import { CAccordion, CAccordionItem, CAccordionHeader, CAccordionBody, CFormTextarea, CButton } from '@coreui/vue'
+import { CAccordion, CAccordionItem, CAccordionHeader, CAccordionBody, CFormTextarea, CButton, CFormInput, CFormCheck } from '@coreui/vue'
 import mapboxgl from 'mapbox-gl'
 import MapboxGeocoder from '@mapbox/mapbox-gl-geocoder'
 import 'mapbox-gl/dist/mapbox-gl.css'
@@ -155,14 +169,30 @@ const props = defineProps({
 })
 const emit = defineEmits(['update:modelValue', 'submit', 'cancel'])
 
-const form = ref({ ...props.modelValue, instagram: '', packages: [] })
 const mapContainer = ref(null)
 const token = import.meta.env.VITE_MAPBOX_ACCESS_TOKEN
+
+// Features options for venue packages
+const featuresOptions = [
+  'kiosco', '4 hamacas', 'piscina', 'jacuzzi', 'cocina BBQ', 'zonas verde',
+  'sonido', 'juegos de mesa', 'olla capacidad 50 personas', 'cardero 30 lb',
+  'cuchillo', 'tabla de picar', 'cucharón', 'almuerzo (sancocho de pollo con arroz)',
+  'cena (asado de dos proteínas)', 'comida de media noche (sancocho de pollo con arroz)'
+]
+
+// Initialize form with modelValue and ensure features array on packages
+const form = ref({ ...props.modelValue,
+  instagram: '',
+  packages: (props.modelValue.packages || []).map(p => ({ ...p, features: p.features || [] }))
+})
 
 watch(
   () => props.modelValue,
   (val) => {
-    form.value = { ...val, packages: val.packages || [] }
+    form.value = {
+      ...val,
+      packages: (val.packages || []).map(p => ({ ...p, features: p.features || [] }))
+    }
   }
 )
 
@@ -175,7 +205,7 @@ function onCancel() {
 }
 
 function addPackage() {
-  form.value.packages.push({ name: '', description: '' })
+  form.value.packages.push({ name: '', description: '', features: [] })
 }
 
 function removePackage(index) {
