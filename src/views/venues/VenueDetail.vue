@@ -10,7 +10,7 @@
             <p class="d-none"><strong>ID:</strong> <span class="text-body-secondary">{{ venue.id }}</span></p>
             <p><strong>Name:</strong> <span class="text-body-secondary">{{ venue.name }}</span></p>
             <p><strong>WhatsApp:</strong> <span class="text-body-secondary">{{ venue.whatsapp }}</span></p>
-            <p><strong>Instagram:</strong> <span class="text-body-secondary">{{ venue.instagram }}</span></p>
+            <p><strong>Instagram:</strong> <span class="text-body-secondary"><a :href="instagramUrl" target="_blank" rel="noopener noreferrer">{{ instagramDisplay }} <CIcon icon="cil-external-link" size="sm" class="ms-1" /></a></span></p>
             <p><strong>Address:</strong> <span class="text-body-secondary">{{ venue.address }}</span></p>
             <p><strong>ZIP Code:</strong> <span class="text-body-secondary">{{ venue.zip_code }}</span></p>
             <p><strong>Latitude:</strong> <span class="text-body-secondary">{{ venue.latitude }}</span></p>
@@ -42,7 +42,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted, watch, nextTick } from 'vue'
+import { ref, onMounted, watch, nextTick, computed } from 'vue'
 import { useRoute } from 'vue-router'
 import { getVenueById } from '@/services/venueService'
 import mapboxgl from 'mapbox-gl'
@@ -52,6 +52,16 @@ const route = useRoute()
 const venue = ref(null)
 const mapContainer = ref(null)
 const token = import.meta.env.VITE_MAPBOX_ACCESS_TOKEN
+
+const instagramUrl = computed(() => {
+  const ig = venue.value?.instagram || ''
+  if (ig.startsWith('@')) return `https://instagram.com/${ig.slice(1)}`
+  return ig
+})
+const instagramDisplay = computed(() => {
+  const ig = venue.value?.instagram || ''
+  return ig.startsWith('@') ? ig.slice(1) : ig
+})
 
 onMounted(async () => {
   venue.value = await getVenueById(route.params.id)
