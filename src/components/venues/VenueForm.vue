@@ -19,6 +19,15 @@
         placeholder="Enter WhatsApp number"
       />
     </div>
+    <div class="mb-3">
+      <CFormLabel for="venueInstagram">Instagram</CFormLabel>
+      <CFormInput
+        id="venueInstagram"
+        v-model="form.instagram"
+        type="text"
+        placeholder="Enter Instagram handle"
+      />
+    </div>
     <!-- Mapbox map and geocoder -->
     <div class="mb-3">
       <CFormLabel>Ubicación</CFormLabel>
@@ -111,7 +120,7 @@
 </template>
 
 <script setup>
-import { ref, watch, defineProps, defineEmits, onMounted } from 'vue'
+import { ref, watch, onMounted } from 'vue'
 import mapboxgl from 'mapbox-gl'
 import MapboxGeocoder from '@mapbox/mapbox-gl-geocoder'
 import 'mapbox-gl/dist/mapbox-gl.css'
@@ -129,7 +138,7 @@ const props = defineProps({
 })
 const emit = defineEmits(['update:modelValue', 'submit', 'cancel'])
 
-const form = ref({ ...props.modelValue })
+const form = ref({ ...props.modelValue, instagram: '' })
 const mapContainer = ref(null)
 const token = import.meta.env.VITE_MAPBOX_ACCESS_TOKEN
 
