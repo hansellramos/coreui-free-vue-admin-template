@@ -30,6 +30,7 @@ const router = useRouter()
 let form = ref({
   name: '',
   whatsapp: '',
+  instagram: '',
   address: '',
   zip_code: '',
   latitude: '',
