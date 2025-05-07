@@ -25,6 +25,7 @@ const sidebar = useSidebarStore()
           <CIcon custom-class-name="sidebar-brand-full" :icon="logo" :height="32" />
           <CIcon custom-class-name="sidebar-brand-narrow" :icon="sygnet" :height="32" />
           -->
+          <!--New Logo-->
           <svg width="180" height="32" viewBox="0 0 180 32" style="display:block">
             <g>
               <g data-name="Layer 2" id="Layer_2" transform="scale(1.75) translate(0, -2)">
@@ -33,8 +34,6 @@ const sidebar = useSidebarStore()
               <text fill="#ffffff" x="40" y="30" font-family="Arial" font-size="22" alignment-baseline="middle">abanero</text>
             </g>
           </svg>
-          <!--New Logo-->
-          <img src="@/assets/brand/logo.svg" alt="Logo" />
         </CSidebarBrand>
       </RouterLink>
       <CCloseButton class="d-lg-none" dark @click="sidebar.toggleVisible()" />
