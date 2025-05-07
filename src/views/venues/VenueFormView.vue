@@ -23,7 +23,7 @@
 import { ref, onMounted, computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import VenueForm from '@/components/venues/VenueForm.vue'
-import { getVenueById, createVenue, updateVenue } from '@/services/venueService'
+import { getVenueById, fetchVenuePackages, createVenueWithPackages, updateVenueWithPackages } from '@/services/venueService'
 
 const route = useRoute()
 const router = useRouter()
@@ -39,14 +39,16 @@ let form = ref({
   country: '',
   department: '',
   suburb: '',
-  address_reference: ''
+  address_reference: '',
+  packages: []
 })
 const isEdit = computed(() => !!route.params.id)
 
 onMounted(async () => {
   if (isEdit.value) {
     const venue = await getVenueById(route.params.id)
-    if (venue) form.value = { ...venue }
+    const packagesData = await fetchVenuePackages(route.params.id)
+    if (venue) form.value = { ...venue, packages: packagesData }
   }
 })
 
@@ -59,9 +61,9 @@ async function handleSubmit(data) {
   if (venueData.longitude === '') venueData.longitude = null;
   
   if (isEdit.value) {
-    await updateVenue(route.params.id, venueData)
+    await updateVenueWithPackages(route.params.id, venueData, data.packages)
   } else {
-    await createVenue(venueData)
+    await createVenueWithPackages(venueData, data.packages)
   }
   router.push('/business/venues')
 }

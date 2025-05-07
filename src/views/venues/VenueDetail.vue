@@ -23,6 +23,14 @@
             <p><strong>Department:</strong> <span class="text-body-secondary">{{ venue.department }}</span></p>
             <p><strong>Suburb:</strong> <span class="text-body-secondary">{{ venue.suburb }}</span></p>
             <p><strong>Address Reference:</strong> <span class="text-body-secondary">{{ venue.address_reference }}</span></p>
+            <div v-if="packages.length" class="mb-3">
+              <CFormLabel>Packages</CFormLabel>
+              <ul>
+                <li v-for="pkg in packages" :key="pkg.id">
+                  <strong>{{ pkg.name }}</strong>: {{ pkg.description }}
+                </li>
+              </ul>
+            </div>
             <div class="mt-4">
               <RouterLink :to="`/business/venues/${venue.id}/edit`">
                 <CButton color="primary" size="sm">Edit</CButton>
@@ -44,17 +52,19 @@
 <script setup>
 import { ref, onMounted, watch, nextTick } from 'vue'
 import { useRoute } from 'vue-router'
-import { getVenueById } from '@/services/venueService'
+import { getVenueById, fetchVenuePackages } from '@/services/venueService'
 import mapboxgl from 'mapbox-gl'
 import 'mapbox-gl/dist/mapbox-gl.css'
 
 const route = useRoute()
 const venue = ref(null)
+const packages = ref([])
 const mapContainer = ref(null)
 const token = import.meta.env.VITE_MAPBOX_ACCESS_TOKEN
 
 onMounted(async () => {
   venue.value = await getVenueById(route.params.id)
+  packages.value = await fetchVenuePackages(route.params.id)
 })
 
 watch(venue, async (val) => {

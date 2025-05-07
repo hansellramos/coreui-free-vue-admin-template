@@ -114,6 +114,22 @@
         placeholder="Enter address reference"
       />
     </div>
+    <CAccordion class="mb-4">
+      <CAccordionItem item-key="packages">
+        <CAccordionHeader>Packages</CAccordionHeader>
+        <CAccordionBody>
+          <div v-for="(pkg, i) in form.packages" :key="i" class="mb-3">
+            <CFormLabel for="pkgName">Package Name</CFormLabel>
+            <CFormInput id="pkgName" v-model="pkg.name" placeholder="Enter package name" />
+            <CFormLabel for="pkgDescription">Description</CFormLabel>
+            <CFormTextarea id="pkgDescription" v-model="pkg.description" placeholder="Enter package description" />
+            <CButton color="danger" size="sm" @click="removePackage(i)">Remove</CButton>
+            <hr />
+          </div>
+          <CButton color="primary" size="sm" @click="addPackage">+ Add Package</CButton>
+        </CAccordionBody>
+      </CAccordionItem>
+    </CAccordion>
     <CButton type="submit" color="primary" class="me-2">{{ isEdit ? 'Update' : 'Create' }}</CButton>
     <CButton color="secondary" variant="outline" @click="onCancel">Cancel</CButton>
   </CForm>
@@ -121,6 +137,7 @@
 
 <script setup>
 import { ref, watch, onMounted } from 'vue'
+import { CAccordion, CAccordionItem, CAccordionHeader, CAccordionBody, CFormTextarea, CButton } from '@coreui/vue'
 import mapboxgl from 'mapbox-gl'
 import MapboxGeocoder from '@mapbox/mapbox-gl-geocoder'
 import 'mapbox-gl/dist/mapbox-gl.css'
@@ -138,14 +155,14 @@ const props = defineProps({
 })
 const emit = defineEmits(['update:modelValue', 'submit', 'cancel'])
 
-const form = ref({ ...props.modelValue, instagram: '' })
+const form = ref({ ...props.modelValue, instagram: '', packages: [] })
 const mapContainer = ref(null)
 const token = import.meta.env.VITE_MAPBOX_ACCESS_TOKEN
 
 watch(
   () => props.modelValue,
   (val) => {
-    form.value = { ...val }
+    form.value = { ...val, packages: val.packages || [] }
   }
 )
 
@@ -155,6 +172,14 @@ function handleSubmit() {
 
 function onCancel() {
   emit('cancel')
+}
+
+function addPackage() {
+  form.value.packages.push({ name: '', description: '' })
+}
+
+function removePackage(index) {
+  form.value.packages.splice(index, 1)
 }
 
 onMounted(() => {
