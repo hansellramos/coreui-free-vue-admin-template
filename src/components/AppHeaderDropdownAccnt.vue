@@ -65,6 +65,9 @@ const handleLogout = async () => {
         <CIcon icon="cil-file" /> Projects
         <CBadge color="primary" class="ms-auto">{{ itemsCount }}</CBadge>
       </CDropdownItem>
+      <CDropdownItem href="#/preferences">
+        <CIcon icon="cil-star" /> Preferences
+      </CDropdownItem>
       <CDropdownDivider />
       <CDropdownItem> <CIcon icon="cil-shield-alt" /> Lock Account </CDropdownItem>
       <CDropdownItem @click="handleLogout">

@@ -33,6 +33,11 @@ const routes = [
         component: () => import('@/views/pages/Next.vue'),
       },
       {
+        path: '/preferences',
+        name: 'Preferences',
+        component: () => import('@/views/preferences/Preferences.vue'),
+      },
+      {
         path: '/theme',
         name: 'Theme',
         redirect: '/theme/typography',
