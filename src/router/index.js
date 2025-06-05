@@ -406,6 +406,11 @@ const routes = [
         name: 'Register',
         component: () => import('@/views/pages/Register'),
       },
+      {
+        path: 'reset-password',
+        name: 'ResetPassword',
+        component: () => import('@/views/pages/ResetPassword.vue'),
+      },
     ],
   },
 ]
@@ -425,6 +430,7 @@ router.beforeEach(async (to, from, next) => {
   const publicPages = [
     '/pages/login',
     '/pages/register',
+    '/pages/reset-password',
     '/pages/404',
     '/pages/500',
     '/pages/auth-callback',
