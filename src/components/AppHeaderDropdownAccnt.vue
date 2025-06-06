@@ -55,7 +55,12 @@ const handleLogout = async () => {
       >
         Settings
       </CDropdownHeader>
-      <CDropdownItem> <CIcon icon="cil-user" /> Profile </CDropdownItem>
+      <CDropdownItem @click="router.push({ name: 'Profile' })">
+        <CIcon icon="cil-user" /> Profile
+      </CDropdownItem>
+      <CDropdownItem @click="router.push({ name: 'ChangePassword' })">
+        <CIcon icon="cil-lock-locked" /> Change Password
+      </CDropdownItem>
       <CDropdownItem> <CIcon icon="cil-settings" /> Settings </CDropdownItem>
       <CDropdownItem>
         <CIcon icon="cil-dollar" /> Payments
