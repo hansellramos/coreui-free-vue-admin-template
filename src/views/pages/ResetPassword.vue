@@ -54,17 +54,17 @@ const handleBack = async () => {
 }
 
 onMounted(async () => {
-  // Extraer token: primero de query, luego de la ruta hash o de window.location.hash
+  // Extract token: first from query, then from route hash or window.location.hash
   const qToken = route.query.access_token
   let rawHash = ''
   if (route.hash) {
-    rawHash = route.hash // en history mode
+    rawHash = route.hash // in history mode
   } else if (typeof window !== 'undefined' && window.location && window.location.hash) {
-    rawHash = window.location.hash // en hash mode múltiple
+    rawHash = window.location.hash // in multi-hash mode
   }
   const hashMatch = rawHash.match(/access_token=([^&]+)/)
   accessToken = qToken || (hashMatch ? hashMatch[1] : '')
-  // extraer refresh token
+  // Extract refresh token
   const qRefresh = route.query.refresh_token
   const hashRefresh = rawHash.match(/refresh_token=([^&]+)/)
   refreshToken = qRefresh || (hashRefresh ? hashRefresh[1] : '')
@@ -81,7 +81,7 @@ onMounted(async () => {
     console.error('setSession error', err)
     errorMessage.value = err.message || String(err)
   }
-  // Limpiar tokens de la URL para no exponerlos
+  // Clear tokens from URL to avoid exposing them
   router.replace({ path: '/pages/reset-password' })
 })
 
@@ -101,7 +101,7 @@ const handleReset = async () => {
     errorMessage.value = error.message
   } else {
     successMessage.value = 'Password successfully updated.'
-    // Cerrar sesión y redirigir al login tras 3 segundos
+    // Log out and redirect to login after 3 seconds
     await supabase.auth.signOut()
     setTimeout(() => router.push({ name: 'Login' }), 3000)
   }

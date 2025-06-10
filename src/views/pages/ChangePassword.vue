@@ -47,7 +47,7 @@ const successMessage = ref('')
 const handleChange = async () => {
   errorMessage.value = ''
   successMessage.value = ''
-  // Validar que haya ingresado la contraseña actual
+  // Ensure the current password is entered
   if (!currentPassword.value) {
     errorMessage.value = 'Please enter current password.'
     return
@@ -63,7 +63,7 @@ const handleChange = async () => {
     return
   }
   const email = userData.user.email
-  // Verificar contraseña actual
+  // Verify current password
   const { error: verifyError } = await supabase.auth.signInWithPassword({ email, password: currentPassword.value })
   if (verifyError) {
     errorMessage.value = 'Current password incorrect.'

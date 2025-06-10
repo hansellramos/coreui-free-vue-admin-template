@@ -103,7 +103,7 @@ function onEdit(venue) {
 }
 
 function viewUpcoming(venue) {
-  // Redireccionar a la página Next con el ID del venue como parámetro en la URL
+  // Redirect to the Next page with the venue ID as a URL parameter
   router.push({
     path: '/next',
     query: { venues: venue.id }

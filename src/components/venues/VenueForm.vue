@@ -168,13 +168,13 @@ onMounted(() => {
     center: initialCenter,
     zoom: 12
   })
-  // Limitar bounds al departamento del Atlántico
+  // Limit bounds to the Atlántico department
   map.setMaxBounds([[-75.0, 10.28], [-74.15, 11.03]])
   const geocoder = new MapboxGeocoder({
     accessToken: token,
     mapboxgl,
     placeholder: 'Buscar lugar...',
-    // Restringir búsqueda a direcciones dentro del departamento del Atlántico
+    // Restrict search to addresses within the Atlántico department
     bbox: [-75.0, 10.28, -74.15, 11.03]
   })
   map.addControl(geocoder)

@@ -126,7 +126,7 @@ const handleRecovery = async () => {
   errorMessage.value = "";
   successMessage.value = "";
   const { error } = await supabase.auth.resetPasswordForEmail(recoveryEmail.value, {
-    // Añadir '?' al final para que los params vayan como query en el hash
+    // Append '?' at the end so parameters go as query in the hash
     redirectTo: window.location.origin + '/#/pages/reset-password?'
   });
   if (error) {
