@@ -102,7 +102,7 @@ const fetchAccommodations = async () => {
     .order('date', { ascending: true })
   
   if (selectedVenues.value.length > 0) {
-    // Filtrar por múltiples venues usando la condición in
+    // Filter by multiple venues using the in condition
     const venueIds = selectedVenues.value.map(venue => venue.id)
     query = query.in('venue', venueIds)
   }
@@ -122,37 +122,37 @@ const onVenueSearchInput = () => {
   }
   
   const search = venueSearch.value.toLowerCase()
-  // Filtrar venues que ya están seleccionados
+  // Filter venues that are already selected
   const alreadySelectedIds = selectedVenues.value.map(v => v.id)
   filteredVenues.value = allVenues.value
     .filter(venue => 
       venue.name.toLowerCase().includes(search) && 
       !alreadySelectedIds.includes(venue.id)
-    ).slice(0, 8)  // Limitar a 8 resultados para mejor UX
+    ).slice(0, 8)  // Limit to 8 results for better UX
 }
 
-// Función para actualizar la URL con los venues seleccionados
+// Function to update the URL with the selected venues
 const updateUrlParams = () => {
   const query = { ...route.query }
   
   if (selectedVenues.value.length > 0) {
-    // Crear un string con los IDs separados por comas
+    // Create a string with the IDs separated by commas
     query.venues = selectedVenues.value.map(v => v.id).join(',')
   } else {
-    // Si no hay venues seleccionados, eliminar el parámetro
+    // If no venues are selected, remove the parameter
     delete query.venues
   }
   
-  // Actualizar la URL sin recargar la página
+  // Update the URL without reloading the page
   router.replace({ query })
 }
 
-// Función para cargar venues desde la URL
+// Function to load venues from the URL
 const loadVenuesFromUrl = async () => {
   if (route.query.venues && allVenues.value.length > 0) {
     const venueIds = route.query.venues.split(',')
     
-    // Filtrar solo los venues que existen en nuestra lista
+    // Filter only the venues that exist in our list
     const venuesFromUrl = allVenues.value.filter(v => venueIds.includes(v.id))
     
     if (venuesFromUrl.length > 0) {
@@ -163,7 +163,7 @@ const loadVenuesFromUrl = async () => {
 }
 
 const selectVenue = (venue) => {
-  // Agregar el venue a la lista de seleccionados
+  // Add the venue to the list of selected venues
   selectedVenues.value.push(venue)
   venueSearch.value = ''
   filteredVenues.value = []
@@ -172,14 +172,14 @@ const selectVenue = (venue) => {
 }
 
 const removeVenue = (venue) => {
-  // Eliminar un venue específico
+  // Remove a specific venue
   selectedVenues.value = selectedVenues.value.filter(v => v.id !== venue.id)
   fetchAccommodations()
   updateUrlParams()
 }
 
 const clearAllVenueFilters = () => {
-  // Limpiar todos los venues seleccionados
+  // Clear all selected venues
   selectedVenues.value = []
   venueSearch.value = ''
   fetchAccommodations()
@@ -194,7 +194,7 @@ const groupedAccommodations = computed(() => {
     }
     grouped[item.date].push(item)
   })
-  // Ordenar por hora dentro de cada fecha
+  // Sort by time within each date
   Object.keys(grouped).forEach(date => {
     grouped[date].sort((a, b) => (a.time || '').localeCompare(b.time || ''))
   })
@@ -202,16 +202,16 @@ const groupedAccommodations = computed(() => {
 })
 
 const formatDate = (dateStr) => {
-  // Corregir el problema de zona horaria para que muestre la fecha correcta
-  // Aseguramos que la fecha se interprete en la zona horaria local
+  // Fix the timezone issue so that it displays the correct date
+  // Ensure the date is interpreted in the local timezone
   const [year, month, day] = dateStr.split('-')
   const date = new Date(parseInt(year), parseInt(month) - 1, parseInt(day))
   const options = { weekday: 'long', day: 'numeric', month: 'long' }
-  return date.toLocaleDateString('es-ES', options)
+  return date.toLocaleDateString('en-US', options)
 }
 
 const formatTime = (timeStr) => {
-  // Convertir el formato 24h HH:MM a formato 12h con AM/PM
+  // Convert the 24h HH:MM format to 12h format with AM/PM
   if (!timeStr) return ''
   
   const [hours, minutes] = timeStr.split(':').map(Number)
@@ -243,20 +243,20 @@ const formatDurationHuman = (duration) => {
 
 onMounted(async () => {
   await fetchVenues()
-  // Después de cargar los venues, verificar si hay alguno en la URL
+  // After loading the venues, check if there are any in the URL
   await loadVenuesFromUrl()
-  // Si no hay venues en la URL, cargar todas las reservas
+  // If there are no venues in the URL, load all reservations
   if (selectedVenues.value.length === 0) {
     await fetchAccommodations()
   }
 })
 
-// Observar cambios en el query string de la URL
+// Watch for changes in the query string of the URL
 watch(
   () => route.query.venues,
   async (newVenues) => {
     if (!newVenues && selectedVenues.value.length > 0) {
-      // Si el parámetro se eliminó manualmente de la URL, limpiar los filtros
+      // If the parameter was manually removed from the URL, clear the filters
       selectedVenues.value = []
       await fetchAccommodations()
     }
