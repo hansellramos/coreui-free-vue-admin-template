@@ -1,21 +1,30 @@
 <script setup>
-import avatar from '@/assets/images/avatars/8.jpg'
-import { ref } from 'vue'
-import { useRouter } from 'vue-router'
+import { computed } from 'vue'
+import { useAuth } from '@/composables/useAuth'
 
-const itemsCount = 42
-const router = useRouter()
-const userName = ref('Account')
+const { user, isAuthenticated, logout, login } = useAuth()
 
-const handleLogout = () => {
-  router.push('/pages/login')
-}
+const userName = computed(() => {
+  if (!user.value) return 'Cuenta'
+  return user.value.display_name || user.value.email || 'Usuario'
+})
+
+const userAvatar = computed(() => {
+  return user.value?.avatar_url || null
+})
+
+const userInitials = computed(() => {
+  if (!user.value) return '?'
+  const name = user.value.display_name || user.value.email || ''
+  return name.charAt(0).toUpperCase()
+})
 </script>
 
 <template>
   <CDropdown placement="bottom-end" variant="nav-item">
     <CDropdownToggle class="py-0 pe-0" :caret="false">
-      <CAvatar :src="avatar" size="md" />
+      <CAvatar v-if="userAvatar" :src="userAvatar" size="md" />
+      <CAvatar v-else color="primary" size="md">{{ userInitials }}</CAvatar>
     </CDropdownToggle>
     <CDropdownMenu class="pt-0">
       <CDropdownHeader
@@ -24,43 +33,25 @@ const handleLogout = () => {
       >
         {{ userName }}
       </CDropdownHeader>
-      <CDropdownItem>
-        <CIcon icon="cil-bell" /> Updates
-        <CBadge color="info" class="ms-auto">{{ itemsCount }}</CBadge>
-      </CDropdownItem>
-      <CDropdownItem>
-        <CIcon icon="cil-envelope-open" /> Messages
-        <CBadge color="success" class="ms-auto">{{ itemsCount }}</CBadge>
-      </CDropdownItem>
-      <CDropdownItem>
-        <CIcon icon="cil-task" /> Tasks
-        <CBadge color="danger" class="ms-auto">{{ itemsCount }}</CBadge>
-      </CDropdownItem>
-      <CDropdownItem>
-        <CIcon icon="cil-comment-square" /> Comments
-        <CBadge color="warning" class="ms-auto">{{ itemsCount }}</CBadge>
-      </CDropdownItem>
-      <CDropdownHeader
-        component="h6"
-        class="bg-body-secondary text-body-secondary fw-semibold my-2"
-      >
-        Settings
-      </CDropdownHeader>
-      <CDropdownItem> <CIcon icon="cil-user" /> Profile </CDropdownItem>
-      <CDropdownItem> <CIcon icon="cil-settings" /> Settings </CDropdownItem>
-      <CDropdownItem>
-        <CIcon icon="cil-dollar" /> Payments
-        <CBadge color="secondary" class="ms-auto">{{ itemsCount }}</CBadge>
-      </CDropdownItem>
-      <CDropdownItem>
-        <CIcon icon="cil-file" /> Projects
-        <CBadge color="primary" class="ms-auto">{{ itemsCount }}</CBadge>
-      </CDropdownItem>
-      <CDropdownDivider />
-      <CDropdownItem> <CIcon icon="cil-shield-alt" /> Lock Account </CDropdownItem>
-      <CDropdownItem @click="handleLogout">
-        <CIcon icon="cil-lock-locked" /> Logout
-      </CDropdownItem>
+      
+      <template v-if="isAuthenticated">
+        <CDropdownItem>
+          <CIcon icon="cil-user" /> Perfil
+        </CDropdownItem>
+        <CDropdownItem>
+          <CIcon icon="cil-settings" /> Configuración
+        </CDropdownItem>
+        <CDropdownDivider />
+        <CDropdownItem @click="logout">
+          <CIcon icon="cil-account-logout" /> Cerrar sesión
+        </CDropdownItem>
+      </template>
+      
+      <template v-else>
+        <CDropdownItem @click="login">
+          <CIcon icon="cil-account-logout" /> Iniciar sesión
+        </CDropdownItem>
+      </template>
     </CDropdownMenu>
   </CDropdown>
 </template>
