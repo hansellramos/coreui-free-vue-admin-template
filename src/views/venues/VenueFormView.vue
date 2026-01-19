@@ -7,9 +7,8 @@
         </CCardHeader>
         <CCardBody>
           <VenueForm
-            :modelValue="form"
+            v-model="form"
             :isEdit="isEdit"
-            @update:modelValue="val => form = val"
             @submit="handleSubmit"
             @cancel="handleCancel"
           />
@@ -45,8 +44,16 @@ const isEdit = computed(() => !!route.params.id)
 
 onMounted(async () => {
   if (isEdit.value) {
-    const venue = await getVenueById(route.params.id)
-    if (venue) form.value = { ...venue }
+    try {
+      console.log('Loading venue with ID:', route.params.id)
+      const venue = await getVenueById(route.params.id)
+      console.log('Venue loaded:', venue)
+      if (venue) {
+        form.value = { ...form.value, ...venue }
+      }
+    } catch (error) {
+      console.error('Error loading venue:', error)
+    }
   }
 })
 
