@@ -145,8 +145,11 @@ const token = import.meta.env.VITE_MAPBOX_ACCESS_TOKEN
 watch(
   () => props.modelValue,
   (val) => {
-    form.value = { ...val }
-  }
+    if (val) {
+      form.value = { ...val }
+    }
+  },
+  { deep: true, immediate: true }
 )
 
 function handleSubmit() {

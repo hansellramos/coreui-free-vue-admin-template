@@ -60,7 +60,9 @@ const durationOptions = ref([
 ])
 const durationOptionsTimeout = ref(null)
 
-watch(() => props.modelValue, val => form.value = { ...val })
+watch(() => props.modelValue, val => {
+  if (val) form.value = { ...val }
+}, { deep: true, immediate: true })
 
 const durationHuman = computed({
   get: () => {

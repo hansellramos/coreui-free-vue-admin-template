@@ -7,9 +7,8 @@
         </CCardHeader>
         <CCardBody>
           <OrganizationForm
-            :modelValue="form"
+            v-model="form"
             :isEdit="isEdit"
-            @update:modelValue="val => form = val"
             @submit="handleSubmit"
             @cancel="handleCancel"
           />

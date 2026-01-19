@@ -38,8 +38,11 @@ const form = ref({ ...props.modelValue })
 watch(
   () => props.modelValue,
   (val) => {
-    form.value = { ...val }
-  }
+    if (val) {
+      form.value = { ...val }
+    }
+  },
+  { deep: true, immediate: true }
 )
 
 function handleSubmit() {

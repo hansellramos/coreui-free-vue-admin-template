@@ -71,7 +71,9 @@ const props = defineProps({
 const emit = defineEmits(['update:modelValue', 'submit', 'cancel'])
 
 const form = ref({ ...props.modelValue })
-watch(() => props.modelValue, val => form.value = { ...val })
+watch(() => props.modelValue, val => {
+  if (val) form.value = { ...val }
+}, { deep: true, immediate: true })
 
 const countries = ref([])
 const states = ref([])
