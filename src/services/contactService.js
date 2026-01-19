@@ -1,27 +1,87 @@
-export async function fetchContacts(filterNames = []) {
-  return [];
+const API_BASE = '/api';
+
+export async function fetchContacts() {
+  const response = await fetch(`${API_BASE}/contacts`, {
+    credentials: 'include'
+  });
+  if (!response.ok) {
+    throw new Error('Error al cargar contactos');
+  }
+  return response.json();
 }
 
 export async function getContactById(id) {
-  return null;
+  const response = await fetch(`${API_BASE}/contacts/${id}`, {
+    credentials: 'include'
+  });
+  if (!response.ok) {
+    throw new Error('Error al cargar contacto');
+  }
+  return response.json();
 }
 
 export async function createContact(data) {
-  return;
+  const response = await fetch(`${API_BASE}/contacts`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    credentials: 'include',
+    body: JSON.stringify(data)
+  });
+  if (!response.ok) {
+    if (response.status === 401) {
+      throw new Error('No autorizado. Inicia sesión para continuar.');
+    }
+    throw new Error('Error al crear contacto');
+  }
+  return response.json();
 }
 
 export async function updateContact(id, data) {
-  return;
+  const response = await fetch(`${API_BASE}/contacts/${id}`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    credentials: 'include',
+    body: JSON.stringify(data)
+  });
+  if (!response.ok) {
+    if (response.status === 401) {
+      throw new Error('No autorizado. Inicia sesión para continuar.');
+    }
+    throw new Error('Error al actualizar contacto');
+  }
+  return response.json();
 }
 
 export async function deleteContact(id) {
-  return;
+  const response = await fetch(`${API_BASE}/contacts/${id}`, {
+    method: 'DELETE',
+    credentials: 'include'
+  });
+  if (!response.ok) {
+    if (response.status === 401) {
+      throw new Error('No autorizado. Inicia sesión para continuar.');
+    }
+    throw new Error('Error al eliminar contacto');
+  }
+  return response.json();
 }
 
 export async function fetchCountries() {
-  return [];
+  const response = await fetch(`${API_BASE}/countries`, {
+    credentials: 'include'
+  });
+  if (!response.ok) {
+    throw new Error('Error al cargar países');
+  }
+  return response.json();
 }
 
-export async function fetchStatesByCountry(countryIso3) {
-  return [];
+export async function fetchStatesByCountry(countryIso) {
+  const response = await fetch(`${API_BASE}/states?country=${countryIso}`, {
+    credentials: 'include'
+  });
+  if (!response.ok) {
+    throw new Error('Error al cargar estados');
+  }
+  return response.json();
 }

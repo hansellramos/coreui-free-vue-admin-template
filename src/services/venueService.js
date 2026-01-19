@@ -1,19 +1,67 @@
-export async function fetchVenues(filterNames = []) {
-  return [];
+const API_BASE = '/api';
+
+export async function fetchVenues() {
+  const response = await fetch(`${API_BASE}/venues`, {
+    credentials: 'include'
+  });
+  if (!response.ok) {
+    throw new Error('Error al cargar venues');
+  }
+  return response.json();
 }
 
 export async function getVenueById(id) {
-  return null;
+  const response = await fetch(`${API_BASE}/venues/${id}`, {
+    credentials: 'include'
+  });
+  if (!response.ok) {
+    throw new Error('Error al cargar venue');
+  }
+  return response.json();
 }
 
 export async function createVenue(data) {
-  return;
+  const response = await fetch(`${API_BASE}/venues`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    credentials: 'include',
+    body: JSON.stringify(data)
+  });
+  if (!response.ok) {
+    if (response.status === 401) {
+      throw new Error('No autorizado. Inicia sesión para continuar.');
+    }
+    throw new Error('Error al crear venue');
+  }
+  return response.json();
 }
 
 export async function updateVenue(id, data) {
-  return;
+  const response = await fetch(`${API_BASE}/venues/${id}`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    credentials: 'include',
+    body: JSON.stringify(data)
+  });
+  if (!response.ok) {
+    if (response.status === 401) {
+      throw new Error('No autorizado. Inicia sesión para continuar.');
+    }
+    throw new Error('Error al actualizar venue');
+  }
+  return response.json();
 }
 
 export async function deleteVenue(id) {
-  return;
+  const response = await fetch(`${API_BASE}/venues/${id}`, {
+    method: 'DELETE',
+    credentials: 'include'
+  });
+  if (!response.ok) {
+    if (response.status === 401) {
+      throw new Error('No autorizado. Inicia sesión para continuar.');
+    }
+    throw new Error('Error al eliminar venue');
+  }
+  return response.json();
 }
