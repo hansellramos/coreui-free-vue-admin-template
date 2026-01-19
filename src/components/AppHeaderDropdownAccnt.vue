@@ -1,25 +1,13 @@
 <script setup>
 import avatar from '@/assets/images/avatars/8.jpg'
-import { ref, onMounted } from 'vue'
+import { ref } from 'vue'
 import { useRouter } from 'vue-router'
-import supabase, { isSupabaseConfigured } from '@/lib/supabase'
 
 const itemsCount = 42
 const router = useRouter()
 const userName = ref('Account')
 
-onMounted(async () => {
-  if (!isSupabaseConfigured) return
-  const { data } = await supabase.auth.getUser()
-  if (data.user) {
-    userName.value = data.user.user_metadata?.displayName || data.user.email || 'Account'
-  }
-})
-
-const handleLogout = async () => {
-  if (isSupabaseConfigured) {
-    await supabase.auth.signOut()
-  }
+const handleLogout = () => {
   router.push('/pages/login')
 }
 </script>
