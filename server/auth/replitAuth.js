@@ -86,17 +86,20 @@ async function setupAuth(app) {
 
   const registeredStrategies = new Set();
 
-  const getExternalUrl = (req) => {
-    const host = req.get('x-forwarded-host') || req.get('host') || process.env.REPLIT_DEV_DOMAIN;
-    const proto = req.get('x-forwarded-proto') || 'https';
-    return `${proto}://${host}`;
+  const getExternalUrl = () => {
+    const domain = process.env.REPLIT_DEV_DOMAIN;
+    if (domain) {
+      return `https://${domain}`;
+    }
+    return 'https://localhost:5000';
   };
 
-  const ensureStrategy = (req) => {
-    const externalUrl = getExternalUrl(req);
-    const strategyName = `replitauth:${externalUrl}`;
+  const ensureStrategy = () => {
+    const externalUrl = getExternalUrl();
+    const strategyName = 'replitauth';
     if (!registeredStrategies.has(strategyName)) {
       const callbackURL = `${externalUrl}/api/callback`;
+      console.log('Registering strategy with callbackURL:', callbackURL);
       const strategy = new Strategy(
         {
           name: strategyName,
@@ -116,7 +119,7 @@ async function setupAuth(app) {
   passport.deserializeUser((user, cb) => cb(null, user));
 
   app.get('/api/login', (req, res, next) => {
-    const strategyName = ensureStrategy(req);
+    const strategyName = ensureStrategy();
     passport.authenticate(strategyName, {
       prompt: 'login consent',
       scope: ['openid', 'email', 'profile', 'offline_access'],
@@ -124,7 +127,7 @@ async function setupAuth(app) {
   });
 
   app.get('/api/callback', (req, res, next) => {
-    const strategyName = ensureStrategy(req);
+    const strategyName = ensureStrategy();
     passport.authenticate(strategyName, {
       successReturnToOrRedirect: '/',
       failureRedirect: '/api/login',
