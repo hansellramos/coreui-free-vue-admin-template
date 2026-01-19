@@ -2,69 +2,36 @@
   <div class="wrapper min-vh-100 d-flex flex-row align-items-center">
     <CContainer>
       <CRow class="justify-content-center">
-        <CCol :md="8">
-          <CCardGroup>
-            <CCard class="p-4">
-              <CCardBody>
-                <form @submit.prevent="handleLogin">
-                  <h1>Login</h1>
-                  <p class="text-body-secondary">Sign In to your account</p>
-                  <div class="mb-3">
-                    <CInputGroup class="mb-3">
-                      <CInputGroupText>
-                        <CIcon icon="cil-envelope-closed" />
-                      </CInputGroupText>
-                      <CFormInput
-                        v-model="email"
-                        type="email"
-                        placeholder="Email"
-                        autocomplete="email"
-                      />
-                    </CInputGroup>
-                  </div>
-                  <div class="mb-3">
-                    <CInputGroup class="mb-4">
-                      <CInputGroupText>
-                        <CIcon icon="cil-lock-locked" />
-                      </CInputGroupText>
-                      <CFormInput
-                        v-model="password"
-                        type="password"
-                        placeholder="Password"
-                        autocomplete="current-password"
-                      />
-                    </CInputGroup>
-                  </div>
-                  <CRow>
-                    <CCol :xs="6">
-                      <CButton color="primary" class="px-4" type="submit"> Login </CButton>
-                    </CCol>
-                    <CCol :xs="6" class="text-right">
-                      <CButton color="link" class="px-0">
-                        Forgot password?
-                      </CButton>
-                    </CCol>
-                  </CRow>
-                  <div v-if="errorMessage" class="alert alert-danger mt-2">{{ errorMessage }}</div>
-                </form>
-              </CCardBody>
-            </CCard>
-            <CCard class="text-white bg-primary py-5" style="width: 44%">
-              <CCardBody class="text-center">
-                <div>
-                  <h2>Sign up</h2>
-                  <p>
-                    Lorem ipsum dolor sit amet, consectetur adipisicing elit,
-                    sed do eiusmod tempor incididunt ut labore et dolore magna
-                    aliqua.
-                  </p>
-                  <CButton color="light" variant="outline" class="mt-3">
-                    Register Now!
-                  </CButton>
-                </div>
-              </CCardBody>
-            </CCard>
-          </CCardGroup>
+        <CCol :md="6">
+          <CCard class="p-4">
+            <CCardBody class="text-center">
+              <h1>Bienvenido</h1>
+              <p class="text-body-secondary mb-4">
+                Inicia sesión con tu cuenta de Replit para acceder al panel de administración.
+              </p>
+              <div v-if="isLoading" class="mb-4">
+                <CSpinner color="primary" />
+                <p class="mt-2">Verificando sesión...</p>
+              </div>
+              <div v-else-if="isAuthenticated">
+                <p class="text-success mb-3">
+                  ¡Bienvenido, {{ user?.display_name || user?.email }}!
+                </p>
+                <CButton color="primary" size="lg" @click="goToDashboard">
+                  Ir al Dashboard
+                </CButton>
+              </div>
+              <div v-else>
+                <CButton color="primary" size="lg" @click="login" class="mb-3">
+                  <CIcon icon="cil-user" class="me-2" />
+                  Iniciar sesión con Replit
+                </CButton>
+                <p class="text-body-secondary small mt-3">
+                  Puedes usar tu cuenta de Google, GitHub, Apple o email.
+                </p>
+              </div>
+            </CCardBody>
+          </CCard>
         </CCol>
       </CRow>
     </CContainer>
@@ -72,21 +39,13 @@
 </template>
 
 <script setup>
-import { ref } from "vue";
 import { useRouter } from "vue-router";
+import { useAuth } from "@/composables/useAuth";
 
-const email = ref("");
-const password = ref("");
-const errorMessage = ref("");
 const router = useRouter();
+const { user, isAuthenticated, isLoading, login } = useAuth();
 
-const handleLogin = async () => {
-  errorMessage.value = "";
-  // Mock login
-  if (email.value && password.value) {
-    router.push("/home");
-  } else {
-    errorMessage.value = "Please enter email and password";
-  }
+const goToDashboard = () => {
+  router.push("/");
 };
 </script>
