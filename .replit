@@ -1,6 +1,7 @@
 modules = ["vue-node-20", "nodejs-20", "web", "postgresql-16"]
 [agent]
 expertMode = true
+integrations = ["javascript_log_in_with_replit:2.0.0"]
 
 [nix]
 channel = "stable-25_05"
@@ -17,6 +18,10 @@ author = "agent"
 task = "workflow.run"
 args = "Vue Dev Server"
 
+[[workflows.workflow.tasks]]
+task = "workflow.run"
+args = "Express Backend"
+
 [[workflows.workflow]]
 name = "Vue Dev Server"
 author = "agent"
@@ -29,9 +34,25 @@ waitForPort = 5000
 [workflows.workflow.metadata]
 outputType = "webview"
 
+[[workflows.workflow]]
+name = "Express Backend"
+author = "agent"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "cd server && node index.js"
+waitForPort = 3000
+
+[workflows.workflow.metadata]
+outputType = "console"
+
 [[ports]]
 localPort = 5000
 externalPort = 80
+
+[[ports]]
+localPort = 3000
+externalPort = 3000
 
 [deployment]
 deploymentTarget = "static"

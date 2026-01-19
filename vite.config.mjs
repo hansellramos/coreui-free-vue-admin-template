@@ -37,7 +37,11 @@ export default defineConfig(() => {
       host: '0.0.0.0',
       allowedHosts: true,
       proxy: {
-        // https://vitejs.dev/config/server-options.html
+        '/api': {
+          target: 'http://localhost:3000',
+          changeOrigin: true,
+          secure: false,
+        },
       },
     },
   }
