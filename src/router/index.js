@@ -431,8 +431,17 @@ router.beforeEach(async (to, from, next) => {
   ];
   const isPublic = publicPages.includes(to.path);
 
+  // Check if Supabase is configured
+  const { default: supabase, isSupabaseConfigured } = await import('@/lib/supabase');
+  
+  // If Supabase is not configured, allow access to all routes
+  if (!isSupabaseConfigured) {
+    next();
+    return;
+  }
+
   // Check Supabase session
-  const { data } = await import('@/lib/supabase').then(m => m.default.auth.getSession());
+  const { data } = await supabase.auth.getSession();
   const isAuthenticated = !!data.session;
 
   if (!isAuthenticated && !isPublic) {
