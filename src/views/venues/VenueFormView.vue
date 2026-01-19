@@ -43,6 +43,7 @@ let form = ref({
 const isEdit = computed(() => !!route.params.id)
 
 onMounted(async () => {
+  console.log('VenueFormView mounted, route params:', route.params, 'isEdit:', isEdit.value)
   if (isEdit.value) {
     try {
       console.log('Loading venue with ID:', route.params.id)
