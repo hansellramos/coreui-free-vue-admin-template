@@ -141,12 +141,20 @@ const emit = defineEmits(['update:modelValue', 'submit', 'cancel'])
 const form = ref({ ...props.modelValue, instagram: '' })
 const mapContainer = ref(null)
 const token = import.meta.env.VITE_MAPBOX_ACCESS_TOKEN
+const mapInstance = ref(null)
+const markerInstance = ref(null)
 
 watch(
   () => props.modelValue,
   (val) => {
     if (val) {
       form.value = { ...val }
+      // Update map and marker if they exist and coordinates are available
+      if (mapInstance.value && markerInstance.value && val.latitude && val.longitude) {
+        const coords = [val.longitude, val.latitude]
+        mapInstance.value.setCenter(coords)
+        markerInstance.value.setLngLat(coords)
+      }
     }
   },
   { deep: true, immediate: true }
@@ -171,6 +179,7 @@ onMounted(() => {
     center: initialCenter,
     zoom: 12
   })
+  mapInstance.value = map
   // Limitar bounds al departamento del Atlántico
   map.setMaxBounds([[-75.0, 10.28], [-74.15, 11.03]])
   const geocoder = new MapboxGeocoder({
@@ -182,6 +191,7 @@ onMounted(() => {
   })
   map.addControl(geocoder)
   const marker = new mapboxgl.Marker({ draggable: false }).setLngLat(initialCenter).addTo(map)
+  markerInstance.value = marker
   map.on('moveend', () => {
     const center = map.getCenter()
     marker.setLngLat(center)
