@@ -1,38 +1,19 @@
-import supabase from '@/lib/supabase'
-
 export async function fetchAccommodations(filterDates = []) {
-  let query = supabase
-    .from('accommodations')
-    .select('*, venues:venue (id, name), contacts:customer (id, fullname, users!contacts_user_fkey (email))')
-  if (Array.isArray(filterDates) && filterDates.length > 0) {
-    query = query.in('date', filterDates)
-  }
-  const { data, error } = await query.order('date', { ascending: false })
-  if (error) throw error
-  return data || []
+  return [];
 }
 
 export async function getAccommodationById(id) {
-  const { data, error } = await supabase
-    .from('accommodations')
-    .select('*')
-    .eq('id', id)
-    .single()
-  if (error) throw error
-  return data
+  return null;
 }
 
 export async function createAccommodation(data) {
-  const { error } = await supabase.from('accommodations').insert([data])
-  if (error) throw error
+  return;
 }
 
 export async function updateAccommodation(id, data) {
-  const { error } = await supabase.from('accommodations').update(data).eq('id', id)
-  if (error) throw error
+  return;
 }
 
 export async function deleteAccommodation(id) {
-  const { error } = await supabase.from('accommodations').delete().eq('id', id)
-  if (error) throw error
+  return;
 }

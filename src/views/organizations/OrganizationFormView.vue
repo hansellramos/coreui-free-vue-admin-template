@@ -64,7 +64,6 @@ import { useRoute, useRouter } from 'vue-router'
 import OrganizationForm from '@/components/organizations/OrganizationForm.vue'
 import { getOrganizationById, createOrganization, updateOrganization } from '@/services/organizationService'
 import { fetchContactsByOrganization, addContactToOrganization, removeContactFromOrganization } from '@/services/contactOrganizationService'
-import supabase from '@/lib/supabase'
 
 const route = useRoute()
 const router = useRouter()
@@ -106,8 +105,7 @@ onMounted(async () => {
     await loadUsers()
   }
   // Load all users for autocomplete
-  const { data, error } = await supabase.from('users').select('id, email, display_name')
-  usersList.value = data || []
+  usersList.value = []
 })
 
 function onUserInput() {
@@ -139,13 +137,9 @@ async function addUser() {
   if (!newUserEmail.value) return
   addUserError.value = ''
   try {
-    // Find contact by user email
-    const { data: contact, error } = await window.supabase
-      .from('contact')
-      .select('id, user (id, email)')
-      .eq('user.email', newUserEmail.value)
-      .single()
-    if (error || !contact) throw new Error('Contact not found for this user')
+    // Mock user search
+    const contact = null
+    if (!contact) throw new Error('Contact not found for this user')
     await addContactToOrganization({ orgId: route.params.id, contactId: contact.id, type: newUserType.value })
     newUserEmail.value = ''
     await loadUsers()

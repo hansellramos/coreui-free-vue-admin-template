@@ -63,7 +63,6 @@
 <script setup>
 import { ref, watch, defineProps, defineEmits, onMounted, computed } from 'vue'
 import { fetchCountries, fetchStatesByCountry } from '@/services/contactService'
-import supabase from '@/lib/supabase'
 
 const props = defineProps({
   modelValue: { type: Object, required: true },
@@ -94,8 +93,7 @@ onMounted(async () => {
     states.value = await fetchStatesByCountry(form.value.country)
   }
   // Load users
-  const { data, error } = await supabase.from('users').select('id, email, display_name')
-  users.value = data || []
+  users.value = []
   // Set initial query if editing
   if (form.value.user && typeof form.value.user === 'object' && form.value.user.id) {
     // If form.value.user is an object (from getContactById join)

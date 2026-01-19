@@ -74,7 +74,6 @@
 <script setup>
 import { ref } from "vue";
 import { useRouter } from "vue-router";
-import supabase from "@/lib/supabase";
 
 const email = ref("");
 const password = ref("");
@@ -83,14 +82,11 @@ const router = useRouter();
 
 const handleLogin = async () => {
   errorMessage.value = "";
-  const { data, error } = await supabase.auth.signInWithPassword({
-    email: email.value,
-    password: password.value,
-  });
-  if (error) {
-    errorMessage.value = error.message;
-  } else {
+  // Mock login
+  if (email.value && password.value) {
     router.push("/home");
+  } else {
+    errorMessage.value = "Please enter email and password";
   }
 };
 </script>

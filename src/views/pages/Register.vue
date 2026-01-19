@@ -52,7 +52,6 @@
 
 <script setup>
 import { ref } from "vue";
-import supabase from "@/lib/supabase";
 
 const email = ref("");
 const password = ref("");
@@ -67,14 +66,7 @@ const handleRegister = async () => {
     errorMessage.value = "Passwords do not match.";
     return;
   }
-  const { data, error } = await supabase.auth.signUp({
-    email: email.value,
-    password: password.value,
-  });
-  if (error) {
-    errorMessage.value = error.message;
-  } else {
-    successMessage.value = "Registration successful. Please check your email to confirm your account.";
-  }
+  // Mock register
+  successMessage.value = "Registration successful. You can now login.";
 };
 </script>
