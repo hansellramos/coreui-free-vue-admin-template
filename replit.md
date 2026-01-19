@@ -8,14 +8,12 @@ This is a Vue.js 3 admin dashboard template built with CoreUI components. It pro
   - `assets/` - Static assets and icons
   - `components/` - Reusable Vue components
   - `layouts/` - Layout templates (DefaultLayout)
-  - `lib/` - Library configurations (Supabase client)
   - `router/` - Vue Router configuration
-  - `services/` - API service modules
+  - `services/` - API service modules (placeholder stubs)
   - `stores/` - Pinia state management stores
   - `styles/` - SCSS stylesheets
   - `views/` - Page components organized by feature
 - `public/` - Static public files
-- `supabase/` - Supabase configuration
 
 ## Technologies
 - Vue 3
@@ -23,18 +21,29 @@ This is a Vue.js 3 admin dashboard template built with CoreUI components. It pro
 - CoreUI Vue components
 - Vue Router
 - Pinia (state management)
-- Supabase (authentication & database)
 - Mapbox GL (maps)
 - Chart.js (charts)
 - SCSS for styling
 
-## Environment Variables
-The app uses the following environment variables (set in Secrets):
-- `VITE_SUPABASE_URL` - Supabase project URL
-- `VITE_SUPABASE_ANON_KEY` - Supabase anonymous key
-- `VITE_MAPBOX_ACCESS_TOKEN` - Mapbox API token
+## Database
+A PostgreSQL database is available with the following tables:
+- `users` - User accounts
+- `organizations` - Organizations
+- `venues` - Venues/locations
+- `contacts` - Contact information
+- `accommodations` - Accommodation bookings
+- `countries` - Country reference data
+- `states` - State/province reference data
+- `contact_organization` - Many-to-many relationship table
+- `contact_venue` - Many-to-many relationship table
+- `venue_packages` - Venue package options
+- `package_prices` - Package pricing
 
-Note: The app will run without Supabase credentials configured, but authentication features will be disabled.
+The database connection is available via the `DATABASE_URL` environment variable.
+
+## Environment Variables
+- `VITE_MAPBOX_ACCESS_TOKEN` - Mapbox API token (optional)
+- `DATABASE_URL` - PostgreSQL connection string (auto-configured)
 
 ## Development
 - Run `npm run dev` to start the development server on port 5000
@@ -43,3 +52,7 @@ Note: The app will run without Supabase credentials configured, but authenticati
 
 ## Deployment
 Configured as a static site deployment. The build output goes to the `dist` directory.
+
+## Notes
+- The services in `src/services/` are currently placeholder stubs that return empty data
+- To connect the frontend to the database, you'll need to implement a backend API

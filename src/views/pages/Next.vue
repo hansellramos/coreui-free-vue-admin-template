@@ -71,7 +71,6 @@
 <script setup>
 import { ref, onMounted, computed, watch } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
-import supabase from '@/lib/supabase'
 import { CCard, CCardBody, CInputGroup, CFormInput, CButton } from '@coreui/vue'
 
 const router = useRouter()
@@ -84,35 +83,13 @@ const selectedVenues = ref([])
 const filteredVenues = ref([])
 
 const fetchVenues = async () => {
-  const { data, error } = await supabase
-    .from('venues')
-    .select('id, name')
-    .order('name')
-  if (error) {
-    console.error('Error fetching venues:', error)
-  } else {
-    allVenues.value = data
-  }
+  // Will be implemented with database
+  allVenues.value = []
 }
 
 const fetchAccommodations = async () => {
-  let query = supabase
-    .from('accommodations')
-    .select('id, date, duration, time, venue:venues(id, name), customer:contacts(fullname)')
-    .order('date', { ascending: true })
-  
-  if (selectedVenues.value.length > 0) {
-    // Filtrar por múltiples venues usando la condición in
-    const venueIds = selectedVenues.value.map(venue => venue.id)
-    query = query.in('venue', venueIds)
-  }
-
-  const { data, error } = await query
-  if (error) {
-    console.error('Error fetching accommodations:', error)
-  } else {
-    accommodations.value = data
-  }
+  // Will be implemented with database
+  accommodations.value = []
 }
 
 const onVenueSearchInput = () => {
@@ -122,37 +99,29 @@ const onVenueSearchInput = () => {
   }
   
   const search = venueSearch.value.toLowerCase()
-  // Filtrar venues que ya están seleccionados
   const alreadySelectedIds = selectedVenues.value.map(v => v.id)
   filteredVenues.value = allVenues.value
     .filter(venue => 
       venue.name.toLowerCase().includes(search) && 
       !alreadySelectedIds.includes(venue.id)
-    ).slice(0, 8)  // Limitar a 8 resultados para mejor UX
+    ).slice(0, 8)
 }
 
-// Función para actualizar la URL con los venues seleccionados
 const updateUrlParams = () => {
   const query = { ...route.query }
   
   if (selectedVenues.value.length > 0) {
-    // Crear un string con los IDs separados por comas
     query.venues = selectedVenues.value.map(v => v.id).join(',')
   } else {
-    // Si no hay venues seleccionados, eliminar el parámetro
     delete query.venues
   }
   
-  // Actualizar la URL sin recargar la página
   router.replace({ query })
 }
 
-// Función para cargar venues desde la URL
 const loadVenuesFromUrl = async () => {
   if (route.query.venues && allVenues.value.length > 0) {
     const venueIds = route.query.venues.split(',')
-    
-    // Filtrar solo los venues que existen en nuestra lista
     const venuesFromUrl = allVenues.value.filter(v => venueIds.includes(v.id))
     
     if (venuesFromUrl.length > 0) {
@@ -163,7 +132,6 @@ const loadVenuesFromUrl = async () => {
 }
 
 const selectVenue = (venue) => {
-  // Agregar el venue a la lista de seleccionados
   selectedVenues.value.push(venue)
   venueSearch.value = ''
   filteredVenues.value = []
@@ -172,14 +140,12 @@ const selectVenue = (venue) => {
 }
 
 const removeVenue = (venue) => {
-  // Eliminar un venue específico
   selectedVenues.value = selectedVenues.value.filter(v => v.id !== venue.id)
   fetchAccommodations()
   updateUrlParams()
 }
 
 const clearAllVenueFilters = () => {
-  // Limpiar todos los venues seleccionados
   selectedVenues.value = []
   venueSearch.value = ''
   fetchAccommodations()
@@ -194,7 +160,6 @@ const groupedAccommodations = computed(() => {
     }
     grouped[item.date].push(item)
   })
-  // Ordenar por hora dentro de cada fecha
   Object.keys(grouped).forEach(date => {
     grouped[date].sort((a, b) => (a.time || '').localeCompare(b.time || ''))
   })
@@ -202,8 +167,6 @@ const groupedAccommodations = computed(() => {
 })
 
 const formatDate = (dateStr) => {
-  // Corregir el problema de zona horaria para que muestre la fecha correcta
-  // Aseguramos que la fecha se interprete en la zona horaria local
   const [year, month, day] = dateStr.split('-')
   const date = new Date(parseInt(year), parseInt(month) - 1, parseInt(day))
   const options = { weekday: 'long', day: 'numeric', month: 'long' }
@@ -211,7 +174,6 @@ const formatDate = (dateStr) => {
 }
 
 const formatTime = (timeStr) => {
-  // Convertir el formato 24h HH:MM a formato 12h con AM/PM
   if (!timeStr) return ''
   
   const [hours, minutes] = timeStr.split(':').map(Number)
@@ -243,20 +205,16 @@ const formatDurationHuman = (duration) => {
 
 onMounted(async () => {
   await fetchVenues()
-  // Después de cargar los venues, verificar si hay alguno en la URL
   await loadVenuesFromUrl()
-  // Si no hay venues en la URL, cargar todas las reservas
   if (selectedVenues.value.length === 0) {
     await fetchAccommodations()
   }
 })
 
-// Observar cambios en el query string de la URL
 watch(
   () => route.query.venues,
   async (newVenues) => {
     if (!newVenues && selectedVenues.value.length > 0) {
-      // Si el parámetro se eliminó manualmente de la URL, limpiar los filtros
       selectedVenues.value = []
       await fetchAccommodations()
     }

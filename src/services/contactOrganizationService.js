@@ -1,11 +1,11 @@
-export async function fetchContactOrganizations() {
+export async function fetchContactsByOrganization(orgId) {
   return [];
 }
 
-export async function linkContactToOrganization(contactId, organizationId) {
+export async function addContactToOrganization({ orgId, contactId, type }) {
   return;
 }
 
-export async function unlinkContactFromOrganization(contactId, organizationId) {
+export async function removeContactFromOrganization(orgId, contactId) {
   return;
 }
