@@ -1,4 +1,5 @@
-const openidClient = require('openid-client');
+const { discovery } = require('openid-client');
+const { Strategy } = require('openid-client/passport');
 const passport = require('passport');
 const session = require('express-session');
 const memoize = require('memoizee');
@@ -7,10 +8,8 @@ const { prisma } = require('../db');
 
 const getOidcConfig = memoize(
   async () => {
-    return await openidClient.discovery(
-      new URL(process.env.ISSUER_URL || 'https://replit.com/oidc'),
-      process.env.REPL_ID
-    );
+    const issuerUrl = new URL(process.env.ISSUER_URL || 'https://replit.com/oidc');
+    return await discovery(issuerUrl, process.env.REPL_ID);
   },
   { maxAge: 3600 * 1000 }
 );
@@ -38,10 +37,11 @@ function getSession() {
 }
 
 function updateUserSession(user, tokens) {
-  user.claims = tokens.claims();
+  const claims = tokens.claims();
+  user.claims = claims;
   user.access_token = tokens.access_token;
   user.refresh_token = tokens.refresh_token;
-  user.expires_at = user.claims?.exp;
+  user.expires_at = claims?.exp;
 }
 
 async function upsertUser(claims) {
@@ -74,10 +74,14 @@ async function setupAuth(app) {
   const config = await getOidcConfig();
 
   const verify = async (tokens, verified) => {
-    const user = {};
-    updateUserSession(user, tokens);
-    await upsertUser(tokens.claims());
-    verified(null, user);
+    try {
+      const user = {};
+      updateUserSession(user, tokens);
+      await upsertUser(tokens.claims());
+      verified(null, user);
+    } catch (error) {
+      verified(error);
+    }
   };
 
   const registeredStrategies = new Set();
@@ -85,7 +89,7 @@ async function setupAuth(app) {
   const ensureStrategy = (domain) => {
     const strategyName = `replitauth:${domain}`;
     if (!registeredStrategies.has(strategyName)) {
-      const strategy = new openidClient.Strategy(
+      const strategy = new Strategy(
         {
           name: strategyName,
           config,
@@ -120,12 +124,7 @@ async function setupAuth(app) {
 
   app.get('/api/logout', (req, res) => {
     req.logout(() => {
-      res.redirect(
-        openidClient.buildEndSessionUrl(config, {
-          client_id: process.env.REPL_ID,
-          post_logout_redirect_uri: `${req.protocol}://${req.hostname}`,
-        }).href
-      );
+      res.redirect('/');
     });
   });
 
@@ -161,8 +160,9 @@ const isAuthenticated = async (req, res, next) => {
   }
 
   try {
+    const { refreshTokenGrant } = require('openid-client');
     const config = await getOidcConfig();
-    const tokenResponse = await openidClient.refreshTokenGrant(config, refreshToken);
+    const tokenResponse = await refreshTokenGrant(config, refreshToken);
     updateUserSession(user, tokenResponse);
     return next();
   } catch (error) {
