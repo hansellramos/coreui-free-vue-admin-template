@@ -86,7 +86,7 @@ model states {
 }
 
 model users {
-  id           String    @id @db.Uuid
+  id           String    @id @db.VarChar(255)
   email        String?
   display_name String?
   avatar_url   String?
