@@ -304,9 +304,14 @@ async function startServer() {
 
   app.post('/api/accommodations', isAuthenticated, async (req, res) => {
     try {
-      const accommodation = await prisma.accommodations.create({
-        data: req.body
-      });
+      const data = { ...req.body };
+      if (data.date && typeof data.date === 'string' && !data.date.includes('T')) {
+        data.date = new Date(data.date + 'T00:00:00.000Z');
+      }
+      if (data.customer === '') {
+        data.customer = null;
+      }
+      const accommodation = await prisma.accommodations.create({ data });
       res.json(accommodation);
     } catch (error) {
       res.status(500).json({ error: error.message });
@@ -315,9 +320,16 @@ async function startServer() {
 
   app.put('/api/accommodations/:id', isAuthenticated, async (req, res) => {
     try {
+      const data = { ...req.body };
+      if (data.date && typeof data.date === 'string' && !data.date.includes('T')) {
+        data.date = new Date(data.date + 'T00:00:00.000Z');
+      }
+      if (data.customer === '') {
+        data.customer = null;
+      }
       const accommodation = await prisma.accommodations.update({
         where: { id: req.params.id },
-        data: req.body
+        data
       });
       res.json(accommodation);
     } catch (error) {
