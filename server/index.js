@@ -338,16 +338,23 @@ async function startServer() {
 
   app.put('/api/accommodations/:id', isAuthenticated, async (req, res) => {
     try {
-      const data = { ...req.body };
-      if (data.date && typeof data.date === 'string' && !data.date.includes('T')) {
-        data.date = new Date(data.date + 'T00:00:00.000Z');
+      const { venue, date, time, duration, customer, adults, children } = req.body;
+      const data = { venue, duration, adults, children };
+      
+      if (date && typeof date === 'string' && !date.includes('T')) {
+        data.date = new Date(date + 'T00:00:00.000Z');
+      } else if (date) {
+        data.date = new Date(date);
       }
-      if (data.time && typeof data.time === 'string' && !data.time.includes('T')) {
-        data.time = new Date('1970-01-01T' + data.time + ':00.000Z');
+      
+      if (time && typeof time === 'string' && !time.includes('T')) {
+        data.time = new Date('1970-01-01T' + time + ':00.000Z');
+      } else if (time) {
+        data.time = new Date(time);
       }
-      if (data.customer === '') {
-        data.customer = null;
-      }
+      
+      data.customer = customer === '' ? null : customer;
+      
       const accommodation = await prisma.accommodations.update({
         where: { id: req.params.id },
         data
