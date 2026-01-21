@@ -49,8 +49,19 @@ The Express backend runs on port 3000 and provides:
 - `/api/countries` - List countries
 - `/api/states` - List states (filter by country)
 - `/api/users` - List users (protected)
+- `/api/uploads/request-url` - Get presigned URL for file upload (protected)
+- `/objects/:type/:id` - Serve uploaded objects (protected)
 
 Protected routes (POST, PUT, DELETE) require authentication.
+
+## File Uploads
+Receipt images for payments can be uploaded via:
+- Copy/paste directly in the payment form
+- Drag and drop
+- File selection
+
+Files are stored in Replit Object Storage and served via `/objects/:type/:id`.
+Restrictions: Images only (JPEG, PNG, GIF, WebP), max 10MB.
 
 ## Database
 A PostgreSQL database is available with the following tables:
