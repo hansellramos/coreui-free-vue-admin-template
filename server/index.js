@@ -286,6 +286,86 @@ async function startServer() {
     }
   });
 
+  app.post('/api/users', isAuthenticated, async (req, res) => {
+    try {
+      const user = await prisma.users.create({
+        data: {
+          id: req.body.id || `manual_${Date.now()}`,
+          email: req.body.email,
+          display_name: req.body.display_name,
+          avatar_url: req.body.avatar_url,
+          role: req.body.role || 'user',
+          is_locked: false
+        }
+      });
+      res.json(user);
+    } catch (error) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.put('/api/users/:id', isAuthenticated, async (req, res) => {
+    try {
+      const { email, display_name, avatar_url, role, preferences } = req.body;
+      const user = await prisma.users.update({
+        where: { id: req.params.id },
+        data: {
+          email,
+          display_name,
+          avatar_url,
+          role,
+          preferences
+        }
+      });
+      res.json(user);
+    } catch (error) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.delete('/api/users/:id', isAuthenticated, async (req, res) => {
+    try {
+      await prisma.users.delete({
+        where: { id: req.params.id }
+      });
+      res.json({ success: true });
+    } catch (error) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.post('/api/users/:id/lock', isAuthenticated, async (req, res) => {
+    try {
+      const user = await prisma.users.update({
+        where: { id: req.params.id },
+        data: {
+          is_locked: true,
+          locked_at: new Date(),
+          locked_by: req.user.id
+        }
+      });
+      res.json(user);
+    } catch (error) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.post('/api/users/:id/unlock', isAuthenticated, async (req, res) => {
+    try {
+      const user = await prisma.users.update({
+        where: { id: req.params.id },
+        data: {
+          is_locked: false,
+          locked_at: null,
+          locked_by: null
+        }
+      });
+      res.json(user);
+    } catch (error) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
   app.get('/api/organizations/:id/contacts', async (req, res) => {
     try {
       const relations = await prisma.contact_organization.findMany({
