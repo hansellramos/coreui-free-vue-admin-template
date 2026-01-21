@@ -185,8 +185,22 @@ async function startServer() {
 
   app.get('/api/accommodations', async (req, res) => {
     try {
+      const { from_date, venue_ids } = req.query;
+      
+      const whereClause = {};
+      
+      if (from_date) {
+        whereClause.date = { gte: new Date(from_date) };
+      }
+      
+      if (venue_ids) {
+        const ids = venue_ids.split(',');
+        whereClause.venue = { in: ids };
+      }
+      
       const accommodations = await prisma.accommodations.findMany({
-        orderBy: { date: 'desc' }
+        where: whereClause,
+        orderBy: { date: 'asc' }
       });
       
       // Get unique venue and customer IDs

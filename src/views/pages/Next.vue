@@ -83,13 +83,33 @@ const selectedVenues = ref([])
 const filteredVenues = ref([])
 
 const fetchVenues = async () => {
-  // Will be implemented with database
-  allVenues.value = []
+  try {
+    const response = await fetch('/api/venues', { credentials: 'include' })
+    if (response.ok) {
+      allVenues.value = await response.json()
+    }
+  } catch (error) {
+    console.error('Error fetching venues:', error)
+  }
 }
 
 const fetchAccommodations = async () => {
-  // Will be implemented with database
-  accommodations.value = []
+  try {
+    const today = new Date().toISOString().split('T')[0]
+    let url = `/api/accommodations?from_date=${today}`
+    
+    if (selectedVenues.value.length > 0) {
+      const venueIds = selectedVenues.value.map(v => v.id).join(',')
+      url += `&venue_ids=${venueIds}`
+    }
+    
+    const response = await fetch(url, { credentials: 'include' })
+    if (response.ok) {
+      accommodations.value = await response.json()
+    }
+  } catch (error) {
+    console.error('Error fetching accommodations:', error)
+  }
 }
 
 const onVenueSearchInput = () => {
