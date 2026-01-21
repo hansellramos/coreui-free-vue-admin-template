@@ -25,7 +25,10 @@
         <CTableBody>
           <CTableRow v-for="user in filteredUsers" :key="user.id">
             <CTableDataCell>
-              <CAvatar :src="user.avatar_url || 'https://via.placeholder.com/40'" size="md" />
+              <CAvatar v-if="user.avatar_url" :src="user.avatar_url" size="md" />
+              <CAvatar v-else color="secondary" size="md">
+                <CIcon icon="cil-user" />
+              </CAvatar>
             </CTableDataCell>
             <CTableDataCell>{{ user.display_name || 'Sin nombre' }}</CTableDataCell>
             <CTableDataCell>{{ user.email || 'Sin email' }}</CTableDataCell>
@@ -65,6 +68,7 @@
 <script setup>
 import { ref, onMounted, computed } from 'vue'
 import { RouterLink, useRouter } from 'vue-router'
+import { CIcon } from '@coreui/icons-vue'
 import { fetchUsers, deleteUser, lockUser, unlockUser } from '@/services/userService'
 
 const users = ref([])
