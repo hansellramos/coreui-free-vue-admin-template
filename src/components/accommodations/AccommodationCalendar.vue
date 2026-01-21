@@ -5,7 +5,7 @@
         <label for="searchFilter" class="form-label">Search (customer:, organization:, venue:):</label>
         <input id="searchFilter" type="text" v-model="searchQuery" class="form-control" placeholder="e.g. customer:hansel, organization:baluna, venue:casa" />
       </div>
-      <CButton color="primary" @click="router.push('/business/accommodations/new')">
+      <CButton color="primary" @click="router.push('/business/accommodations/create')">
         <CIcon :icon="cilPlus" class="me-1" /> Nueva
       </CButton>
     </div>
