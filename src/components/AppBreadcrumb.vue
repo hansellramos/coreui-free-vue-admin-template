@@ -7,7 +7,7 @@ const breadcrumbs = ref()
 const getBreadcrumbs = () => {
   return router.currentRoute.value.matched.map((route) => {
     let displayName = route.meta?.breadcrumb || route.name
-    if (route.name === 'Home') displayName = 'Inicio'
+    if (route.name === 'Root') displayName = 'Inicio'
     return {
       active: route.path === router.currentRoute.value.fullPath,
       name: displayName,

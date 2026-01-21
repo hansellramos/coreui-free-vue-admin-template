@@ -7,7 +7,7 @@ import accommodationsRoutes from './routes/accommodations'
 const routes = [
   {
     path: '/',
-    name: 'Home',
+    name: 'Root',
     component: DefaultLayout,
     redirect: '/business/accommodations',
     children: [
