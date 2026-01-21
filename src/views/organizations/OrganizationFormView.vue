@@ -15,14 +15,14 @@
           <template v-if="isEdit">
             <hr />
             <div>
-              <h6>Contacts with Access</h6>
+              <h6>Contactos con Acceso</h6>
               <ul v-if="contacts.length">
                 <li v-for="contact in contacts" :key="contact.id">
-                  {{ contact.user.email }} ({{ contact.type }})
-                  <CButton color="danger" size="sm" variant="outline" class="ms-2" @click="removeUser(contact)">Remove</CButton>
+                  {{ contact.fullname || 'Sin nombre' }} ({{ contact.type }})
+                  <CButton color="danger" size="sm" variant="outline" class="ms-2" @click="removeUser(contact)">Eliminar</CButton>
                 </li>
               </ul>
-              <div v-else class="text-body-secondary">No contacts linked.</div>
+              <div v-else class="text-body-secondary">No hay contactos vinculados.</div>
               <div class="mt-3">
                 <CForm @submit.prevent="addUser">
                   <CInputGroup>
@@ -30,21 +30,21 @@
                       v-model="userQuery" 
                       @input="onUserInput" 
                       @blur="hideDropdownWithDelay" 
-                      placeholder="Type name or email" 
+                      placeholder="Buscar contacto por nombre" 
                       required 
                       type="text" 
                     />
                     <ul v-if="showUserDropdown && filteredUsers.length" class="list-group position-absolute w-100 mt-1" style="z-index:10;max-height:180px;overflow-y:auto;">
-                      <li v-for="user in filteredUsers" :key="user.id" class="list-group-item list-group-item-action" style="cursor:pointer;" @mousedown.prevent="selectUser(user)">
-                        {{ user.display_name || user.email }} <span class="text-muted">{{ user.email }}</span>
+                      <li v-for="contact in filteredUsers" :key="contact.id" class="list-group-item list-group-item-action" style="cursor:pointer;" @mousedown.prevent="selectUser(contact)">
+                        {{ contact.display_name }} <span class="text-muted">{{ contact.email }}</span>
                       </li>
                     </ul>
-                    <div v-else-if="showUserDropdown && userQuery && !filteredUsers.length" class="text-muted mt-1">No users found</div>
+                    <div v-else-if="showUserDropdown && userQuery && !filteredUsers.length" class="text-muted mt-1">No se encontraron contactos</div>
                     <CFormSelect v-model="newUserType" required>
-                      <option value="employee">Employee</option>
+                      <option value="employee">Empleado</option>
                       <option value="admin">Admin</option>
                     </CFormSelect>
-                    <CButton type="submit" color="success">Add User</CButton>
+                    <CButton type="submit" color="success">Agregar</CButton>
                   </CInputGroup>
                   <div v-if="addUserError" class="text-danger mt-1">{{ addUserError }}</div>
                 </CForm>
@@ -63,6 +63,7 @@ import { useRoute, useRouter } from 'vue-router'
 import OrganizationForm from '@/components/organizations/OrganizationForm.vue'
 import { getOrganizationById, createOrganization, updateOrganization } from '@/services/organizationService'
 import { fetchContactsByOrganization, addContactToOrganization, removeContactFromOrganization } from '@/services/contactOrganizationService'
+import { fetchContacts } from '@/services/contactService'
 
 const route = useRoute()
 const router = useRouter()
@@ -88,10 +89,12 @@ const filteredUsers = computed(() => {
 
 async function loadUsers() {
   if (isEdit.value) {
-    // Fetch all contacts for this org, joined with user
-    contacts.value = (await fetchContactsByOrganization(route.params.id)).map(row => ({
-      id: row.contact.id,
-      user: row.contact.user,
+    // Fetch all contacts for this org
+    const result = await fetchContactsByOrganization(route.params.id)
+    contacts.value = result.map(row => ({
+      id: row.contact?.id,
+      fullname: row.contact?.fullname,
+      whatsapp: row.contact?.whatsapp,
       type: row.type
     }))
   }
@@ -103,17 +106,27 @@ onMounted(async () => {
     if (org) form.value = { name: org.name }
     await loadUsers()
   }
-  // Load all users for autocomplete
-  usersList.value = []
+  // Load all contacts for autocomplete
+  try {
+    const allContacts = await fetchContacts()
+    usersList.value = allContacts.map(c => ({
+      id: c.id,
+      display_name: c.fullname,
+      email: c.whatsapp || ''
+    }))
+  } catch (e) {
+    usersList.value = []
+  }
 })
 
 function onUserInput() {
   showUserDropdown.value = true
 }
-function selectUser(user) {
-  userQuery.value = user.display_name || user.email
+function selectUser(contact) {
+  userQuery.value = contact.display_name || contact.email
   showUserDropdown.value = false
-  newUserEmail.value = user.email
+  selectedContactId.value = contact.id
+  newUserEmail.value = contact.email
 }
 function hideDropdownWithDelay() {
   setTimeout(() => { showUserDropdown.value = false }, 150)
@@ -132,18 +145,22 @@ function handleCancel() {
   router.push('/business/organizations')
 }
 
+const selectedContactId = ref(null)
+
 async function addUser() {
-  if (!newUserEmail.value) return
+  if (!selectedContactId.value) {
+    addUserError.value = 'Por favor selecciona un contacto de la lista'
+    return
+  }
   addUserError.value = ''
   try {
-    // Mock user search
-    const contact = null
-    if (!contact) throw new Error('Contact not found for this user')
-    await addContactToOrganization({ orgId: route.params.id, contactId: contact.id, type: newUserType.value })
+    await addContactToOrganization({ orgId: route.params.id, contactId: selectedContactId.value, type: newUserType.value })
+    userQuery.value = ''
+    selectedContactId.value = null
     newUserEmail.value = ''
     await loadUsers()
   } catch (err) {
-    addUserError.value = err.message || 'Could not add user'
+    addUserError.value = err.message || 'No se pudo agregar el contacto'
   }
 }
 

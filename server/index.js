@@ -371,7 +371,17 @@ async function startServer() {
       const relations = await prisma.contact_organization.findMany({
         where: { organization: req.params.id }
       });
-      res.json(relations);
+      const contactIds = relations.map(r => r.contact);
+      const contactsData = await prisma.contacts.findMany({
+        where: { id: { in: contactIds } }
+      });
+      const contactsMap = {};
+      contactsData.forEach(c => { contactsMap[c.id] = c; });
+      const result = relations.map(r => ({
+        ...r,
+        contact: contactsMap[r.contact] || null
+      }));
+      res.json(result);
     } catch (error) {
       res.status(500).json({ error: error.message });
     }
