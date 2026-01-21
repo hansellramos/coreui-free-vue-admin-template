@@ -70,10 +70,16 @@
                     <a 
                       v-if="item.customer_data?.email" 
                       :href="'mailto:' + item.customer_data.email" 
-                      class="btn btn-sm btn-primary"
+                      class="btn btn-sm btn-primary me-2"
                     >
                       <i class="cil-envelope-closed"></i> Email
                     </a>
+                    <router-link 
+                      :to="'/business/accommodations/' + item.id" 
+                      class="btn btn-sm btn-secondary"
+                    >
+                      <i class="cil-zoom"></i> Ver detalles
+                    </router-link>
                   </div>
                 </div>
               </CCardBody>
