@@ -20,6 +20,7 @@ export default [
       color: 'primary',
       text: 'NEW',
     },
+    devOnly: true,
   },
   {
     component: 'CNavTitle',

@@ -65,6 +65,9 @@ const AppSidebarNav = defineComponent({
       }
       let skip = false
       return nav.filter(item => {
+        if (item.devOnly) {
+          return false
+        }
         if (item.component === 'CNavTitle' && devOnlySections.includes(item.name)) {
           skip = true
           return false
