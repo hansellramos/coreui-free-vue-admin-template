@@ -27,12 +27,12 @@
         </div>
         <div class="mb-3">
           <CFormLabel>WhatsApp</CFormLabel>
-          <CFormInput v-model="newCustomer.whatsapp" placeholder="Número de WhatsApp" type="number" required />
+          <CFormInput v-model="newCustomer.whatsapp" placeholder="Número de WhatsApp" type="tel" />
         </div>
       </CModalBody>
       <CModalFooter>
         <CButton color="secondary" @click="cancelCreate">Cancelar</CButton>
-        <CButton color="primary" @click="createCustomer" :disabled="!newCustomer.fullname || !newCustomer.whatsapp">Crear</CButton>
+        <CButton color="primary" @click="createCustomer" :disabled="!newCustomer.fullname.trim() || !newCustomer.whatsapp.trim()">Crear</CButton>
       </CModalFooter>
     </CModal>
   </div>
