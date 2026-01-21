@@ -27,7 +27,7 @@
         </div>
         <div class="mb-3">
           <CFormLabel>WhatsApp</CFormLabel>
-          <CFormInput v-model="newCustomer.whatsapp" placeholder="Número de WhatsApp" type="tel" />
+          <CFormInput v-model="newCustomer.whatsapp" placeholder="Número de WhatsApp" type="tel" @input="cleanWhatsapp" />
         </div>
       </CModalBody>
       <CModalFooter>
@@ -88,6 +88,14 @@ function startCreateCustomer() {
 function cancelCreate() {
   showCreateForm.value = false
   newCustomer.value = { fullname: '', whatsapp: '' }
+}
+
+function cleanWhatsapp() {
+  let val = newCustomer.value.whatsapp
+  val = val.replace(/\s+/g, '')
+  val = val.replace(/^\+57/, '')
+  val = val.replace(/[^\d]/g, '')
+  newCustomer.value.whatsapp = val
 }
 
 async function createCustomer() {
