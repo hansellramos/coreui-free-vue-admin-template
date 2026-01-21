@@ -376,6 +376,149 @@ async function startServer() {
     }
   });
 
+  // Payments CRUD
+  app.get('/api/payments', async (req, res) => {
+    try {
+      const { accommodation_id } = req.query;
+      const where = accommodation_id ? { accommodation: accommodation_id } : {};
+      
+      const payments = await prisma.payments.findMany({
+        where,
+        orderBy: { created_at: 'desc' }
+      });
+      
+      // Enrich with user data
+      const verifierIds = [...new Set(payments.filter(p => p.verified_by).map(p => p.verified_by))];
+      const creatorIds = [...new Set(payments.filter(p => p.created_by).map(p => p.created_by))];
+      const allUserIds = [...new Set([...verifierIds, ...creatorIds])];
+      
+      const users = allUserIds.length > 0 ? await prisma.users.findMany({
+        where: { id: { in: allUserIds } }
+      }) : [];
+      const usersMap = {};
+      users.forEach(u => { usersMap[u.id] = u; });
+      
+      // Enrich with accommodation data
+      const accIds = [...new Set(payments.filter(p => p.accommodation).map(p => p.accommodation))];
+      const accommodations = accIds.length > 0 ? await prisma.accommodations.findMany({
+        where: { id: { in: accIds } }
+      }) : [];
+      const accMap = {};
+      accommodations.forEach(a => { accMap[a.id] = a; });
+      
+      const enriched = payments.map(p => ({
+        ...p,
+        verified_by_user: p.verified_by ? usersMap[p.verified_by] : null,
+        created_by_user: p.created_by ? usersMap[p.created_by] : null,
+        accommodation_data: p.accommodation ? accMap[p.accommodation] : null
+      }));
+      
+      res.json(enriched);
+    } catch (error) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.get('/api/payments/:id', async (req, res) => {
+    try {
+      const payment = await prisma.payments.findUnique({
+        where: { id: req.params.id }
+      });
+      if (!payment) {
+        return res.status(404).json({ error: 'Payment not found' });
+      }
+      res.json(payment);
+    } catch (error) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.post('/api/payments', isAuthenticated, async (req, res) => {
+    try {
+      const { accommodation, amount, payment_method, payment_date, reference, notes, receipt_url } = req.body;
+      const data = {
+        accommodation: accommodation || null,
+        amount: amount ? parseFloat(amount) : null,
+        payment_method: payment_method || null,
+        reference: reference || null,
+        notes: notes || null,
+        receipt_url: receipt_url || null,
+        created_by: req.user?.id || null
+      };
+      
+      if (payment_date && typeof payment_date === 'string') {
+        data.payment_date = new Date(payment_date + 'T00:00:00.000Z');
+      }
+      
+      const payment = await prisma.payments.create({ data });
+      res.json(payment);
+    } catch (error) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.put('/api/payments/:id', isAuthenticated, async (req, res) => {
+    try {
+      const { accommodation, amount, payment_method, payment_date, reference, notes, receipt_url } = req.body;
+      const data = {
+        accommodation: accommodation || null,
+        amount: amount ? parseFloat(amount) : null,
+        payment_method: payment_method || null,
+        reference: reference || null,
+        notes: notes || null,
+        receipt_url: receipt_url || null,
+        updated_at: new Date(),
+        updated_by: req.user?.id || null
+      };
+      
+      if (payment_date && typeof payment_date === 'string' && !payment_date.includes('T')) {
+        data.payment_date = new Date(payment_date + 'T00:00:00.000Z');
+      } else if (payment_date) {
+        data.payment_date = new Date(payment_date);
+      }
+      
+      const payment = await prisma.payments.update({
+        where: { id: req.params.id },
+        data
+      });
+      res.json(payment);
+    } catch (error) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.put('/api/payments/:id/verify', isAuthenticated, async (req, res) => {
+    try {
+      const { verified } = req.body;
+      const data = {
+        verified: verified === true,
+        verified_at: verified === true ? new Date() : null,
+        verified_by: verified === true ? (req.user?.id || null) : null,
+        updated_at: new Date(),
+        updated_by: req.user?.id || null
+      };
+      
+      const payment = await prisma.payments.update({
+        where: { id: req.params.id },
+        data
+      });
+      res.json(payment);
+    } catch (error) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.delete('/api/payments/:id', isAuthenticated, async (req, res) => {
+    try {
+      await prisma.payments.delete({
+        where: { id: req.params.id }
+      });
+      res.json({ success: true });
+    } catch (error) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
   app.get('/api/countries', async (req, res) => {
     try {
       const countries = await prisma.countries.findMany({
