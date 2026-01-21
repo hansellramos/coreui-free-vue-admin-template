@@ -7,9 +7,9 @@ import accommodationsRoutes from './routes/accommodations'
 const routes = [
   {
     path: '/',
-    name: 'App',
+    name: 'Home',
     component: DefaultLayout,
-    redirect: '/dashboard',
+    redirect: '/business/accommodations',
     children: [
       {
         path: '/dashboard',

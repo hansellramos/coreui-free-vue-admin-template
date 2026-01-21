@@ -6,9 +6,11 @@ const breadcrumbs = ref()
 
 const getBreadcrumbs = () => {
   return router.currentRoute.value.matched.map((route) => {
+    let displayName = route.meta?.breadcrumb || route.name
+    if (route.name === 'Home') displayName = 'Inicio'
     return {
       active: route.path === router.currentRoute.value.fullPath,
-      name: route.name,
+      name: displayName,
       path: `${router.options.history.base}${route.path}`,
     }
   })
@@ -27,7 +29,7 @@ onMounted(() => {
   <CBreadcrumb class="my-0">
     <CBreadcrumbItem
       v-for="item in breadcrumbs"
-      :key="item"
+      :key="item.path"
       :href="item.active ? '' : item.path"
       :active="item.active"
     >
