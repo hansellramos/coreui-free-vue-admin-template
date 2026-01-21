@@ -23,6 +23,22 @@ const routes = [
           ),
       },
       {
+        path: '/users',
+        name: 'UsersList',
+        component: () => import('@/views/users/UsersList.vue'),
+      },
+      {
+        path: '/users/create',
+        name: 'UserCreate',
+        component: () => import('@/views/users/UserFormView.vue'),
+      },
+      {
+        path: '/users/:id/edit',
+        name: 'UserEdit',
+        component: () => import('@/views/users/UserFormView.vue'),
+        props: true,
+      },
+      {
         path: '/home',
         name: 'Home',
         component: () => import('@/views/pages/Home.vue'),
