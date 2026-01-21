@@ -79,13 +79,39 @@
             </CRow>
             <CRow class="mb-3">
               <CCol :md="12">
-                <CFormLabel>Comprobante (URL de imagen)</CFormLabel>
-                <CFormInput 
-                  v-model="form.receipt_url" 
-                  placeholder="https://..."
-                />
-                <div class="form-text">Puede pegar la URL de una imagen del comprobante</div>
-                <div v-if="form.receipt_url" class="mt-2">
+                <CFormLabel>Comprobante</CFormLabel>
+                <div 
+                  v-if="!form.receipt_url"
+                  class="receipt-upload-area"
+                  :class="{ 'is-dragging': isDragging, 'is-uploading': uploading }"
+                  @paste="handlePaste"
+                  @drop.prevent="handleDrop"
+                  @dragover.prevent="isDragging = true"
+                  @dragleave="isDragging = false"
+                  @click="triggerFileInput"
+                  tabindex="0"
+                >
+                  <div v-if="uploading" class="text-center">
+                    <CSpinner size="sm" class="me-2" />
+                    Subiendo imagen...
+                  </div>
+                  <div v-else class="text-center">
+                    <CIcon name="cil-cloud-upload" size="xl" class="mb-2 text-secondary" />
+                    <div>Pegar imagen (Ctrl+V), arrastrar, o hacer clic para seleccionar</div>
+                    <div class="small text-muted mt-1">Soporta capturas de pantalla y archivos de imagen</div>
+                  </div>
+                  <input 
+                    ref="fileInput" 
+                    type="file" 
+                    accept="image/*" 
+                    class="d-none" 
+                    @change="handleFileSelect"
+                  />
+                </div>
+                <div v-if="uploadError" class="text-danger small mt-2">
+                  {{ uploadError }}
+                </div>
+                <div v-if="form.receipt_url" class="mt-2 position-relative d-inline-block">
                   <img 
                     :src="form.receipt_url" 
                     class="img-thumbnail" 
@@ -93,6 +119,14 @@
                     @click="showReceiptModal = true"
                     @error="handleImageError"
                   />
+                  <CButton 
+                    color="danger" 
+                    size="sm" 
+                    class="position-absolute top-0 end-0 m-1"
+                    @click.stop="form.receipt_url = ''"
+                  >
+                    <CIcon name="cil-x" />
+                  </CButton>
                 </div>
               </CCol>
             </CRow>
@@ -147,6 +181,7 @@
 <script setup>
 import { ref, computed, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
+import { CIcon } from '@coreui/icons-vue'
 
 const route = useRoute()
 const router = useRouter()
@@ -157,6 +192,10 @@ const accommodations = ref([])
 const existingPayment = ref(null)
 const saving = ref(false)
 const showReceiptModal = ref(false)
+const fileInput = ref(null)
+const isDragging = ref(false)
+const uploading = ref(false)
+const uploadError = ref('')
 
 const form = ref({
   type: '',
@@ -233,6 +272,82 @@ const handleImageError = (e) => {
   e.target.style.display = 'none'
 }
 
+const triggerFileInput = () => {
+  fileInput.value?.click()
+}
+
+const handleFileSelect = (e) => {
+  const file = e.target.files?.[0]
+  if (file) uploadFile(file)
+}
+
+const handlePaste = (e) => {
+  const items = e.clipboardData?.items
+  if (!items) return
+  
+  for (const item of items) {
+    if (item.type.startsWith('image/')) {
+      const file = item.getAsFile()
+      if (file) uploadFile(file)
+      break
+    }
+  }
+}
+
+const handleDrop = (e) => {
+  isDragging.value = false
+  const file = e.dataTransfer?.files?.[0]
+  if (file && file.type.startsWith('image/')) {
+    uploadFile(file)
+  }
+}
+
+const uploadFile = async (file) => {
+  if (!file.type.startsWith('image/')) {
+    uploadError.value = 'Solo se permiten archivos de imagen'
+    return
+  }
+  
+  uploading.value = true
+  uploadError.value = ''
+  
+  try {
+    const urlResponse = await fetch('/api/uploads/request-url', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        name: file.name,
+        size: file.size,
+        contentType: file.type
+      })
+    })
+    
+    if (!urlResponse.ok) {
+      const err = await urlResponse.json()
+      throw new Error(err.error || 'Error al obtener URL de subida')
+    }
+    
+    const { uploadURL, objectPath } = await urlResponse.json()
+    
+    const uploadResponse = await fetch(uploadURL, {
+      method: 'PUT',
+      body: file,
+      headers: { 'Content-Type': file.type }
+    })
+    
+    if (!uploadResponse.ok) {
+      throw new Error('Error al subir archivo')
+    }
+    
+    form.value.receipt_url = objectPath
+  } catch (error) {
+    console.error('Upload error:', error)
+    uploadError.value = error.message || 'Error al subir imagen'
+  } finally {
+    uploading.value = false
+  }
+}
+
 const savePayment = async () => {
   if (!form.value.amount) {
     alert('El monto es requerido')
@@ -280,3 +395,32 @@ onMounted(() => {
   }
 })
 </script>
+
+<style scoped>
+.receipt-upload-area {
+  border: 2px dashed var(--cui-border-color);
+  border-radius: 0.375rem;
+  padding: 2rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  background-color: var(--cui-body-bg);
+}
+
+.receipt-upload-area:hover,
+.receipt-upload-area:focus {
+  border-color: var(--cui-primary);
+  background-color: var(--cui-light);
+  outline: none;
+}
+
+.receipt-upload-area.is-dragging {
+  border-color: var(--cui-primary);
+  background-color: rgba(var(--cui-primary-rgb), 0.1);
+}
+
+.receipt-upload-area.is-uploading {
+  cursor: wait;
+  pointer-events: none;
+  opacity: 0.7;
+}
+</style>
