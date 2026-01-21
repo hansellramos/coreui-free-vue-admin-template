@@ -32,24 +32,35 @@
     <div class="mb-3">
       <CFormLabel>Ubicación</CFormLabel>
       <div ref="mapContainer" class="map-container"></div>
-      <div class="mb-3">
-        <CFormLabel for="venueLatitude">Latitude</CFormLabel>
-        <CFormInput
-          id="venueLatitude"
-          v-model="form.latitude"
-          type="text"
-          readonly
-        />
+      <div class="d-flex gap-3 mt-2">
+        <div class="flex-grow-1">
+          <CFormLabel for="venueLatitude">Latitude</CFormLabel>
+          <CFormInput
+            id="venueLatitude"
+            v-model="form.latitude"
+            type="text"
+            readonly
+          />
+        </div>
+        <div class="flex-grow-1">
+          <CFormLabel for="venueLongitude">Longitude</CFormLabel>
+          <CFormInput
+            id="venueLongitude"
+            v-model="form.longitude"
+            type="text"
+            readonly
+          />
+        </div>
       </div>
-      <div class="mb-3">
-        <CFormLabel for="venueLongitude">Longitude</CFormLabel>
-        <CFormInput
-          id="venueLongitude"
-          v-model="form.longitude"
-          type="text"
-          readonly
-        />
-      </div>
+      <CButton 
+        v-if="locationChanged" 
+        color="warning" 
+        size="sm" 
+        class="mt-2"
+        @click="resetLocation"
+      >
+        Restaurar ubicación original
+      </CButton>
     </div>
     <div class="mb-3">
       <CFormLabel for="venueAddress">Address</CFormLabel>
@@ -120,7 +131,7 @@
 </template>
 
 <script setup>
-import { ref, watch, onMounted } from 'vue'
+import { ref, watch, onMounted, computed } from 'vue'
 import mapboxgl from 'mapbox-gl'
 import MapboxGeocoder from '@mapbox/mapbox-gl-geocoder'
 import 'mapbox-gl/dist/mapbox-gl.css'
@@ -143,12 +154,37 @@ const mapContainer = ref(null)
 const token = import.meta.env.VITE_MAPBOX_ACCESS_TOKEN
 const mapInstance = ref(null)
 const markerInstance = ref(null)
+const originalLocation = ref({ latitude: null, longitude: null })
+
+const locationChanged = computed(() => {
+  if (!props.isEdit || originalLocation.value.latitude === null) return false
+  return (
+    form.value.latitude !== originalLocation.value.latitude ||
+    form.value.longitude !== originalLocation.value.longitude
+  )
+})
+
+function resetLocation() {
+  if (originalLocation.value.latitude !== null && originalLocation.value.longitude !== null) {
+    form.value.latitude = originalLocation.value.latitude
+    form.value.longitude = originalLocation.value.longitude
+    if (mapInstance.value && markerInstance.value) {
+      const coords = [originalLocation.value.longitude, originalLocation.value.latitude]
+      mapInstance.value.setCenter(coords)
+      markerInstance.value.setLngLat(coords)
+    }
+  }
+}
 
 watch(
   () => props.modelValue,
   (val) => {
     if (val) {
       form.value = { ...val }
+      // Store original location only once when data first loads in edit mode
+      if (props.isEdit && originalLocation.value.latitude === null && val.latitude && val.longitude) {
+        originalLocation.value = { latitude: val.latitude, longitude: val.longitude }
+      }
       // Update map and marker if they exist and coordinates are available
       if (mapInstance.value && markerInstance.value && val.latitude && val.longitude) {
         const coords = [val.longitude, val.latitude]
