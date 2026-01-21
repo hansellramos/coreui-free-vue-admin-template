@@ -1,5 +1,6 @@
 <script setup>
 import { onMounted, ref } from 'vue'
+import { RouterLink } from 'vue-router'
 import { useColorModes } from '@coreui/vue'
 
 import AppBreadcrumb from '@/components/AppBreadcrumb.vue'
@@ -29,13 +30,13 @@ onMounted(() => {
       </CHeaderToggler>
       <CHeaderNav class="d-none d-md-flex">
         <CNavItem>
-          <CNavLink href="/business/accommodations">Calendar</CNavLink>
+          <RouterLink to="/business/accommodations" class="nav-link">Calendar</RouterLink>
         </CNavItem>
         <CNavItem>
-          <CNavLink href="/next">Next</CNavLink>
+          <RouterLink to="/next" class="nav-link">Next</RouterLink>
         </CNavItem>
         <CNavItem>
-          <CNavLink href="/business/venues">Venues</CNavLink>
+          <RouterLink to="/business/venues" class="nav-link">Venues</RouterLink>
         </CNavItem>
       </CHeaderNav>
       <CHeaderNav class="ms-auto">
