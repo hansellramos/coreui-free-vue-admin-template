@@ -17,17 +17,22 @@
             <div>
               <h6>Contactos con Acceso</h6>
               <ul v-if="contacts.length" class="list-unstyled">
-                <li v-for="contact in contacts" :key="contact.id" class="mb-2 d-flex align-items-center">
+                <li v-for="contact in contacts" :key="contact.id" class="mb-2 d-flex align-items-center flex-wrap">
                   <span 
                     @dblclick="toggleShowId(contact.id)" 
                     style="cursor: pointer;" 
                     title="Doble clic para ver ID"
                   >
                     <strong>{{ contact.fullname || 'Sin nombre' }}</strong>
-                    <span v-if="contact.whatsapp" class="text-muted ms-2">{{ contact.whatsapp }}</span>
-                    <CBadge color="secondary" class="ms-2">{{ contact.type }}</CBadge>
-                    <code v-if="visibleIds.includes(contact.id)" class="ms-2 small">{{ contact.id }}</code>
                   </span>
+                  <a v-if="contact.whatsapp" :href="'https://wa.me/57' + contact.whatsapp" target="_blank" class="ms-2 text-success text-decoration-none">
+                    <CIcon icon="cib-whatsapp" /> {{ contact.whatsapp }}
+                  </a>
+                  <a v-if="contact.email" :href="'mailto:' + contact.email" class="ms-2 text-primary text-decoration-none">
+                    <CIcon icon="cil-envelope-closed" /> {{ contact.email }}
+                  </a>
+                  <CBadge color="secondary" class="ms-2">{{ contact.type }}</CBadge>
+                  <code v-if="visibleIds.includes(contact.id)" class="ms-2 small">{{ contact.id }}</code>
                   <CButton color="danger" size="sm" variant="outline" class="ms-2" @click="removeUser(contact)">Eliminar</CButton>
                 </li>
               </ul>
@@ -69,6 +74,7 @@
 <script setup>
 import { ref, onMounted, computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
+import { CIcon } from '@coreui/icons-vue'
 import OrganizationForm from '@/components/organizations/OrganizationForm.vue'
 import { getOrganizationById, createOrganization, updateOrganization } from '@/services/organizationService'
 import { fetchContactsByOrganization, addContactToOrganization, removeContactFromOrganization } from '@/services/contactOrganizationService'
@@ -114,6 +120,7 @@ async function loadUsers() {
       id: row.contact?.id,
       fullname: row.contact?.fullname,
       whatsapp: row.contact?.whatsapp,
+      email: row.contact?.user_email,
       type: row.type
     }))
   }

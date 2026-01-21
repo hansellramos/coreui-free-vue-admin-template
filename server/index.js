@@ -375,8 +375,19 @@ async function startServer() {
       const contactsData = await prisma.contacts.findMany({
         where: { id: { in: contactIds } }
       });
+      const userIds = contactsData.filter(c => c.user).map(c => c.user);
+      const usersData = userIds.length > 0 ? await prisma.users.findMany({
+        where: { id: { in: userIds } }
+      }) : [];
+      const usersMap = {};
+      usersData.forEach(u => { usersMap[u.id] = u; });
       const contactsMap = {};
-      contactsData.forEach(c => { contactsMap[c.id] = c; });
+      contactsData.forEach(c => { 
+        contactsMap[c.id] = {
+          ...c,
+          user_email: c.user ? usersMap[c.user]?.email : null
+        };
+      });
       const result = relations.map(r => ({
         ...r,
         contact: contactsMap[r.contact] || null
