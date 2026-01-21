@@ -14,8 +14,8 @@
           <CButton v-if="selectedDates.length" size="sm" color="secondary" class="mt-2" @click="clearAllDates">Clear All</CButton>
         </div>
         <div class="col-md-6">
-          <label for="searchFilter" class="form-label">Search (customer:name or organization:name):</label>
-          <input id="searchFilter" type="text" v-model="searchQuery" class="form-control" placeholder="e.g. customer:hansel or organization:baluna" />
+          <label for="searchFilter" class="form-label">Search (customer:, organization:, venue:):</label>
+          <input id="searchFilter" type="text" v-model="searchQuery" class="form-control" placeholder="e.g. customer:hansel, organization:baluna, venue:casa" />
         </div>
       </div>
     </div>
@@ -71,9 +71,10 @@ const filteredAccommodations = computed(() => {
   
   const query = searchQuery.value.trim().toLowerCase()
   
-  // Parse filter syntax: customer:name or organization:name
+  // Parse filter syntax: customer:name, organization:name, venue:name
   const customerMatch = query.match(/customer:(\S+)/)
   const orgMatch = query.match(/organization:(\S+)/)
+  const venueMatch = query.match(/venue:(\S+)/)
   
   return accommodations.value.filter(item => {
     let matches = true
@@ -90,8 +91,14 @@ const filteredAccommodations = computed(() => {
       matches = matches && orgName.includes(orgSearch)
     }
     
+    if (venueMatch) {
+      const venueSearch = venueMatch[1].toLowerCase()
+      const venueName = (item.venue_data?.name || '').toLowerCase()
+      matches = matches && venueName.includes(venueSearch)
+    }
+    
     // If no specific filter syntax, search all fields
-    if (!customerMatch && !orgMatch) {
+    if (!customerMatch && !orgMatch && !venueMatch) {
       const customerName = (item.customer_data?.fullname || item.customer_data?.user_data?.email || '').toLowerCase()
       const venueName = (item.venue_data?.name || '').toLowerCase()
       const orgName = (item.venue_data?.organization_data?.name || '').toLowerCase()
