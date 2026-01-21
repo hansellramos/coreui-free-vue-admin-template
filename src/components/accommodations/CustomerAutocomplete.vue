@@ -27,7 +27,7 @@
         </div>
         <div class="mb-3">
           <CFormLabel>WhatsApp</CFormLabel>
-          <CFormInput v-model="newCustomer.whatsapp" placeholder="Número de WhatsApp" type="tel" @input="cleanWhatsapp" />
+          <CFormInput v-model="newCustomer.whatsapp" placeholder="Número de WhatsApp" type="tel" @input="cleanWhatsapp" @paste="onPasteWhatsapp" />
         </div>
       </CModalBody>
       <CModalFooter>
@@ -96,6 +96,15 @@ function cleanWhatsapp() {
   val = val.replace(/^\+57/, '')
   val = val.replace(/[^\d]/g, '')
   newCustomer.value.whatsapp = val
+}
+
+function onPasteWhatsapp(event) {
+  event.preventDefault()
+  let pasted = (event.clipboardData || window.clipboardData).getData('text')
+  pasted = pasted.replace(/\s+/g, '')
+  pasted = pasted.replace(/^\+57/, '')
+  pasted = pasted.replace(/[^\d]/g, '')
+  newCustomer.value.whatsapp = pasted
 }
 
 async function createCustomer() {
