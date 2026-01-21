@@ -1,10 +1,64 @@
 const express = require('express');
 const cors = require('cors');
+const { Storage } = require('@google-cloud/storage');
+const { randomUUID } = require('crypto');
 const { prisma } = require('./db');
 const { setupAuth, isAuthenticated } = require('./auth/replitAuth');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
+
+const REPLIT_SIDECAR_ENDPOINT = 'http://127.0.0.1:1106';
+
+const objectStorageClient = new Storage({
+  credentials: {
+    audience: 'replit',
+    subject_token_type: 'access_token',
+    token_url: `${REPLIT_SIDECAR_ENDPOINT}/token`,
+    type: 'external_account',
+    credential_source: {
+      url: `${REPLIT_SIDECAR_ENDPOINT}/credential`,
+      format: {
+        type: 'json',
+        subject_token_field_name: 'access_token',
+      },
+    },
+    universe_domain: 'googleapis.com',
+  },
+  projectId: '',
+});
+
+async function getUploadURL() {
+  const privateObjectDir = process.env.PRIVATE_OBJECT_DIR || '';
+  if (!privateObjectDir) {
+    throw new Error('PRIVATE_OBJECT_DIR not set');
+  }
+  
+  const objectId = randomUUID();
+  const fullPath = `${privateObjectDir}/receipts/${objectId}`;
+  
+  const pathParts = fullPath.startsWith('/') ? fullPath.slice(1).split('/') : fullPath.split('/');
+  const bucketName = pathParts[0];
+  const objectName = pathParts.slice(1).join('/');
+  
+  const response = await fetch(`${REPLIT_SIDECAR_ENDPOINT}/object-storage/signed-object-url`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      bucket_name: bucketName,
+      object_name: objectName,
+      method: 'PUT',
+      expires_at: new Date(Date.now() + 900 * 1000).toISOString(),
+    }),
+  });
+  
+  if (!response.ok) {
+    throw new Error(`Failed to sign object URL: ${response.status}`);
+  }
+  
+  const { signed_url } = await response.json();
+  return { uploadURL: signed_url, objectPath: `/objects/receipts/${objectId}` };
+}
 
 app.use(cors({
   origin: true,
@@ -14,6 +68,48 @@ app.use(express.json());
 
 async function startServer() {
   await setupAuth(app);
+
+  // Upload endpoints for receipts
+  app.post('/api/uploads/request-url', isAuthenticated, async (req, res) => {
+    try {
+      const result = await getUploadURL();
+      res.json(result);
+    } catch (error) {
+      console.error('Error generating upload URL:', error);
+      res.status(500).json({ error: 'Failed to generate upload URL' });
+    }
+  });
+
+  app.get('/objects/*', async (req, res) => {
+    try {
+      const objectPath = req.path.replace('/objects/', '');
+      const privateObjectDir = process.env.PRIVATE_OBJECT_DIR || '';
+      const fullPath = `${privateObjectDir}/${objectPath}`;
+      
+      const pathParts = fullPath.startsWith('/') ? fullPath.slice(1).split('/') : fullPath.split('/');
+      const bucketName = pathParts[0];
+      const objectName = pathParts.slice(1).join('/');
+      
+      const bucket = objectStorageClient.bucket(bucketName);
+      const file = bucket.file(objectName);
+      
+      const [exists] = await file.exists();
+      if (!exists) {
+        return res.status(404).json({ error: 'Object not found' });
+      }
+      
+      const [metadata] = await file.getMetadata();
+      res.set({
+        'Content-Type': metadata.contentType || 'application/octet-stream',
+        'Cache-Control': 'public, max-age=3600',
+      });
+      
+      file.createReadStream().pipe(res);
+    } catch (error) {
+      console.error('Error serving object:', error);
+      res.status(500).json({ error: 'Failed to serve object' });
+    }
+  });
 
   app.get('/api/organizations', async (req, res) => {
     try {
