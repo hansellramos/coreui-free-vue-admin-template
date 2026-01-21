@@ -1,8 +1,13 @@
 <template>
   <div>
-    <div class="mb-3">
-      <label for="searchFilter" class="form-label">Search (customer:, organization:, venue:):</label>
-      <input id="searchFilter" type="text" v-model="searchQuery" class="form-control" placeholder="e.g. customer:hansel, organization:baluna, venue:casa" />
+    <div class="d-flex justify-content-between align-items-end mb-3">
+      <div class="flex-grow-1 me-3">
+        <label for="searchFilter" class="form-label">Search (customer:, organization:, venue:):</label>
+        <input id="searchFilter" type="text" v-model="searchQuery" class="form-control" placeholder="e.g. customer:hansel, organization:baluna, venue:casa" />
+      </div>
+      <CButton color="primary" @click="router.push('/business/accommodations/new')">
+        <CIcon :icon="cilPlus" class="me-1" /> Nueva
+      </CButton>
     </div>
     <FullCalendar :options="calendarOptions" />
   </div>
@@ -16,6 +21,9 @@ import timeGridPlugin from '@fullcalendar/timegrid'
 import interactionPlugin from '@fullcalendar/interaction'
 import { useRouter } from 'vue-router'
 import { fetchAccommodations } from '@/services/accommodationService'
+import { CButton } from '@coreui/vue'
+import { CIcon } from '@coreui/icons-vue'
+import { cilPlus } from '@coreui/icons'
 
 const router = useRouter()
 const accommodations = ref([])
