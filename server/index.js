@@ -263,6 +263,9 @@ async function startServer() {
 
   app.get('/api/accommodations/:id', async (req, res) => {
     try {
+      if (req.params.id === 'new') {
+        return res.status(400).json({ error: 'Invalid ID' });
+      }
       const accommodation = await prisma.accommodations.findUnique({
         where: { id: req.params.id }
       });
