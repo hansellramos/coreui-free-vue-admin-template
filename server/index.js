@@ -323,6 +323,9 @@ async function startServer() {
       if (data.date && typeof data.date === 'string' && !data.date.includes('T')) {
         data.date = new Date(data.date + 'T00:00:00.000Z');
       }
+      if (data.time && typeof data.time === 'string' && !data.time.includes('T')) {
+        data.time = new Date('1970-01-01T' + data.time + ':00.000Z');
+      }
       if (data.customer === '') {
         data.customer = null;
       }
@@ -338,6 +341,9 @@ async function startServer() {
       const data = { ...req.body };
       if (data.date && typeof data.date === 'string' && !data.date.includes('T')) {
         data.date = new Date(data.date + 'T00:00:00.000Z');
+      }
+      if (data.time && typeof data.time === 'string' && !data.time.includes('T')) {
+        data.time = new Date('1970-01-01T' + data.time + ':00.000Z');
       }
       if (data.customer === '') {
         data.customer = null;
