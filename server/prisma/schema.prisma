@@ -122,6 +122,7 @@ model venues {
   suburb            String?  @db.VarChar
   address_reference String?
   instagram         String?  @db.VarChar
+  organization      String?  @db.Uuid
 }
 
 model sessions {

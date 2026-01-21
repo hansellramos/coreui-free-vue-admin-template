@@ -11,6 +11,13 @@
       />
     </div>
     <div class="mb-3">
+      <CFormLabel for="venueOrganization">Organization</CFormLabel>
+      <CFormSelect id="venueOrganization" v-model="form.organization">
+        <option value="">-- Select Organization --</option>
+        <option v-for="org in organizations" :key="org.id" :value="org.id">{{ org.name }}</option>
+      </CFormSelect>
+    </div>
+    <div class="mb-3">
       <CFormLabel for="venueWhatsapp">WhatsApp</CFormLabel>
       <CFormInput
         id="venueWhatsapp"
@@ -136,6 +143,7 @@ import mapboxgl from 'mapbox-gl'
 import MapboxGeocoder from '@mapbox/mapbox-gl-geocoder'
 import 'mapbox-gl/dist/mapbox-gl.css'
 import '@mapbox/mapbox-gl-geocoder/dist/mapbox-gl-geocoder.css'
+import { fetchOrganizations } from '@/services/organizationService'
 
 const props = defineProps({
   modelValue: {
@@ -149,7 +157,8 @@ const props = defineProps({
 })
 const emit = defineEmits(['update:modelValue', 'submit', 'cancel'])
 
-const form = ref({ ...props.modelValue, instagram: '' })
+const form = ref({ ...props.modelValue, instagram: '', organization: '' })
+const organizations = ref([])
 const mapContainer = ref(null)
 const token = import.meta.env.VITE_MAPBOX_ACCESS_TOKEN
 const mapInstance = ref(null)
@@ -204,7 +213,9 @@ function onCancel() {
   emit('cancel')
 }
 
-onMounted(() => {
+onMounted(async () => {
+  organizations.value = await fetchOrganizations()
+  
   mapboxgl.accessToken = token
   const initialCenter = form.value.longitude && form.value.latitude
     ? [form.value.longitude, form.value.latitude]
