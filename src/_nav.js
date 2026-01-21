@@ -50,6 +50,10 @@ export default [
     icon: 'cil-calendar',
   },
   {
+    component: 'CNavTitle',
+    name: 'System',
+  },
+  {
     component: 'CNavItem',
     name: 'Users',
     to: '/users',
