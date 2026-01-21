@@ -29,10 +29,37 @@ const router = useRouter()
 let form = ref({ venue: '', date: '', time: '', duration: '', customer: '' })
 const isEdit = computed(() => !!route.params.id)
 
+function formatDateForInput(dateStr) {
+  if (!dateStr) return ''
+  const d = new Date(dateStr)
+  const year = d.getUTCFullYear()
+  const month = String(d.getUTCMonth() + 1).padStart(2, '0')
+  const day = String(d.getUTCDate()).padStart(2, '0')
+  return `${year}-${month}-${day}`
+}
+
+function formatTimeForInput(timeStr) {
+  if (!timeStr) return ''
+  if (timeStr.includes('T')) {
+    const d = new Date(timeStr)
+    const hours = String(d.getUTCHours()).padStart(2, '0')
+    const mins = String(d.getUTCMinutes()).padStart(2, '0')
+    return `${hours}:${mins}`
+  }
+  return timeStr.slice(0, 5)
+}
+
 onMounted(async () => {
   if (isEdit.value) {
     const accommodation = await getAccommodationById(route.params.id)
-    if (accommodation) form.value = { ...accommodation }
+    if (accommodation) {
+      form.value = {
+        ...accommodation,
+        date: formatDateForInput(accommodation.date),
+        time: formatTimeForInput(accommodation.time),
+        duration: Number(accommodation.duration) || 0
+      }
+    }
   }
 })
 
