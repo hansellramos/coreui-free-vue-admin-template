@@ -252,7 +252,37 @@ async function startServer() {
       const accommodation = await prisma.accommodations.findUnique({
         where: { id: req.params.id }
       });
-      res.json(accommodation);
+      if (!accommodation) {
+        return res.status(404).json({ error: 'Accommodation not found' });
+      }
+      
+      // Fetch venue with organization
+      let venue_data = null;
+      if (accommodation.venue) {
+        const venue = await prisma.venues.findUnique({ where: { id: accommodation.venue } });
+        if (venue) {
+          let organization_data = null;
+          if (venue.organization) {
+            organization_data = await prisma.organizations.findUnique({ where: { id: venue.organization } });
+          }
+          venue_data = { ...venue, organization_data };
+        }
+      }
+      
+      // Fetch customer with user
+      let customer_data = null;
+      if (accommodation.customer) {
+        const customer = await prisma.contacts.findUnique({ where: { id: accommodation.customer } });
+        if (customer) {
+          let user_data = null;
+          if (customer.user) {
+            user_data = await prisma.users.findUnique({ where: { id: customer.user } });
+          }
+          customer_data = { ...customer, user_data };
+        }
+      }
+      
+      res.json({ ...accommodation, venue_data, customer_data });
     } catch (error) {
       res.status(500).json({ error: error.message });
     }
