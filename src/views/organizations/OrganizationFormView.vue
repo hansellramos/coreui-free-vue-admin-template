@@ -16,9 +16,18 @@
             <hr />
             <div>
               <h6>Contactos con Acceso</h6>
-              <ul v-if="contacts.length">
-                <li v-for="contact in contacts" :key="contact.id">
-                  {{ contact.fullname || 'Sin nombre' }} ({{ contact.type }})
+              <ul v-if="contacts.length" class="list-unstyled">
+                <li v-for="contact in contacts" :key="contact.id" class="mb-2 d-flex align-items-center">
+                  <span 
+                    @dblclick="toggleShowId(contact.id)" 
+                    style="cursor: pointer;" 
+                    title="Doble clic para ver ID"
+                  >
+                    <strong>{{ contact.fullname || 'Sin nombre' }}</strong>
+                    <span v-if="contact.whatsapp" class="text-muted ms-2">{{ contact.whatsapp }}</span>
+                    <CBadge color="secondary" class="ms-2">{{ contact.type }}</CBadge>
+                    <code v-if="visibleIds.includes(contact.id)" class="ms-2 small">{{ contact.id }}</code>
+                  </span>
                   <CButton color="danger" size="sm" variant="outline" class="ms-2" @click="removeUser(contact)">Eliminar</CButton>
                 </li>
               </ul>
@@ -74,6 +83,16 @@ const contacts = ref([])
 const newUserEmail = ref('')
 const addUserError = ref('')
 const newUserType = ref('employee')
+const visibleIds = ref([])
+
+function toggleShowId(id) {
+  const idx = visibleIds.value.indexOf(id)
+  if (idx === -1) {
+    visibleIds.value.push(id)
+  } else {
+    visibleIds.value.splice(idx, 1)
+  }
+}
 
 const userQuery = ref('')
 const showUserDropdown = ref(false)
