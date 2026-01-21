@@ -2,36 +2,43 @@
   <CForm @submit.prevent="handleSubmit">
     <div class="mb-3">
       <CFormLabel for="venue">Venue</CFormLabel>
-      <VenueAutocomplete v-model="form.venue" />
+      <VenueAutocomplete v-model="form.venue" @venue-selected="onVenueSelected" />
     </div>
-    <div class="mb-3">
-      <CFormLabel for="date">Date</CFormLabel>
-      <CFormInput id="date" v-model="form.date" type="date" required />
-    </div>
-    <div class="mb-3 position-relative">
-      <CFormLabel for="time">Time</CFormLabel>
-      <CFormInput id="time" v-model="form.time" type="time" required @focus="showTimeOptions = true" @blur="hideTimeOptionsWithDelay" />
-      <div v-if="showTimeOptions" class="d-flex gap-2 flex-wrap mt-2">
-        <CButton v-for="t in timeOptions" :key="t" size="sm" color="secondary" variant="outline" @mousedown.prevent="selectTime(t)">{{ t }}</CButton>
+    
+    <template v-if="form.venue">
+      <div class="mb-3">
+        <CFormLabel for="date">Date</CFormLabel>
+        <CFormInput id="date" v-model="form.date" type="date" required />
       </div>
-    </div>
-    <div class="mb-3 position-relative">
-      <CFormLabel for="duration">Duration</CFormLabel>
-      <div class="d-flex align-items-center gap-2">
-        <CFormInput id="duration" v-model.number="durationHuman" type="text" required @focus="showDurationOptions = true" @blur="hideDurationOptionsWithDelay" readonly />
-        <CButton size="sm" color="secondary" variant="outline" @mousedown.prevent="addDay">+1D</CButton>
-        <CButton size="sm" color="secondary" variant="outline" @mousedown.prevent="removeDay">-1D</CButton>
+      <div class="mb-3 position-relative">
+        <CFormLabel for="time">Time</CFormLabel>
+        <CFormInput id="time" v-model="form.time" type="time" required @focus="showTimeOptions = true" @blur="hideTimeOptionsWithDelay" />
+        <div v-if="showTimeOptions" class="d-flex gap-2 flex-wrap mt-2">
+          <CButton v-for="t in timeOptions" :key="t" size="sm" color="secondary" variant="outline" @mousedown.prevent="selectTime(t)">{{ t }}</CButton>
+        </div>
       </div>
-      <div v-if="showDurationOptions" class="d-flex gap-2 flex-wrap mt-2">
-        <CButton v-for="d in durationOptions" :key="d.label" size="sm" color="secondary" variant="outline" @mousedown.prevent="selectDuration(d.seconds)">{{ d.label }}</CButton>
+      <div class="mb-3 position-relative">
+        <CFormLabel for="duration">Duration</CFormLabel>
+        <div class="d-flex align-items-center gap-2">
+          <CFormInput id="duration" v-model.number="durationHuman" type="text" required @focus="showDurationOptions = true" @blur="hideDurationOptionsWithDelay" readonly />
+          <CButton size="sm" color="secondary" variant="outline" @mousedown.prevent="addDay">+1D</CButton>
+          <CButton size="sm" color="secondary" variant="outline" @mousedown.prevent="removeDay">-1D</CButton>
+        </div>
+        <div v-if="showDurationOptions" class="d-flex gap-2 flex-wrap mt-2">
+          <CButton v-for="d in durationOptions" :key="d.label" size="sm" color="secondary" variant="outline" @mousedown.prevent="selectDuration(d.seconds)">{{ d.label }}</CButton>
+        </div>
       </div>
+      <div class="mb-3">
+        <CFormLabel for="customer">Customer</CFormLabel>
+        <CustomerAutocomplete v-model="form.customer" :organizationId="selectedVenueOrganization" />
+      </div>
+      <CButton type="submit" color="primary">{{ isEdit ? 'Update' : 'Create' }}</CButton>
+      <CButton color="secondary" variant="outline" class="ms-2" @click="onCancel">Cancel</CButton>
+    </template>
+    
+    <div v-else class="text-muted">
+      Selecciona un venue para continuar
     </div>
-    <div class="mb-3">
-      <CFormLabel for="customer">Customer</CFormLabel>
-      <CustomerAutocomplete v-model="form.customer" />
-    </div>
-    <CButton type="submit" color="primary">{{ isEdit ? 'Update' : 'Create' }}</CButton>
-    <CButton color="secondary" variant="outline" @click="onCancel">Cancel</CButton>
   </CForm>
 </template>
 
@@ -47,6 +54,9 @@ const props = defineProps({
 const emit = defineEmits(['update:modelValue', 'submit', 'cancel'])
 
 const form = ref({ ...props.modelValue })
+const selectedVenue = ref(null)
+const selectedVenueOrganization = computed(() => selectedVenue.value?.organization || null)
+
 const showTimeOptions = ref(false)
 const timeOptions = ref(['08:00', '09:00', '15:00', '17:00', '18:00'])
 const timeOptionsTimeout = ref(null)
@@ -75,13 +85,16 @@ const durationHuman = computed({
       return `${hours}H`
     }
   },
-  set: (val) => {
-    // Not needed, as the input is readonly
-  }
+  set: (val) => {}
 })
+
+function onVenueSelected(venue) {
+  selectedVenue.value = venue
+}
 
 function handleSubmit() { emit('submit', { ...form.value }) }
 function onCancel() { emit('cancel') }
+
 function hideTimeOptionsWithDelay() {
   timeOptionsTimeout.value = setTimeout(() => {
     showTimeOptions.value = false

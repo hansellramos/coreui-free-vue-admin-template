@@ -45,6 +45,7 @@ import { fetchContacts, createContact } from '@/services/contactService'
 
 const props = defineProps({
   modelValue: String,
+  organizationId: String,
 })
 const emit = defineEmits(['update:modelValue'])
 
@@ -91,10 +92,14 @@ function cancelCreate() {
 
 async function createCustomer() {
   try {
-    const created = await createContact({
+    const payload = {
       fullname: newCustomer.value.fullname,
       whatsapp: newCustomer.value.whatsapp ? Number(newCustomer.value.whatsapp) : null
-    })
+    }
+    if (props.organizationId) {
+      payload.organizationId = props.organizationId
+    }
+    const created = await createContact(payload)
     if (created && created.id) {
       contacts.value.push(created)
       query.value = created.fullname

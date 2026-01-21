@@ -151,9 +151,21 @@ async function startServer() {
 
   app.post('/api/contacts', isAuthenticated, async (req, res) => {
     try {
+      const { organizationId, ...contactData } = req.body;
       const contact = await prisma.contacts.create({
-        data: req.body
+        data: contactData
       });
+      
+      if (organizationId) {
+        await prisma.contact_organization.create({
+          data: {
+            contact: contact.id,
+            organization: organizationId,
+            type: 'customer'
+          }
+        });
+      }
+      
       res.json(contact);
     } catch (error) {
       res.status(500).json({ error: error.message });
