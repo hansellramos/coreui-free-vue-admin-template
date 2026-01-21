@@ -1,8 +1,8 @@
 export default [
   {
     component: 'CNavItem',
-    name: 'Home',
-    to: '/home',
+    name: 'Inicio',
+    to: '/business/accommodations',
     icon: 'cil-home',
   },
   {
