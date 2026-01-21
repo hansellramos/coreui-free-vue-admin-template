@@ -35,7 +35,7 @@ const userInitials = computed(() => {
       </CDropdownHeader>
       
       <template v-if="isAuthenticated">
-        <CDropdownItem>
+        <CDropdownItem :href="'#/profile'">
           <CIcon icon="cil-user" /> Perfil
         </CDropdownItem>
         <CDropdownItem>
