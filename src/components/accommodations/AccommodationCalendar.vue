@@ -1,5 +1,9 @@
 <template>
   <div>
+    <div class="mb-3">
+      <label for="searchFilter" class="form-label">Search (customer:, organization:, venue:):</label>
+      <input id="searchFilter" type="text" v-model="searchQuery" class="form-control" placeholder="e.g. customer:hansel, organization:baluna, venue:casa" />
+    </div>
     <FullCalendar :options="calendarOptions" />
   </div>
 </template>
@@ -15,13 +19,55 @@ import { fetchAccommodations } from '@/services/accommodationService'
 
 const router = useRouter()
 const accommodations = ref([])
+const searchQuery = ref('')
 
 async function load() {
   accommodations.value = await fetchAccommodations([])
 }
 
+const filteredAccommodations = computed(() => {
+  if (!searchQuery.value.trim()) return accommodations.value
+  
+  const query = searchQuery.value.trim().toLowerCase()
+  
+  const customerMatch = query.match(/customer:(\S+)/)
+  const orgMatch = query.match(/organization:(\S+)/)
+  const venueMatch = query.match(/venue:(\S+)/)
+  
+  return accommodations.value.filter(item => {
+    let matches = true
+    
+    if (customerMatch) {
+      const customerSearch = customerMatch[1].toLowerCase()
+      const customerName = (item.customer_data?.fullname || item.customer_data?.user_data?.email || '').toLowerCase()
+      matches = matches && customerName.includes(customerSearch)
+    }
+    
+    if (orgMatch) {
+      const orgSearch = orgMatch[1].toLowerCase()
+      const orgName = (item.venue_data?.organization_data?.name || '').toLowerCase()
+      matches = matches && orgName.includes(orgSearch)
+    }
+    
+    if (venueMatch) {
+      const venueSearch = venueMatch[1].toLowerCase()
+      const venueName = (item.venue_data?.name || '').toLowerCase()
+      matches = matches && venueName.includes(venueSearch)
+    }
+    
+    if (!customerMatch && !orgMatch && !venueMatch) {
+      const customerName = (item.customer_data?.fullname || item.customer_data?.user_data?.email || '').toLowerCase()
+      const venueName = (item.venue_data?.name || '').toLowerCase()
+      const orgName = (item.venue_data?.organization_data?.name || '').toLowerCase()
+      matches = customerName.includes(query) || venueName.includes(query) || orgName.includes(query)
+    }
+    
+    return matches
+  })
+})
+
 const events = computed(() => {
-  return accommodations.value.map(acc => {
+  return filteredAccommodations.value.map(acc => {
     const dateStr = acc.date ? acc.date.split('T')[0] : null
     if (!dateStr) return null
     
