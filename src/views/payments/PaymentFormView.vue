@@ -121,7 +121,7 @@
               </CCol>
             </CRow>
             <div class="d-flex justify-content-end gap-2">
-              <CButton color="secondary" variant="outline" @click="$router.push('/business/payments')">
+              <CButton color="secondary" variant="outline" @click="goBack">
                 Cancelar
               </CButton>
               <CButton type="submit" color="primary" :disabled="saving">
