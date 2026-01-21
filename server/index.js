@@ -70,8 +70,21 @@ async function startServer() {
   await setupAuth(app);
 
   // Upload endpoints for receipts
+  const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
+  const ALLOWED_IMAGE_TYPES = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
+  
   app.post('/api/uploads/request-url', isAuthenticated, async (req, res) => {
     try {
+      const { contentType, size } = req.body;
+      
+      if (!contentType || !ALLOWED_IMAGE_TYPES.includes(contentType)) {
+        return res.status(400).json({ error: 'Solo se permiten imágenes (JPEG, PNG, GIF, WebP)' });
+      }
+      
+      if (size && size > MAX_FILE_SIZE) {
+        return res.status(400).json({ error: 'El archivo no puede superar 10MB' });
+      }
+      
       const result = await getUploadURL();
       res.json(result);
     } catch (error) {
@@ -80,9 +93,9 @@ async function startServer() {
     }
   });
 
-  app.get('/objects/*', async (req, res) => {
+  app.get('/objects/:type/:id', isAuthenticated, async (req, res) => {
     try {
-      const objectPath = req.path.replace('/objects/', '');
+      const objectPath = `${req.params.type}/${req.params.id}`;
       const privateObjectDir = process.env.PRIVATE_OBJECT_DIR || '';
       const fullPath = `${privateObjectDir}/${objectPath}`;
       
@@ -101,7 +114,7 @@ async function startServer() {
       const [metadata] = await file.getMetadata();
       res.set({
         'Content-Type': metadata.contentType || 'application/octet-stream',
-        'Cache-Control': 'public, max-age=3600',
+        'Cache-Control': 'private, max-age=3600',
       });
       
       file.createReadStream().pipe(res);
