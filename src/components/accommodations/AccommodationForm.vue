@@ -32,6 +32,20 @@
         <CFormLabel for="customer">Customer</CFormLabel>
         <CustomerAutocomplete v-model="form.customer" :organizationId="selectedVenueOrganization" />
       </div>
+      <div class="row mb-3">
+        <div class="col-4">
+          <CFormLabel for="adults">Adultos</CFormLabel>
+          <CFormInput id="adults" v-model.number="form.adults" type="number" min="0" />
+        </div>
+        <div class="col-4">
+          <CFormLabel for="children">Niños</CFormLabel>
+          <CFormInput id="children" v-model.number="form.children" type="number" min="0" />
+        </div>
+        <div class="col-4">
+          <CFormLabel>Total asistentes</CFormLabel>
+          <div class="form-control-plaintext fw-bold">{{ totalAttendees }}</div>
+        </div>
+      </div>
       <CButton type="submit" color="primary">{{ isEdit ? 'Update' : 'Create' }}</CButton>
       <CButton color="secondary" variant="outline" class="ms-2" @click="onCancel">Cancel</CButton>
     </template>
@@ -56,6 +70,7 @@ const emit = defineEmits(['update:modelValue', 'submit', 'cancel'])
 const form = ref({ ...props.modelValue })
 const selectedVenue = ref(null)
 const selectedVenueOrganization = computed(() => selectedVenue.value?.organization || null)
+const totalAttendees = computed(() => (form.value.adults || 0) + (form.value.children || 0))
 
 const showTimeOptions = ref(false)
 const timeOptions = ref(['08:00', '09:00', '15:00', '17:00', '18:00'])
