@@ -101,9 +101,8 @@ function cleanWhatsapp() {
 function onPasteWhatsapp(event) {
   event.preventDefault()
   let pasted = (event.clipboardData || window.clipboardData).getData('text')
-  pasted = pasted.replace(/\s+/g, '')
+  pasted = pasted.replace(/[^\d+]/g, '')
   pasted = pasted.replace(/^\+57/, '')
-  pasted = pasted.replace(/[^\d]/g, '')
   newCustomer.value.whatsapp = pasted
 }
 
