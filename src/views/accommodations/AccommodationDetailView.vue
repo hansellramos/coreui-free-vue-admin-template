@@ -84,6 +84,54 @@
               </p>
             </CCol>
           </CRow>
+          <hr />
+          <CRow class="mt-3">
+            <CCol :xs="12">
+              <div class="d-flex justify-content-between align-items-center mb-3">
+                <h5 class="mb-0">Pagos</h5>
+                <CButton color="primary" size="sm" @click="$router.push(`/business/payments/new?accommodation_id=${route.params.id}`)">
+                  Registrar Pago
+                </CButton>
+              </div>
+              <CTable hover responsive v-if="payments.length > 0">
+                <CTableHead>
+                  <CTableRow>
+                    <CTableHeaderCell>Fecha</CTableHeaderCell>
+                    <CTableHeaderCell>Monto</CTableHeaderCell>
+                    <CTableHeaderCell>Método</CTableHeaderCell>
+                    <CTableHeaderCell>Referencia</CTableHeaderCell>
+                    <CTableHeaderCell>Estado</CTableHeaderCell>
+                    <CTableHeaderCell>Comprobante</CTableHeaderCell>
+                  </CTableRow>
+                </CTableHead>
+                <CTableBody>
+                  <CTableRow v-for="payment in payments" :key="payment.id">
+                    <CTableDataCell>{{ formatPaymentDate(payment.payment_date) }}</CTableDataCell>
+                    <CTableDataCell>{{ formatCurrency(payment.amount) }}</CTableDataCell>
+                    <CTableDataCell>{{ payment.payment_method || '—' }}</CTableDataCell>
+                    <CTableDataCell>{{ payment.reference || '—' }}</CTableDataCell>
+                    <CTableDataCell>
+                      <CBadge :color="payment.verified ? 'success' : 'warning'">
+                        {{ payment.verified ? 'Verificado' : 'Pendiente' }}
+                      </CBadge>
+                    </CTableDataCell>
+                    <CTableDataCell>
+                      <a v-if="payment.receipt_url" :href="payment.receipt_url" target="_blank" class="btn btn-sm btn-outline-info">
+                        Ver
+                      </a>
+                      <span v-else class="text-muted">—</span>
+                    </CTableDataCell>
+                  </CTableRow>
+                </CTableBody>
+              </CTable>
+              <div v-else class="text-muted text-center py-3">
+                No hay pagos registrados para esta reservación
+              </div>
+              <div v-if="payments.length > 0" class="mt-2 p-2 bg-light rounded">
+                <strong>Total pagado:</strong> {{ formatCurrency(totalPaid) }}
+              </div>
+            </CCol>
+          </CRow>
         </CCardBody>
         <CCardBody v-else>
           <p class="text-muted">Cargando...</p>
@@ -94,18 +142,44 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { useRoute } from 'vue-router'
 import { CIcon } from '@coreui/icons-vue'
 
 const route = useRoute()
 const accommodation = ref(null)
+const payments = ref([])
+
+const totalPaid = computed(() => {
+  return payments.value.reduce((sum, p) => sum + (parseFloat(p.amount) || 0), 0)
+})
 
 async function load() {
   const res = await fetch(`/api/accommodations/${route.params.id}`, { credentials: 'include' })
   if (res.ok) {
     accommodation.value = await res.json()
   }
+}
+
+async function loadPayments() {
+  try {
+    const res = await fetch(`/api/payments?accommodation_id=${route.params.id}`)
+    if (res.ok) {
+      payments.value = await res.json()
+    }
+  } catch (error) {
+    console.error('Error loading payments:', error)
+  }
+}
+
+function formatPaymentDate(date) {
+  if (!date) return '—'
+  return new Date(date).toLocaleDateString('es-CO', { day: '2-digit', month: 'short', year: 'numeric' })
+}
+
+function formatCurrency(amount) {
+  if (amount === null || amount === undefined) return '—'
+  return new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', maximumFractionDigits: 0 }).format(amount)
 }
 
 function formatDate(dateStr) {
@@ -165,5 +239,8 @@ function calcCheckout(timeStr, duration, dateStr) {
     ' ' + String(end.getUTCHours()).padStart(2, '0') + ':' + String(end.getUTCMinutes()).padStart(2, '0')
 }
 
-onMounted(load)
+onMounted(() => {
+  load()
+  loadPayments()
+})
 </script>
