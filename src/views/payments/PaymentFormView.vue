@@ -4,23 +4,31 @@
       <CCard class="mb-4">
         <CCardHeader class="d-flex justify-content-between align-items-center">
           <strong>{{ isEditing ? 'Editar Pago' : 'Registrar Pago' }}</strong>
-          <CButton color="secondary" size="sm" variant="outline" @click="$router.push('/business/payments')">
+          <CButton color="secondary" size="sm" variant="outline" @click="goBack">
             Cancelar
           </CButton>
         </CCardHeader>
         <CCardBody>
           <CForm @submit.prevent="savePayment">
             <CRow class="mb-3">
-              <CCol :md="6">
+              <CCol :md="4">
+                <CFormLabel>Tipo</CFormLabel>
+                <CFormSelect v-model="form.type">
+                  <option value="">Seleccionar...</option>
+                  <option value="accommodation">Reservación</option>
+                  <option value="other">Otro</option>
+                </CFormSelect>
+              </CCol>
+              <CCol :md="4">
                 <CFormLabel>Reservación</CFormLabel>
-                <CFormSelect v-model="form.accommodation">
+                <CFormSelect v-model="form.accommodation" :disabled="fromAccommodation">
                   <option value="">Sin asociar a reserva</option>
                   <option v-for="acc in accommodations" :key="acc.id" :value="acc.id">
                     {{ formatAccommodation(acc) }}
                   </option>
                 </CFormSelect>
               </CCol>
-              <CCol :md="6">
+              <CCol :md="4">
                 <CFormLabel>Fecha del pago</CFormLabel>
                 <CFormInput type="date" v-model="form.payment_date" />
               </CCol>
@@ -144,12 +152,14 @@ const route = useRoute()
 const router = useRouter()
 
 const isEditing = computed(() => route.params.id && route.params.id !== 'new')
+const fromAccommodation = computed(() => !!route.query.accommodation_id)
 const accommodations = ref([])
 const existingPayment = ref(null)
 const saving = ref(false)
 const showReceiptModal = ref(false)
 
 const form = ref({
+  type: '',
   accommodation: '',
   amount: '',
   payment_method: '',
@@ -158,6 +168,14 @@ const form = ref({
   notes: '',
   receipt_url: ''
 })
+
+const goBack = () => {
+  if (fromAccommodation.value) {
+    router.push(`/business/accommodations/${route.query.accommodation_id}`)
+  } else {
+    router.push('/business/payments')
+  }
+}
 
 const loadAccommodations = async () => {
   try {
@@ -178,6 +196,7 @@ const loadPayment = async () => {
       const payment = await response.json()
       existingPayment.value = payment
       form.value = {
+        type: payment.type || '',
         accommodation: payment.accommodation || '',
         amount: payment.amount || '',
         payment_method: payment.payment_method || '',
@@ -234,7 +253,11 @@ const savePayment = async () => {
     })
     
     if (response.ok) {
-      router.push('/business/payments')
+      if (fromAccommodation.value) {
+        router.push(`/business/accommodations/${route.query.accommodation_id}`)
+      } else {
+        router.push('/business/payments')
+      }
     } else {
       const error = await response.json()
       alert(error.error || 'Error al guardar el pago')
@@ -250,5 +273,10 @@ const savePayment = async () => {
 onMounted(() => {
   loadAccommodations()
   loadPayment()
+  
+  if (route.query.accommodation_id) {
+    form.value.accommodation = route.query.accommodation_id
+    form.value.type = 'accommodation'
+  }
 })
 </script>

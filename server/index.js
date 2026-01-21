@@ -435,8 +435,9 @@ async function startServer() {
 
   app.post('/api/payments', isAuthenticated, async (req, res) => {
     try {
-      const { accommodation, amount, payment_method, payment_date, reference, notes, receipt_url } = req.body;
+      const { type, accommodation, amount, payment_method, payment_date, reference, notes, receipt_url } = req.body;
       const data = {
+        type: type || null,
         accommodation: accommodation || null,
         amount: amount ? parseFloat(amount) : null,
         payment_method: payment_method || null,
@@ -459,8 +460,9 @@ async function startServer() {
 
   app.put('/api/payments/:id', isAuthenticated, async (req, res) => {
     try {
-      const { accommodation, amount, payment_method, payment_date, reference, notes, receipt_url } = req.body;
+      const { type, accommodation, amount, payment_method, payment_date, reference, notes, receipt_url } = req.body;
       const data = {
+        type: type || null,
         accommodation: accommodation || null,
         amount: amount ? parseFloat(amount) : null,
         payment_method: payment_method || null,
