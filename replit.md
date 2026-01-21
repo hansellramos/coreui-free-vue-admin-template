@@ -44,6 +44,8 @@ The Express backend runs on port 3000 and provides:
 - `/api/venues` - CRUD for venues
 - `/api/contacts` - CRUD for contacts
 - `/api/accommodations` - CRUD for accommodations
+- `/api/payments` - CRUD for payments with verification workflow
+- `/api/payments/:id/verify` - Verify/unverify a payment (protected)
 - `/api/countries` - List countries
 - `/api/states` - List states (filter by country)
 - `/api/users` - List users (protected)
@@ -57,6 +59,7 @@ A PostgreSQL database is available with the following tables:
 - `venues` - Venues/locations
 - `contacts` - Contact information
 - `accommodations` - Accommodation bookings
+- `payments` - Payment records with verification and audit trails
 - `countries` - Country reference data
 - `states` - State/province reference data
 - `contact_organization` - Many-to-many relationship table
