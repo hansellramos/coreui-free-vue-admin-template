@@ -53,10 +53,10 @@
                 </div>
                 <div class="col-8">
                   <div class="venue-name">
-                    <h4>{{ item.venue.name }}</h4>
+                    <h4>{{ item.venue_data?.name || 'Sin venue' }}</h4>
                   </div>
                   <div class="event-customer">
-                    <h5>Customer: {{ item.customer?.fullname || 'N/A' }}</h5>
+                    <h5>Cliente: {{ item.customer_data?.fullname || 'N/A' }}</h5>
                   </div>
                 </div>
               </CCardBody>
@@ -105,7 +105,12 @@ const fetchAccommodations = async () => {
     
     const response = await fetch(url, { credentials: 'include' })
     if (response.ok) {
-      accommodations.value = await response.json()
+      const data = await response.json()
+      accommodations.value = data.map(item => ({
+        ...item,
+        date: item.date ? item.date.split('T')[0] : null,
+        time: item.time ? item.time.split('T')[1]?.substring(0, 5) : null
+      }))
     }
   } catch (error) {
     console.error('Error fetching accommodations:', error)
