@@ -188,7 +188,60 @@ async function startServer() {
       const accommodations = await prisma.accommodations.findMany({
         orderBy: { date: 'desc' }
       });
-      res.json(accommodations);
+      
+      // Get unique venue and customer IDs
+      const venueIds = [...new Set(accommodations.filter(a => a.venue).map(a => a.venue))];
+      const customerIds = [...new Set(accommodations.filter(a => a.customer).map(a => a.customer))];
+      
+      // Fetch venues with their organizations
+      const venues = venueIds.length > 0 ? await prisma.venues.findMany({
+        where: { id: { in: venueIds } }
+      }) : [];
+      
+      // Fetch organizations for venues
+      const orgIds = [...new Set(venues.filter(v => v.organization).map(v => v.organization))];
+      const organizations = orgIds.length > 0 ? await prisma.organizations.findMany({
+        where: { id: { in: orgIds } }
+      }) : [];
+      const orgsMap = {};
+      organizations.forEach(o => { orgsMap[o.id] = o; });
+      
+      // Build venues map with organization data
+      const venuesMap = {};
+      venues.forEach(v => { 
+        venuesMap[v.id] = {
+          ...v,
+          organization_data: v.organization ? orgsMap[v.organization] : null
+        };
+      });
+      
+      // Fetch customers (contacts) with their user data
+      const customers = customerIds.length > 0 ? await prisma.contacts.findMany({
+        where: { id: { in: customerIds } }
+      }) : [];
+      const userIds = customers.filter(c => c.user).map(c => c.user);
+      const users = userIds.length > 0 ? await prisma.users.findMany({
+        where: { id: { in: userIds } }
+      }) : [];
+      const usersMap = {};
+      users.forEach(u => { usersMap[u.id] = u; });
+      
+      const customersMap = {};
+      customers.forEach(c => { 
+        customersMap[c.id] = {
+          ...c,
+          user_data: c.user ? usersMap[c.user] : null
+        };
+      });
+      
+      // Enrich accommodations with related data
+      const enriched = accommodations.map(a => ({
+        ...a,
+        venue_data: a.venue ? venuesMap[a.venue] : null,
+        customer_data: a.customer ? customersMap[a.customer] : null
+      }));
+      
+      res.json(enriched);
     } catch (error) {
       res.status(500).json({ error: error.message });
     }

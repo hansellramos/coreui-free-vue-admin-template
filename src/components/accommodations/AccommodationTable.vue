@@ -1,21 +1,30 @@
 <template>
   <div>
     <div class="mb-3">
-      <label for="dateFilter" class="form-label">Filter by Date:</label>
-      <input id="dateFilter" type="date" v-model="dateInput" class="form-control" @change="addDate" />
-      <div v-if="selectedDates.length" class="d-flex align-items-center flex-wrap mt-2">
-        <div v-for="date in selectedDates" :key="date" class="filter-chip me-2 mb-2">
-          {{ date }}
-          <span class="filter-chip-close" @click="removeDate(date)">&times;</span>
+      <div class="row g-3">
+        <div class="col-md-6">
+          <label for="dateFilter" class="form-label">Filter by Date:</label>
+          <input id="dateFilter" type="date" v-model="dateInput" class="form-control" @change="addDate" />
+          <div v-if="selectedDates.length" class="d-flex align-items-center flex-wrap mt-2">
+            <div v-for="date in selectedDates" :key="date" class="filter-chip me-2 mb-2">
+              {{ date }}
+              <span class="filter-chip-close" @click="removeDate(date)">&times;</span>
+            </div>
+          </div>
+          <CButton v-if="selectedDates.length" size="sm" color="secondary" class="mt-2" @click="clearAllDates">Clear All</CButton>
+        </div>
+        <div class="col-md-6">
+          <label for="searchFilter" class="form-label">Search (customer:name or organization:name):</label>
+          <input id="searchFilter" type="text" v-model="searchQuery" class="form-control" placeholder="e.g. customer:hansel or organization:baluna" />
         </div>
       </div>
-      <CButton v-if="selectedDates.length" size="sm" color="secondary" class="mt-2" @click="clearAllDates">Clear All</CButton>
     </div>
     <CButton color="primary" class="mb-3" @click="$router.push('/business/accommodations/create')">New Accommodation</CButton>
     <CTable>
       <thead>
         <tr>
           <th>Venue</th>
+          <th>Organization</th>
           <th>Date</th>
           <th>Duration</th>
           <th>Check In</th>
@@ -25,13 +34,14 @@
         </tr>
       </thead>
       <tbody>
-        <tr v-for="item in accommodations" :key="item.id">
-          <td>{{ item.venues?.name || '—' }}</td>
-          <td>{{ item.date }}</td>
+        <tr v-for="item in filteredAccommodations" :key="item.id">
+          <td>{{ item.venue_data?.name || '—' }}</td>
+          <td>{{ item.venue_data?.organization_data?.name || '—' }}</td>
+          <td>{{ formatDate(item.date) }}</td>
           <td>{{ formatDuration(item.duration) }}</td>
-          <td>{{ formatCheckIn(item.time) }}</td>
+          <td>{{ formatTime(item.time) }}</td>
           <td>{{ calcCheckout(item.time, item.duration, item.date) }}</td>
-          <td>{{ item.contacts?.fullname || item.contacts?.users?.email || '—' }}</td>
+          <td>{{ item.customer_data?.fullname || item.customer_data?.user_data?.email || '—' }}</td>
           <td>
             <CButton size="sm" color="info" @click="$router.push(`/business/accommodations/${item.id}`)">View</CButton>
             <CButton size="sm" color="warning" class="ms-2" @click="$router.push(`/business/accommodations/${item.id}/edit`)">Edit</CButton>
@@ -44,16 +54,53 @@
 </template>
 
 <script setup>
-import { ref, onMounted, watch } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { fetchAccommodations, deleteAccommodation } from '@/services/accommodationService'
 
 const accommodations = ref([])
 const dateInput = ref('')
 const selectedDates = ref([])
+const searchQuery = ref('')
 
 async function load() {
   accommodations.value = await fetchAccommodations(selectedDates.value)
 }
+
+const filteredAccommodations = computed(() => {
+  if (!searchQuery.value.trim()) return accommodations.value
+  
+  const query = searchQuery.value.trim().toLowerCase()
+  
+  // Parse filter syntax: customer:name or organization:name
+  const customerMatch = query.match(/customer:(\S+)/)
+  const orgMatch = query.match(/organization:(\S+)/)
+  
+  return accommodations.value.filter(item => {
+    let matches = true
+    
+    if (customerMatch) {
+      const customerSearch = customerMatch[1].toLowerCase()
+      const customerName = (item.customer_data?.fullname || item.customer_data?.user_data?.email || '').toLowerCase()
+      matches = matches && customerName.includes(customerSearch)
+    }
+    
+    if (orgMatch) {
+      const orgSearch = orgMatch[1].toLowerCase()
+      const orgName = (item.venue_data?.organization_data?.name || '').toLowerCase()
+      matches = matches && orgName.includes(orgSearch)
+    }
+    
+    // If no specific filter syntax, search all fields
+    if (!customerMatch && !orgMatch) {
+      const customerName = (item.customer_data?.fullname || item.customer_data?.user_data?.email || '').toLowerCase()
+      const venueName = (item.venue_data?.name || '').toLowerCase()
+      const orgName = (item.venue_data?.organization_data?.name || '').toLowerCase()
+      matches = customerName.includes(query) || venueName.includes(query) || orgName.includes(query)
+    }
+    
+    return matches
+  })
+})
 
 function addDate() {
   if (dateInput.value && !selectedDates.value.includes(dateInput.value)) {
@@ -82,31 +129,69 @@ async function onDelete(item) {
 
 function formatDuration(seconds) {
   if (!seconds) return '—'
-  if (seconds % 86400 === 0) return (seconds / 86400) + 'D'
-  if (seconds % 3600 === 0) return (seconds / 3600) + 'H'
-  if (seconds >= 3600) {
-    const d = Math.floor(seconds / 86400)
-    const h = Math.floor((seconds % 86400) / 3600)
+  const s = Number(seconds)
+  if (s % 86400 === 0) return (s / 86400) + 'D'
+  if (s % 3600 === 0) return (s / 3600) + 'H'
+  if (s >= 3600) {
+    const d = Math.floor(s / 86400)
+    const h = Math.floor((s % 86400) / 3600)
     return (d ? d + 'D ' : '') + (h ? h + 'H' : '')
   }
-  return seconds + 's'
+  return s + 's'
 }
 
-function formatCheckIn(time) {
-  return time ? time.slice(0,5) : '—'
+function formatDate(dateStr) {
+  if (!dateStr) return '—'
+  const d = new Date(dateStr)
+  return d.toLocaleDateString('es-CO', { year: 'numeric', month: '2-digit', day: '2-digit' })
 }
 
-function calcCheckout(time, duration, date) {
-  if (!time || !duration || !date) return '—'
-  const [h, m] = time.split(':').map(Number)
-  const start = new Date(date + 'T' + time)
-  const end = new Date(start.getTime() + duration * 1000)
-  const yyyy = end.getFullYear()
-  const mm = String(end.getMonth() + 1).padStart(2, '0')
-  const dd = String(end.getDate()).padStart(2, '0')
-  const hh = String(end.getHours()).padStart(2, '0')
-  const min = String(end.getMinutes()).padStart(2, '0')
-  return `${yyyy}-${mm}-${dd} ${hh}:${min}`
+function formatTime(timeStr) {
+  if (!timeStr) return '—'
+  // Handle ISO time format like "1970-01-01T15:00:00.000Z"
+  if (timeStr.includes('T')) {
+    const d = new Date(timeStr)
+    const hours = String(d.getUTCHours()).padStart(2, '0')
+    const mins = String(d.getUTCMinutes()).padStart(2, '0')
+    return `${hours}:${mins}`
+  }
+  return timeStr.slice(0, 5)
+}
+
+function calcCheckout(timeStr, duration, dateStr) {
+  if (!timeStr || !duration || !dateStr) return '—'
+  
+  // Parse the date in UTC
+  const dateObj = new Date(dateStr)
+  const year = dateObj.getUTCFullYear()
+  const month = dateObj.getUTCMonth()
+  const day = dateObj.getUTCDate()
+  
+  // Parse time from ISO format (stored as UTC)
+  let hours = 0, minutes = 0
+  if (timeStr.includes('T')) {
+    const timeDate = new Date(timeStr)
+    hours = timeDate.getUTCHours()
+    minutes = timeDate.getUTCMinutes()
+  } else {
+    const [h, m] = timeStr.split(':').map(Number)
+    hours = h
+    minutes = m
+  }
+  
+  // Build start timestamp in UTC and add duration
+  const startMs = Date.UTC(year, month, day, hours, minutes)
+  const endMs = startMs + Number(duration) * 1000
+  const end = new Date(endMs)
+  
+  // Format in UTC to avoid timezone shifts
+  const endYear = end.getUTCFullYear()
+  const endMonth = String(end.getUTCMonth() + 1).padStart(2, '0')
+  const endDay = String(end.getUTCDate()).padStart(2, '0')
+  const endHours = String(end.getUTCHours()).padStart(2, '0')
+  const endMins = String(end.getUTCMinutes()).padStart(2, '0')
+  
+  return `${endDay}/${endMonth}/${endYear} ${endHours}:${endMins}`
 }
 
 onMounted(load)
