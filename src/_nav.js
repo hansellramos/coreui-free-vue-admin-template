@@ -60,6 +60,12 @@ export default [
     icon: 'cil-people',
   },
   {
+    component: 'CNavItem',
+    name: 'Settings',
+    to: '/settings',
+    icon: 'cil-settings',
+  },
+  {
     component: 'CNavTitle',
     name: 'Theme',
   },

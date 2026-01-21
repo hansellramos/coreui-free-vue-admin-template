@@ -1,12 +1,15 @@
-import { defineComponent, h, onMounted, ref, resolveComponent } from 'vue'
+import { defineComponent, h, onMounted, ref, resolveComponent, computed } from 'vue'
 import { RouterLink, useRoute } from 'vue-router'
 
 import { cilExternalLink } from '@coreui/icons'
 import { CBadge, CSidebarNav, CNavItem, CNavGroup, CNavTitle } from '@coreui/vue'
 import nav from '@/_nav.js'
+import { useSettingsStore } from '@/stores/settings.js'
 
 import simplebar from 'simplebar-vue'
 import 'simplebar-vue/dist/simplebar.min.css'
+
+const devOnlySections = ['Theme', 'Components', 'Extras']
 
 const normalizePath = (path) =>
   decodeURI(path)
@@ -49,10 +52,28 @@ const AppSidebarNav = defineComponent({
   },
   setup() {
     const route = useRoute()
+    const settingsStore = useSettingsStore()
     const firstRender = ref(true)
 
     onMounted(() => {
       firstRender.value = false
+    })
+
+    const filteredNav = computed(() => {
+      if (settingsStore.developmentMode) {
+        return nav
+      }
+      let skip = false
+      return nav.filter(item => {
+        if (item.component === 'CNavTitle' && devOnlySections.includes(item.name)) {
+          skip = true
+          return false
+        }
+        if (item.component === 'CNavTitle' && !devOnlySections.includes(item.name)) {
+          skip = false
+        }
+        return !skip
+      })
     })
 
     const renderItem = (item) => {
@@ -179,7 +200,7 @@ const AppSidebarNav = defineComponent({
           as: simplebar,
         },
         {
-          default: () => nav.map((item) => renderItem(item)),
+          default: () => filteredNav.value.map((item) => renderItem(item)),
         },
       )
   },

@@ -49,6 +49,11 @@ const routes = [
         component: () => import('@/views/pages/Home.vue'),
       },
       {
+        path: '/settings',
+        name: 'Settings',
+        component: () => import('@/views/pages/Settings.vue'),
+      },
+      {
         path: '/next',
         name: 'Next',
         component: () => import('@/views/pages/Next.vue'),
