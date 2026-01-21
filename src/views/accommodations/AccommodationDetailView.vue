@@ -54,6 +54,20 @@
               <p>{{ new Date(accommodation.created_at).toLocaleString('es-CO') }}</p>
             </CCol>
           </CRow>
+          <CRow class="mt-3">
+            <CCol :md="4">
+              <h6 class="text-muted">Total Asistentes</h6>
+              <p class="fs-4 fw-bold">{{ (accommodation.adults || 0) + (accommodation.children || 0) }}</p>
+            </CCol>
+            <CCol :md="4">
+              <h6 class="text-muted">Adultos</h6>
+              <p class="fs-5">{{ accommodation.adults || 0 }}</p>
+            </CCol>
+            <CCol :md="4">
+              <h6 class="text-muted">Niños</h6>
+              <p class="fs-5">{{ accommodation.children || 0 }}</p>
+            </CCol>
+          </CRow>
           <hr />
           <CRow class="mt-3" v-if="accommodation.customer_data">
             <CCol :xs="12">

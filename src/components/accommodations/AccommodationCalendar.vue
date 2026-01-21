@@ -74,6 +74,14 @@ const filteredAccommodations = computed(() => {
   })
 })
 
+function formatAttendees(adults, children) {
+  const a = adults || 0
+  const c = children || 0
+  const total = a + c
+  if (total === 0) return ''
+  return `${total}(${a}A/${c}N)`
+}
+
 const events = computed(() => {
   return filteredAccommodations.value.map(acc => {
     const dateStr = acc.date ? acc.date.split('T')[0] : null
@@ -95,10 +103,11 @@ const events = computed(() => {
     const customerName = acc.customer_data?.fullname || acc.customer_data?.user_data?.email || 'Sin cliente'
     const venueName = acc.venue_data?.name || 'Sin venue'
     const orgName = acc.venue_data?.organization_data?.name || ''
+    const attendees = formatAttendees(acc.adults, acc.children)
     
     return {
       id: acc.id,
-      title: `${customerName} - ${venueName}${orgName ? ' (' + orgName + ')' : ''}`,
+      title: `${attendees ? attendees + ' ' : ''}${customerName} - ${venueName}${orgName ? ' (' + orgName + ')' : ''}`,
       start: start.toISOString(),
       end: end.toISOString(),
       backgroundColor: getColorByVenue(acc.venue),

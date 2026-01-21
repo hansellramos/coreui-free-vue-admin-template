@@ -58,6 +58,9 @@
                   <div class="event-customer">
                     <h5>Cliente: {{ item.customer_data?.fullname || 'N/A' }}</h5>
                   </div>
+                  <div v-if="(item.adults || 0) + (item.children || 0) > 0" class="event-attendees badge bg-secondary">
+                    {{ formatAttendees(item.adults, item.children) }}
+                  </div>
                   <div class="customer-links mt-2">
                     <a 
                       v-if="item.customer_data?.whatsapp" 
@@ -249,6 +252,14 @@ const formatDurationHuman = (duration) => {
   } else {
     return `${hours}H`
   }
+}
+
+const formatAttendees = (adults, children) => {
+  const a = adults || 0
+  const c = children || 0
+  const total = a + c
+  if (total === 0) return ''
+  return `${total}(${a}A/${c}N)`
 }
 
 onMounted(async () => {
