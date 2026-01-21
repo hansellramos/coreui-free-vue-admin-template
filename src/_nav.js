@@ -51,6 +51,12 @@ export default [
     icon: 'cil-calendar',
   },
   {
+    component: 'CNavItem',
+    name: 'Pagos',
+    to: '/business/payments',
+    icon: 'cil-dollar',
+  },
+  {
     component: 'CNavTitle',
     name: 'System',
   },
