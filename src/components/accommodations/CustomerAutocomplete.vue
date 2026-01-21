@@ -9,7 +9,7 @@
     />
     <ul v-if="showDropdown && (filteredContacts.length || query)" class="list-group position-absolute w-100 mt-1" style="z-index:10;max-height:220px;overflow-y:auto;">
       <li v-for="contact in filteredContacts" :key="contact.id" class="list-group-item list-group-item-action" style="cursor:pointer;" @mousedown.prevent="selectContact(contact)">
-        {{ contact.fullname }} <span class="text-muted">{{ contact.phone || contact.user?.email }}</span>
+        {{ contact.fullname }} <span class="text-muted">{{ contact.whatsapp || contact.user?.email }}</span>
       </li>
       <li v-if="query && !filteredContacts.length && !showCreateForm" class="list-group-item list-group-item-action text-primary" style="cursor:pointer;" @mousedown.prevent="startCreateCustomer">
         + Crear nuevo cliente "{{ query }}"
@@ -26,13 +26,13 @@
           <CFormInput v-model="newCustomer.fullname" placeholder="Nombre del cliente" required />
         </div>
         <div class="mb-3">
-          <CFormLabel>Teléfono</CFormLabel>
-          <CFormInput v-model="newCustomer.phone" placeholder="Número de teléfono" required />
+          <CFormLabel>WhatsApp</CFormLabel>
+          <CFormInput v-model="newCustomer.whatsapp" placeholder="Número de WhatsApp" type="number" required />
         </div>
       </CModalBody>
       <CModalFooter>
         <CButton color="secondary" @click="cancelCreate">Cancelar</CButton>
-        <CButton color="primary" @click="createCustomer" :disabled="!newCustomer.fullname || !newCustomer.phone">Crear</CButton>
+        <CButton color="primary" @click="createCustomer" :disabled="!newCustomer.fullname || !newCustomer.whatsapp">Crear</CButton>
       </CModalFooter>
     </CModal>
   </div>
@@ -52,14 +52,14 @@ const query = ref('')
 const showDropdown = ref(false)
 const contacts = ref([])
 const showCreateForm = ref(false)
-const newCustomer = ref({ fullname: '', phone: '' })
+const newCustomer = ref({ fullname: '', whatsapp: '' })
 
 const filteredContacts = computed(() => {
   if (!query.value) return contacts.value.slice(0, 10)
   const q = query.value.toLowerCase()
   return contacts.value.filter(c =>
     (c.fullname && c.fullname.toLowerCase().includes(q)) ||
-    (c.phone && c.phone.includes(q)) ||
+    (c.whatsapp && String(c.whatsapp).includes(q)) ||
     (c.user && c.user.email && c.user.email.toLowerCase().includes(q))
   ).slice(0, 10)
 })
@@ -79,21 +79,21 @@ function hideDropdownWithDelay() {
 }
 
 function startCreateCustomer() {
-  newCustomer.value = { fullname: query.value, phone: '' }
+  newCustomer.value = { fullname: query.value, whatsapp: '' }
   showCreateForm.value = true
   showDropdown.value = false
 }
 
 function cancelCreate() {
   showCreateForm.value = false
-  newCustomer.value = { fullname: '', phone: '' }
+  newCustomer.value = { fullname: '', whatsapp: '' }
 }
 
 async function createCustomer() {
   try {
     const created = await createContact({
       fullname: newCustomer.value.fullname,
-      phone: newCustomer.value.phone
+      whatsapp: newCustomer.value.whatsapp ? Number(newCustomer.value.whatsapp) : null
     })
     if (created && created.id) {
       contacts.value.push(created)
@@ -101,7 +101,7 @@ async function createCustomer() {
       emit('update:modelValue', created.id)
     }
     showCreateForm.value = false
-    newCustomer.value = { fullname: '', phone: '' }
+    newCustomer.value = { fullname: '', whatsapp: '' }
   } catch (error) {
     console.error('Error creating customer:', error)
   }
