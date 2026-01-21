@@ -38,5 +38,5 @@ import { CIcon } from '@coreui/icons-vue'
 import AccommodationTable from '@/components/accommodations/AccommodationTable.vue'
 import AccommodationCalendar from '@/components/accommodations/AccommodationCalendar.vue'
 
-const viewMode = ref('table')
+const viewMode = ref('calendar')
 </script>
