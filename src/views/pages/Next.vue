@@ -58,6 +58,23 @@
                   <div class="event-customer">
                     <h5>Cliente: {{ item.customer_data?.fullname || 'N/A' }}</h5>
                   </div>
+                  <div class="customer-links mt-2">
+                    <a 
+                      v-if="item.customer_data?.whatsapp" 
+                      :href="'https://wa.me/57' + item.customer_data.whatsapp" 
+                      target="_blank" 
+                      class="btn btn-sm btn-success me-2"
+                    >
+                      <i class="cib-whatsapp"></i> WhatsApp
+                    </a>
+                    <a 
+                      v-if="item.customer_data?.email" 
+                      :href="'mailto:' + item.customer_data.email" 
+                      class="btn btn-sm btn-primary"
+                    >
+                      <i class="cil-envelope-closed"></i> Email
+                    </a>
+                  </div>
                 </div>
               </CCardBody>
             </CCard>
