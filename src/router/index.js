@@ -4,6 +4,7 @@ import { createRouter, createWebHashHistory } from 'vue-router'
 import DefaultLayout from '@/layouts/DefaultLayout'
 import accommodationsRoutes from './routes/accommodations'
 import paymentsRoutes from './routes/payments'
+import profilesRoutes from './routes/profiles'
 
 const routes = [
   {
@@ -402,6 +403,7 @@ const routes = [
       },
       ...accommodationsRoutes,
       ...paymentsRoutes,
+      ...profilesRoutes,
     ],
   },
   {

@@ -68,6 +68,12 @@ export default [
   },
   {
     component: 'CNavItem',
+    name: 'Perfiles',
+    to: '/admin/profiles',
+    icon: 'cil-shield-alt',
+  },
+  {
+    component: 'CNavItem',
     name: 'Settings',
     to: '/settings',
     icon: 'cil-settings',

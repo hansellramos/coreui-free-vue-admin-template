@@ -30,16 +30,37 @@ const form = ref({
   email: '', 
   display_name: '', 
   avatar_url: '', 
-  role: 'user' 
+  role: 'user',
+  profile_id: '',
+  organization_ids: []
 })
 const isEdit = computed(() => !!route.params.id)
+
+async function loadUserOrganizations(userId) {
+  try {
+    const res = await fetch(`/api/users/${userId}/organizations`, { credentials: 'include' })
+    if (res.ok) {
+      const orgs = await res.json()
+      return orgs.map(o => o.id)
+    }
+  } catch (error) {
+    console.error('Error loading user organizations:', error)
+  }
+  return []
+}
 
 onMounted(async () => {
   if (isEdit.value) {
     try {
       const user = await getUserById(route.params.id)
       if (user) {
-        form.value = { ...form.value, ...user }
+        const orgIds = await loadUserOrganizations(route.params.id)
+        form.value = { 
+          ...form.value, 
+          ...user,
+          profile_id: user.profile_id || '',
+          organization_ids: orgIds
+        }
       }
     } catch (error) {
       console.error('Error loading user:', error)
@@ -49,10 +70,26 @@ onMounted(async () => {
 
 async function handleSubmit(data) {
   try {
+    const { organization_ids, ...userData } = data
+    
     if (isEdit.value) {
-      await updateUser(route.params.id, data)
+      await updateUser(route.params.id, userData)
+      
+      await fetch(`/api/users/${route.params.id}/profile`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ profile_id: data.profile_id || null })
+      })
+      
+      await fetch(`/api/users/${route.params.id}/organizations`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ organization_ids: organization_ids || [] })
+      })
     } else {
-      await createUser(data)
+      await createUser(userData)
     }
     router.push('/users')
   } catch (error) {
