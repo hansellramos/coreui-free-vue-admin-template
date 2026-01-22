@@ -126,8 +126,8 @@ const savingId = ref(null)
 const selectedUserId = ref('')
 
 const availableUsers = computed(() => {
-  const superAdminIds = superAdmins.value.map(a => a.id)
-  return allUsers.value.filter(u => !superAdminIds.includes(u.id))
+  const superAdminIds = (superAdmins.value || []).map(a => a.id)
+  return (allUsers.value || []).filter(u => !superAdminIds.includes(u.id))
 })
 
 async function loadSuperAdmins() {
@@ -154,7 +154,7 @@ async function loadSuperAdmins() {
 }
 
 watch(() => user.value?.is_super_admin, (isSuperAdmin) => {
-  if (isSuperAdmin && superAdmins.value.length === 0) {
+  if (isSuperAdmin && (!superAdmins.value || superAdmins.value.length === 0)) {
     loadSuperAdmins()
   }
 }, { immediate: true })
