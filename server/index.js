@@ -833,7 +833,10 @@ async function startServer() {
   // Super Admin Management (only accessible to super admins)
   app.get('/api/users/super-admins', isAuthenticated, async (req, res) => {
     try {
-      if (!req.user.is_super_admin) {
+      const userId = req.user.claims?.sub;
+      const currentUser = await prisma.users.findUnique({ where: { id: userId } });
+      
+      if (!currentUser?.is_super_admin) {
         return res.status(403).json({ error: 'Solo super admins pueden acceder' });
       }
       const superAdmins = await prisma.users.findMany({
@@ -849,7 +852,10 @@ async function startServer() {
 
   app.put('/api/users/:id/super-admin', isAuthenticated, async (req, res) => {
     try {
-      if (!req.user.is_super_admin) {
+      const userId = req.user.claims?.sub;
+      const currentUser = await prisma.users.findUnique({ where: { id: userId } });
+      
+      if (!currentUser?.is_super_admin) {
         return res.status(403).json({ error: 'Solo super admins pueden modificar este permiso' });
       }
       
@@ -861,7 +867,7 @@ async function startServer() {
       const newValue = req.body.is_super_admin;
       
       // Cannot remove super admin from yourself (any value that results in false)
-      if (req.params.id === req.user.id && !newValue) {
+      if (req.params.id === currentUser.id && !newValue) {
         return res.status(400).json({ error: 'No puedes quitarte el permiso de super admin a ti mismo' });
       }
       
