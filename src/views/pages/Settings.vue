@@ -31,6 +31,19 @@
             Esta sección solo es visible para super administradores. Desde aquí puedes gestionar los permisos de super admin de otros usuarios.
           </p>
           
+          <div class="mb-4 p-3 bg-light rounded">
+            <CFormCheck 
+              id="godModeViewAll"
+              v-model="settingsStore.godModeViewAll"
+              label="Ver todas las organizaciones"
+            />
+            <div class="form-text text-muted">
+              Cuando está habilitado, podrás ver y gestionar todas las organizaciones del sistema. Si está deshabilitado, solo verás las organizaciones asignadas a tu usuario.
+            </div>
+          </div>
+          
+          <hr class="my-4" />
+          
           <h6 class="mb-3">Super Admins Actuales</h6>
           
           <div v-if="loadingSuperAdmins" class="text-center py-3">
@@ -143,9 +156,6 @@ async function loadSuperAdmins() {
     if (adminsRes.ok) {
       const adminsData = await adminsRes.json()
       superAdmins.value = Array.isArray(adminsData) ? adminsData : []
-      console.log('Loaded super admins:', superAdmins.value)
-    } else {
-      console.error('Error loading super admins:', adminsRes.status, await adminsRes.text())
     }
     if (usersRes.ok) {
       const usersData = await usersRes.json()
@@ -159,9 +169,7 @@ async function loadSuperAdmins() {
 }
 
 watch(() => user.value?.is_super_admin, (isSuperAdmin) => {
-  console.log('Watch triggered - is_super_admin:', isSuperAdmin, 'user:', user.value)
   if (isSuperAdmin && (!superAdmins.value || superAdmins.value.length === 0)) {
-    console.log('Calling loadSuperAdmins()')
     loadSuperAdmins()
   }
 }, { immediate: true })

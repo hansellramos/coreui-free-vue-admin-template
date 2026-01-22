@@ -143,11 +143,9 @@ async function setupAuth(app) {
   app.get('/api/auth/user', isAuthenticated, async (req, res) => {
     try {
       const userId = String(req.user.claims.sub);
-      console.log('auth/user - userId:', userId, 'type:', typeof userId);
       const user = await prisma.users.findUnique({
         where: { id: userId }
       });
-      console.log('auth/user - found user:', user?.email, 'is_super_admin:', user?.is_super_admin);
       res.json(user);
     } catch (error) {
       console.error('Error fetching user:', error);

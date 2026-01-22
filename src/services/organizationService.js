@@ -1,7 +1,14 @@
 const API_BASE = '/api';
 
-export async function fetchOrganizations() {
-  const response = await fetch(`${API_BASE}/organizations`, {
+export async function fetchOrganizations(options = {}) {
+  const params = new URLSearchParams();
+  if (options.viewAll) {
+    params.append('viewAll', 'true');
+  }
+  const queryString = params.toString();
+  const url = `${API_BASE}/organizations${queryString ? `?${queryString}` : ''}`;
+  
+  const response = await fetch(url, {
     credentials: 'include'
   });
   if (!response.ok) {

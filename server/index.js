@@ -129,11 +129,22 @@ async function startServer() {
 
   app.get('/api/organizations', async (req, res) => {
     try {
-      const accessibleOrgIds = await getAccessibleOrganizationIds(req.userPermissions);
+      const viewAll = req.query.viewAll === 'true';
+      let whereClause = {};
       
-      const whereClause = accessibleOrgIds !== null 
-        ? { id: { in: accessibleOrgIds } }
-        : {};
+      if (viewAll && req.user) {
+        const userId = String(req.user.claims?.sub);
+        const currentUser = await prisma.users.findUnique({ where: { id: userId } });
+        if (currentUser?.is_super_admin) {
+          whereClause = {};
+        } else {
+          const accessibleOrgIds = await getAccessibleOrganizationIds(req.userPermissions);
+          whereClause = accessibleOrgIds !== null ? { id: { in: accessibleOrgIds } } : {};
+        }
+      } else {
+        const accessibleOrgIds = await getAccessibleOrganizationIds(req.userPermissions);
+        whereClause = accessibleOrgIds !== null ? { id: { in: accessibleOrgIds } } : {};
+      }
       
       const organizations = await prisma.organizations.findMany({
         where: whereClause,
@@ -743,10 +754,7 @@ async function startServer() {
   app.get('/api/users/super-admins', isAuthenticated, async (req, res) => {
     try {
       const userId = String(req.user.claims?.sub);
-      console.log('super-admins endpoint - userId:', userId);
-      
       const currentUser = await prisma.users.findUnique({ where: { id: userId } });
-      console.log('super-admins endpoint - currentUser:', currentUser?.email, 'is_super_admin:', currentUser?.is_super_admin);
       
       if (!currentUser?.is_super_admin) {
         return res.status(403).json({ error: 'Solo super admins pueden acceder' });
@@ -756,7 +764,6 @@ async function startServer() {
         orderBy: { email: 'asc' },
         select: { id: true, email: true, display_name: true, avatar_url: true }
       });
-      console.log('super-admins endpoint - found:', superAdmins.length, 'admins');
       res.json(superAdmins);
     } catch (error) {
       console.error('super-admins endpoint error:', error);

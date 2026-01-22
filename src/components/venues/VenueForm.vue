@@ -144,6 +144,11 @@ import MapboxGeocoder from '@mapbox/mapbox-gl-geocoder'
 import 'mapbox-gl/dist/mapbox-gl.css'
 import '@mapbox/mapbox-gl-geocoder/dist/mapbox-gl-geocoder.css'
 import { fetchOrganizations } from '@/services/organizationService'
+import { useSettingsStore } from '@/stores/settings'
+import { useAuth } from '@/composables/useAuth'
+
+const settingsStore = useSettingsStore()
+const { user } = useAuth()
 
 const props = defineProps({
   modelValue: {
@@ -214,7 +219,8 @@ function onCancel() {
 }
 
 onMounted(async () => {
-  organizations.value = await fetchOrganizations()
+  const viewAll = user.value?.is_super_admin && settingsStore.godModeViewAll
+  organizations.value = await fetchOrganizations({ viewAll })
   
   mapboxgl.accessToken = token
   const initialCenter = form.value.longitude && form.value.latitude

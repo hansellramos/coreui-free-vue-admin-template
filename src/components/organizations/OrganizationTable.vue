@@ -48,9 +48,11 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, watch } from 'vue'
 import { RouterLink, useRouter } from 'vue-router'
 import { fetchOrganizations, deleteOrganization } from '@/services/organizationService'
+import { useSettingsStore } from '@/stores/settings'
+import { useAuth } from '@/composables/useAuth'
 
 const organizations = ref([])
 const allOrganizations = ref([])
@@ -58,14 +60,28 @@ const nameInput = ref('')
 const filteredNames = ref([])
 const selectedNames = ref([])
 const router = useRouter()
+const settingsStore = useSettingsStore()
+const { user } = useAuth()
 
-async function loadOrganizations(names = []) {
-  organizations.value = await fetchOrganizations(names)
+async function loadOrganizations() {
+  const viewAll = user.value?.is_super_admin && settingsStore.godModeViewAll
+  const data = await fetchOrganizations({ viewAll })
+  if (selectedNames.value.length > 0) {
+    organizations.value = data.filter(o => selectedNames.value.includes(o.name))
+  } else {
+    organizations.value = data
+  }
 }
 
 async function loadAllOrganizations() {
-  allOrganizations.value = await fetchOrganizations()
+  const viewAll = user.value?.is_super_admin && settingsStore.godModeViewAll
+  allOrganizations.value = await fetchOrganizations({ viewAll })
 }
+
+watch(() => settingsStore.godModeViewAll, () => {
+  loadOrganizations()
+  loadAllOrganizations()
+})
 
 function onNameInput() {
   if (!nameInput.value) { filteredNames.value = []; return }
@@ -79,12 +95,12 @@ function selectName(name) {
   selectedNames.value.push(name)
   nameInput.value = ''
   filteredNames.value = []
-  loadOrganizations(selectedNames.value)
+  loadOrganizations()
 }
 
 function removeName(name) {
   selectedNames.value = selectedNames.value.filter(n => n !== name)
-  loadOrganizations(selectedNames.value)
+  loadOrganizations()
 }
 
 function clearAllNames() {
@@ -104,7 +120,7 @@ function onEdit(org) {
 async function onDelete(org) {
   if (confirm(`Are you sure you want to delete the organization "${org.name}"?`)) {
     await deleteOrganization(org.id)
-    await loadOrganizations(selectedNames.value)
+    await loadOrganizations()
   }
 }
 </script>

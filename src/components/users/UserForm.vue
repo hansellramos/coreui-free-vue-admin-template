@@ -74,6 +74,11 @@
 
 <script setup>
 import { ref, watch, onMounted, defineProps, defineEmits } from 'vue'
+import { useSettingsStore } from '@/stores/settings'
+import { useAuth } from '@/composables/useAuth'
+
+const settingsStore = useSettingsStore()
+const { user } = useAuth()
 
 const props = defineProps({
   modelValue: { type: Object, required: true },
@@ -108,7 +113,9 @@ async function loadProfiles() {
 
 async function loadOrganizations() {
   try {
-    const res = await fetch('/api/organizations')
+    const viewAll = user.value?.is_super_admin && settingsStore.godModeViewAll
+    const url = viewAll ? '/api/organizations?viewAll=true' : '/api/organizations'
+    const res = await fetch(url, { credentials: 'include' })
     if (res.ok) {
       organizations.value = await res.json()
     }
