@@ -172,14 +172,14 @@
                 <CFormLabel>Hora de Entrada (Check-in)</CFormLabel>
                 <CFormInput v-model="form.check_in_time" type="time" @focus="showCheckInOptions = true" @blur="hideCheckInOptionsWithDelay" />
                 <div v-if="showCheckInOptions" class="d-flex gap-2 flex-wrap mt-2">
-                  <CButton v-for="t in checkInTimeOptions" :key="t" size="sm" color="secondary" variant="outline" @mousedown.prevent="selectCheckInTime(t)">{{ t }}</CButton>
+                  <CButton v-for="t in checkInTimeOptions" :key="t" size="sm" color="secondary" variant="outline" @mousedown.prevent @click.stop="selectCheckInTime(t)">{{ t }}</CButton>
                 </div>
               </CCol>
               <CCol :md="6">
                 <CFormLabel>Hora de Salida (Check-out)</CFormLabel>
                 <CFormInput v-model="form.check_out_time" type="time" @focus="showCheckOutOptions = true" @blur="hideCheckOutOptionsWithDelay" />
                 <div v-if="showCheckOutOptions" class="d-flex gap-2 flex-wrap mt-2">
-                  <CButton v-for="t in checkOutTimeOptions" :key="t" size="sm" color="secondary" variant="outline" @mousedown.prevent="selectCheckOutTime(t)">{{ t }}</CButton>
+                  <CButton v-for="t in checkOutTimeOptions" :key="t" size="sm" color="secondary" variant="outline" @mousedown.prevent @click.stop="selectCheckOutTime(t)">{{ t }}</CButton>
                 </div>
               </CCol>
             </CRow>
