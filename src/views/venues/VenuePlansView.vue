@@ -224,7 +224,19 @@ No incluye bebidas" />
           </CTabPanel>
 
           <CTabPanel class="p-3" itemKey="amenidades">
-            <p class="text-muted mb-3">Selecciona las amenidades incluidas en este plan:</p>
+            <div class="d-flex justify-content-between align-items-center mb-3">
+              <p class="text-muted mb-0">Selecciona las amenidades incluidas en este plan:</p>
+              <CButton 
+                v-if="venueAmenityIds.length > 0" 
+                color="secondary" 
+                size="sm" 
+                variant="outline"
+                @click="resetAmenitiesFromVenue"
+              >
+                <CIcon name="cil-reload" class="me-1" />
+                Cargar de la cabaña ({{ venueAmenityIds.length }})
+              </CButton>
+            </div>
             <div v-if="allAmenities.length === 0" class="text-muted">
               No hay amenidades disponibles. <RouterLink to="/admin/amenities">Crear amenidades</RouterLink>
             </div>
@@ -330,6 +342,7 @@ const deletingPlan = ref(null)
 const activeTab = ref('basico')
 
 const selectedAmenityIds = ref([])
+const venueAmenityIds = ref([])
 const planImages = ref([])
 const expandedAmenityCategories = ref({})
 
@@ -479,6 +492,22 @@ const loadAmenities = async () => {
   } catch (error) {
     console.error('Error loading amenities:', error)
   }
+}
+
+const loadVenueAmenities = async () => {
+  try {
+    const response = await fetch(`/api/venues/${venueId.value}/amenities`, { credentials: 'include' })
+    if (response.ok) {
+      const amenities = await response.json()
+      venueAmenityIds.value = amenities.map(a => a.id)
+    }
+  } catch (error) {
+    console.error('Error loading venue amenities:', error)
+  }
+}
+
+const resetAmenitiesFromVenue = () => {
+  selectedAmenityIds.value = [...venueAmenityIds.value]
 }
 
 const resetForm = () => {
@@ -664,6 +693,7 @@ onMounted(() => {
   loadVenue()
   loadPlans()
   loadAmenities()
+  loadVenueAmenities()
 })
 </script>
 
