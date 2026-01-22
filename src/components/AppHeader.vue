@@ -37,13 +37,13 @@ onMounted(() => {
       </CHeaderToggler>
       <CHeaderNav class="d-none d-md-flex">
         <CNavItem>
-          <RouterLink to="/dashboard" class="nav-link">Dashboard</RouterLink>
+          <RouterLink to="/dashboard" class="nav-link">Panel</RouterLink>
         </CNavItem>
         <CNavItem>
-          <RouterLink to="/business/accommodations" class="nav-link">Calendar</RouterLink>
+          <RouterLink to="/business/accommodations" class="nav-link">Calendario</RouterLink>
         </CNavItem>
         <CNavItem>
-          <RouterLink to="/next" class="nav-link">Next</RouterLink>
+          <RouterLink to="/next" class="nav-link">Próximos</RouterLink>
         </CNavItem>
       </CHeaderNav>
       <CHeaderNav class="ms-auto">
@@ -89,7 +89,7 @@ onMounted(() => {
               type="button"
               @click="setColorMode('light')"
             >
-              <CIcon class="me-2" icon="cil-sun" size="lg" /> Light
+              <CIcon class="me-2" icon="cil-sun" size="lg" /> Claro
             </CDropdownItem>
             <CDropdownItem
               :active="colorMode === 'dark'"
@@ -98,7 +98,7 @@ onMounted(() => {
               type="button"
               @click="setColorMode('dark')"
             >
-              <CIcon class="me-2" icon="cil-moon" size="lg" /> Dark
+              <CIcon class="me-2" icon="cil-moon" size="lg" /> Oscuro
             </CDropdownItem>
             <CDropdownItem
               :active="colorMode === 'auto'"
@@ -107,7 +107,7 @@ onMounted(() => {
               type="button"
               @click="setColorMode('auto')"
             >
-              <CIcon class="me-2" icon="cil-contrast" size="lg" /> Auto
+              <CIcon class="me-2" icon="cil-contrast" size="lg" /> Automático
             </CDropdownItem>
           </CDropdownMenu>
         </CDropdown>

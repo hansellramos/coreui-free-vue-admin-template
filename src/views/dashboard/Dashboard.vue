@@ -87,7 +87,7 @@
               {{ totalIncomeByVenue }}
             </div>
             <div class="text-white-50">Ingresos Totales</div>
-            <small class="text-white-50">{{ incomeByVenue.length }} venues con ingresos</small>
+            <small class="text-white-50">{{ incomeByVenue.length }} cabañas con ingresos</small>
           </CCardBody>
         </CCard>
       </CCol>
@@ -98,7 +98,7 @@
               {{ totalAccommodationsNext12 }}
             </div>
             <div class="text-white-50">Reservas Proximos 12M</div>
-            <small class="text-white-50">{{ accommodationsForecast.venues?.length || 0 }} venues</small>
+            <small class="text-white-50">{{ accommodationsForecast.venues?.length || 0 }} cabañas</small>
           </CCardBody>
         </CCard>
       </CCol>
@@ -107,7 +107,7 @@
     <CRow>
       <CCol :md="6">
         <CCard class="mb-4">
-          <CCardHeader>Ingresos por Venue</CCardHeader>
+          <CCardHeader>Ingresos por Cabaña</CCardHeader>
           <CCardBody>
             <div v-if="incomeByVenue.length > 0" style="height: 300px;">
               <Pie :data="pieChartData" :options="pieChartOptions" />
@@ -120,12 +120,12 @@
       </CCol>
       <CCol :md="6">
         <CCard class="mb-4">
-          <CCardHeader>Ingresos por Venue (Lista)</CCardHeader>
+          <CCardHeader>Ingresos por Cabaña (Lista)</CCardHeader>
           <CCardBody>
             <CTable v-if="incomeByVenue.length > 0" small hover>
               <CTableHead>
                 <CTableRow>
-                  <CTableHeaderCell>Venue</CTableHeaderCell>
+                  <CTableHeaderCell>Cabaña</CTableHeaderCell>
                   <CTableHeaderCell class="text-end">Total</CTableHeaderCell>
                   <CTableHeaderCell class="text-end">Pagos</CTableHeaderCell>
                 </CTableRow>
