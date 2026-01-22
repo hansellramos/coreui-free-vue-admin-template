@@ -89,6 +89,31 @@ async function upsertUser(claims) {
         profile_id: defaultProfileId
       }
     });
+
+    // Assign default trial subscription to new user
+    const defaultSubscriptionId = process.env.DEFAULT_SUBSCRIPTION_ID;
+    if (defaultSubscriptionId) {
+      const subscription = await prisma.subscriptions.findUnique({
+        where: { id: defaultSubscriptionId }
+      });
+      
+      if (subscription) {
+        // Calculate 30-day trial expiration for this user
+        const trialDays = 30;
+        const expiresAt = new Date();
+        expiresAt.setDate(expiresAt.getDate() + trialDays);
+        
+        await prisma.subscription_users.create({
+          data: {
+            subscription_id: defaultSubscriptionId,
+            user_id: claims.sub,
+            is_owner: false,
+            role: 'member',
+            trial_expires_at: expiresAt
+          }
+        });
+      }
+    }
   }
 }
 
@@ -189,23 +214,89 @@ async function setupAuth(app) {
         permissionDetails = permissions;
       }
       
-      // Get user's subscription
-      const subscriptionUser = await prisma.subscription_users.findFirst({
+      // Get all user's subscriptions and select the best one
+      // Priority: active paid subscription > active trial > expired trial
+      const subscriptionUsers = await prisma.subscription_users.findMany({
         where: { user_id: userId },
         include: {
           subscription: true
-        }
+        },
+        orderBy: { added_at: 'desc' }
       });
       
-      const subscription = subscriptionUser ? {
-        id: subscriptionUser.subscription.id,
-        name: subscriptionUser.subscription.name,
-        plan_type: subscriptionUser.subscription.plan_type,
-        is_active: subscriptionUser.subscription.is_active,
-        is_owner: subscriptionUser.is_owner,
-        role: subscriptionUser.role,
-        expires_at: subscriptionUser.subscription.expires_at
-      } : null;
+      let subscription = null;
+      let trialDaysRemaining = null;
+      let isTrialExpired = false;
+      
+      if (subscriptionUsers.length > 0) {
+        // Find the best subscription
+        let bestSubscription = null;
+        
+        for (const su of subscriptionUsers) {
+          const sub = su.subscription;
+          const trialExpiresAt = su.trial_expires_at;
+          
+          // Calculate if this specific subscription is active
+          let isActive = sub.is_active;
+          let isExpired = false;
+          
+          if (trialExpiresAt) {
+            const now = new Date();
+            const expiresDate = new Date(trialExpiresAt);
+            isExpired = expiresDate.getTime() <= now.getTime();
+            if (isExpired) {
+              isActive = false;
+            }
+          }
+          
+          // Priority: active paid (no trial_expires_at) > active trial > expired
+          if (!bestSubscription) {
+            bestSubscription = { su, isActive, isExpired };
+          } else {
+            // Prefer active over inactive
+            if (isActive && !bestSubscription.isActive) {
+              bestSubscription = { su, isActive, isExpired };
+            }
+            // If both active, prefer paid (no trial) over trial
+            else if (isActive && bestSubscription.isActive && !trialExpiresAt && bestSubscription.su.trial_expires_at) {
+              bestSubscription = { su, isActive, isExpired };
+            }
+          }
+        }
+        
+        if (bestSubscription) {
+          const su = bestSubscription.su;
+          const sub = su.subscription;
+          const trialExpiresAt = su.trial_expires_at;
+          
+          // Calculate days remaining for trial
+          if (trialExpiresAt) {
+            const now = new Date();
+            const expiresDate = new Date(trialExpiresAt);
+            const diffTime = expiresDate.getTime() - now.getTime();
+            const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+            
+            if (diffDays > 0) {
+              trialDaysRemaining = diffDays;
+            } else {
+              isTrialExpired = true;
+            }
+          }
+          
+          subscription = {
+            id: sub.id,
+            name: sub.name,
+            plan_type: sub.plan_type,
+            is_active: bestSubscription.isActive,
+            is_owner: su.is_owner,
+            role: su.role,
+            expires_at: sub.expires_at,
+            trial_expires_at: trialExpiresAt,
+            trial_days_remaining: trialDaysRemaining,
+            is_trial_expired: isTrialExpired
+          };
+        }
+      }
       
       res.json({
         ...user,

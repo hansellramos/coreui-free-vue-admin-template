@@ -94,10 +94,18 @@ The database connection is available via the `DATABASE_URL` environment variable
 Users must belong to an active subscription to access the application.
 
 ### How it works
-1. Users without a subscription see the "Acceso Restringido" screen
-2. Subscription owners can add/remove users from their subscription
-3. Super admins bypass subscription checks and can manage all subscriptions
-4. New users are automatically assigned the default profile (configurable via `DEFAULT_PROFILE_CODE`)
+1. New users are automatically assigned a 30-day trial subscription (configurable via `DEFAULT_SUBSCRIPTION_ID`)
+2. New users are automatically assigned the default profile (configurable via `DEFAULT_PROFILE_CODE`)
+3. A trial banner shows remaining days at the top of the application
+4. When trial expires, users see "Prueba Expirada" screen
+5. Users without any subscription see "Acceso Restringido" screen
+6. Subscription owners can add/remove users from their subscription
+7. Super admins bypass subscription checks and can manage all subscriptions
+
+### Trial System
+- Each user gets their own `trial_expires_at` in `subscription_users` table
+- Banner colors: info (>7 days), warning (3-7 days), danger (1-3 days)
+- Trial expiration is per-user, not per-subscription
 
 ### Subscription API
 - `/api/subscriptions` - List/Create subscriptions (admin only)
@@ -168,6 +176,7 @@ Access venue plans via the "Planes" button in the Cabañas list.
 - `SESSION_SECRET` - Session encryption secret (auto-configured)
 - `REPL_ID` - Replit application ID (auto-configured)
 - `DEFAULT_PROFILE_CODE` - Profile code to assign to new users (default: `organization:admin`)
+- `DEFAULT_SUBSCRIPTION_ID` - Trial subscription ID to assign to new users
 
 ## Development
 - Vue frontend runs on port 5000 (proxies /api to backend)

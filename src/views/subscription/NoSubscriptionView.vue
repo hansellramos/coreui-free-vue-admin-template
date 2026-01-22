@@ -6,17 +6,30 @@
           <CCard class="text-center shadow-lg">
             <CCardBody class="p-5">
               <div class="mb-4">
-                <CIcon icon="cil-lock-locked" size="4xl" class="text-warning" />
+                <CIcon :icon="isTrialExpired ? 'cil-clock' : 'cil-lock-locked'" size="4xl" :class="isTrialExpired ? 'text-danger' : 'text-warning'" />
               </div>
               
-              <h2 class="mb-3">Acceso Restringido</h2>
+              <h2 class="mb-3">{{ isTrialExpired ? 'Prueba Expirada' : 'Acceso Restringido' }}</h2>
               
-              <p class="text-muted mb-4">
+              <p v-if="isTrialExpired" class="text-muted mb-4">
+                Tu período de prueba gratuita ha finalizado.
+                Para continuar usando la aplicación, necesitas activar una suscripción.
+              </p>
+              <p v-else class="text-muted mb-4">
                 Tu cuenta no está asociada a ninguna suscripción activa.
                 Para acceder a la aplicación, necesitas ser agregado a una suscripción por un administrador.
               </p>
               
-              <CAlert color="info" class="text-start">
+              <CAlert v-if="isTrialExpired" color="warning" class="text-start">
+                <h5 class="alert-heading">
+                  <CIcon icon="cil-star" class="me-2" />
+                  Activa tu suscripción
+                </h5>
+                <p class="mb-0">
+                  Contacta al administrador para activar una suscripción y continuar disfrutando de todas las funciones de la aplicación.
+                </p>
+              </CAlert>
+              <CAlert v-else color="info" class="text-start">
                 <h5 class="alert-heading">
                   <CIcon icon="cil-info" class="me-2" />
                   ¿Qué hacer?
@@ -52,6 +65,7 @@
 </template>
 
 <script setup>
+import { computed } from 'vue'
 import { CIcon } from '@coreui/icons-vue'
 import { useAuth } from '@/composables/useAuth'
 import { useRouter } from 'vue-router'
@@ -59,6 +73,10 @@ import { revalidateAuth } from '@/router'
 
 const router = useRouter()
 const { user, logout: authLogout, fetchUser } = useAuth()
+
+const isTrialExpired = computed(() => {
+  return user.value?.subscription?.is_trial_expired === true
+})
 
 async function refreshStatus() {
   await fetchUser()

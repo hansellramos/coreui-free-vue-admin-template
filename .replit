@@ -67,3 +67,4 @@ publicDir = "dist"
 
 [userenv.shared]
 DEFAULT_PROFILE_CODE = "organization:admin"
+DEFAULT_SUBSCRIPTION_ID = "8e73dfec-3934-4740-83b8-e0c321a0867d"
