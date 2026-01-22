@@ -389,7 +389,10 @@ function formatCurrency(amount) {
 function formatDate(dateStr) {
   if (!dateStr) return '—'
   const d = new Date(dateStr)
-  return d.toLocaleDateString('es-CO', { year: 'numeric', month: 'long', day: 'numeric' })
+  const year = d.getUTCFullYear()
+  const month = d.toLocaleString('es-CO', { month: 'long', timeZone: 'UTC' })
+  const day = d.getUTCDate()
+  return `${day} de ${month} de ${year}`
 }
 
 function formatTime(timeStr) {

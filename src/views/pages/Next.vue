@@ -248,10 +248,13 @@ const groupedAccommodations = computed(() => {
 })
 
 const formatDate = (dateStr) => {
+  if (!dateStr) return ''
   const [year, month, day] = dateStr.split('-')
-  const date = new Date(parseInt(year), parseInt(month) - 1, parseInt(day))
-  const options = { weekday: 'long', day: 'numeric', month: 'long' }
-  return date.toLocaleDateString('es-ES', options)
+  const date = new Date(Date.UTC(parseInt(year), parseInt(month) - 1, parseInt(day)))
+  const weekday = date.toLocaleString('es-ES', { weekday: 'long', timeZone: 'UTC' })
+  const monthName = date.toLocaleString('es-ES', { month: 'long', timeZone: 'UTC' })
+  const dayNum = date.getUTCDate()
+  return `${weekday}, ${dayNum} de ${monthName}`
 }
 
 const formatTime = (timeStr) => {
