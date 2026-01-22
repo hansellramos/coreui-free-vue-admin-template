@@ -113,17 +113,27 @@
                 </div>
                 <div v-if="form.receipt_url" class="mt-2 position-relative d-inline-block">
                   <img 
+                    v-if="!imageLoadError"
                     :src="form.receipt_url" 
                     class="img-thumbnail" 
                     style="max-height: 200px; cursor: pointer;"
                     @click="showReceiptModal = true"
                     @error="handleImageError"
                   />
+                  <div 
+                    v-else
+                    class="receipt-placeholder"
+                    @click="showReceiptModal = true"
+                  >
+                    <CIcon name="cil-image" size="xl" class="text-secondary mb-2" />
+                    <div class="small text-muted">Imagen no disponible</div>
+                    <div class="small text-muted">Clic para intentar ver</div>
+                  </div>
                   <CButton 
                     color="danger" 
                     size="sm" 
                     class="position-absolute top-0 end-0 m-1"
-                    @click.stop="form.receipt_url = ''"
+                    @click.stop="deleteReceipt"
                   >
                     <CIcon name="cil-x" />
                   </CButton>
@@ -211,6 +221,7 @@ const fileInput = ref(null)
 const isDragging = ref(false)
 const uploading = ref(false)
 const uploadError = ref('')
+const imageLoadError = ref(false)
 
 const form = ref({
   type: '',
@@ -283,12 +294,13 @@ const formatDateTime = (date) => {
   })
 }
 
-const handleImageError = (e) => {
-  e.target.style.display = 'none'
+const handleImageError = () => {
+  imageLoadError.value = true
 }
 
 const deleteReceipt = () => {
   form.value.receipt_url = ''
+  imageLoadError.value = false
   showReceiptModal.value = false
 }
 
@@ -360,6 +372,7 @@ const uploadFile = async (file) => {
     }
     
     form.value.receipt_url = objectPath
+    imageLoadError.value = false
   } catch (error) {
     console.error('Upload error:', error)
     uploadError.value = error.message || 'Error al subir imagen'
@@ -442,5 +455,22 @@ onMounted(() => {
   cursor: wait;
   pointer-events: none;
   opacity: 0.7;
+}
+
+.receipt-placeholder {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  width: 200px;
+  height: 150px;
+  border: 1px solid var(--cui-border-color);
+  border-radius: 0.375rem;
+  background-color: var(--cui-light);
+  cursor: pointer;
+}
+
+.receipt-placeholder:hover {
+  background-color: var(--cui-gray-200);
 }
 </style>
