@@ -85,8 +85,28 @@ A PostgreSQL database is available with the following tables:
 - `permissions` - Available permission codes and descriptions
 - `profiles` - Permission profiles with JSON permissions array
 - `user_organizations` - Many-to-many relationship for user-to-organization access
+- `subscriptions` - Subscription plans with limits and Stripe integration fields
+- `subscription_users` - Many-to-many relationship for user-to-subscription membership
 
 The database connection is available via the `DATABASE_URL` environment variable.
+
+## Subscription System
+Users must belong to an active subscription to access the application.
+
+### How it works
+1. Users without a subscription see the "Acceso Restringido" screen
+2. Subscription owners can add/remove users from their subscription
+3. Super admins bypass subscription checks and can manage all subscriptions
+4. New users are automatically assigned the default profile (configurable via `DEFAULT_PROFILE_CODE`)
+
+### Subscription API
+- `/api/subscriptions` - List/Create subscriptions (admin only)
+- `/api/subscriptions/:id` - Get/Update/Delete subscription
+- `/api/subscriptions/:id/users` - Add user to subscription
+- `/api/subscriptions/:id/users/:userId` - Remove user from subscription
+
+### Permissions
+- `subscription:manage` - Allows viewing and managing subscriptions
 
 ## Permissions System
 The application implements a role-based access control system:
@@ -147,6 +167,7 @@ Access venue plans via the "Planes" button in the Cabañas list.
 - `DATABASE_URL` - PostgreSQL connection string (auto-configured)
 - `SESSION_SECRET` - Session encryption secret (auto-configured)
 - `REPL_ID` - Replit application ID (auto-configured)
+- `DEFAULT_PROFILE_CODE` - Profile code to assign to new users (default: `organization:admin`)
 
 ## Development
 - Vue frontend runs on port 5000 (proxies /api to backend)

@@ -55,13 +55,15 @@
 import { CIcon } from '@coreui/icons-vue'
 import { useAuth } from '@/composables/useAuth'
 import { useRouter } from 'vue-router'
+import { revalidateAuth } from '@/router'
 
 const router = useRouter()
 const { user, logout: authLogout, fetchUser } = useAuth()
 
 async function refreshStatus() {
   await fetchUser()
-  if (user.value?.subscription) {
+  const authStatus = await revalidateAuth()
+  if (authStatus.hasSubscription) {
     router.push('/dashboard')
   }
 }

@@ -518,12 +518,18 @@ async function checkAuth() {
   }
 }
 
-// Reset auth state (call after logout)
+// Reset auth state (call after logout or to force revalidation)
 export function resetAuthState() {
   authChecked = false
   isAuthenticated = false
   hasSubscription = false
   cachedUser = null
+}
+
+// Force revalidation of auth state
+export async function revalidateAuth() {
+  authChecked = false
+  return await checkAuth()
 }
 
 // Navigation guard to protect routes

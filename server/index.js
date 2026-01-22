@@ -2354,7 +2354,7 @@ async function startServer() {
       const userId = String(req.user.claims?.sub);
       const currentUser = await prisma.users.findUnique({ where: { id: userId } });
       
-      if (!currentUser?.is_super_admin && !hasPermission(req.userPermissions, 'subscription:manage')) {
+      if (!currentUser?.is_super_admin && !hasPermission(req.userPermissions || [], 'subscription:manage')) {
         return res.status(403).json({ error: 'No tiene permiso para ver suscripciones' });
       }
       
@@ -2387,7 +2387,7 @@ async function startServer() {
         where: { subscription_id: req.params.id, user_id: userId }
       });
       
-      if (!currentUser?.is_super_admin && !hasPermission(req.userPermissions, 'subscription:manage') && !isMember) {
+      if (!currentUser?.is_super_admin && !hasPermission(req.userPermissions || [], 'subscription:manage') && !isMember) {
         return res.status(403).json({ error: 'No tiene acceso a esta suscripción' });
       }
       
@@ -2425,6 +2425,119 @@ async function startServer() {
     }
   });
   
+  // Create subscription (super admin only)
+  app.post('/api/subscriptions', isAuthenticated, async (req, res) => {
+    try {
+      const userId = String(req.user.claims?.sub);
+      const currentUser = await prisma.users.findUnique({ where: { id: userId } });
+      
+      if (!currentUser?.is_super_admin) {
+        return res.status(403).json({ error: 'Solo los super administradores pueden crear suscripciones' });
+      }
+      
+      const { name, description, plan_type, max_users, max_organizations, owner_user_id } = req.body;
+      
+      if (!name) {
+        return res.status(400).json({ error: 'El nombre es requerido' });
+      }
+      
+      const subscription = await prisma.subscriptions.create({
+        data: {
+          name,
+          description,
+          plan_type: plan_type || 'free',
+          max_users: max_users || 5,
+          max_organizations: max_organizations || 1,
+          is_active: true
+        }
+      });
+      
+      // If owner specified, add them as owner
+      if (owner_user_id) {
+        await prisma.subscription_users.create({
+          data: {
+            subscription_id: subscription.id,
+            user_id: owner_user_id,
+            role: 'owner',
+            is_owner: true,
+            added_by: userId
+          }
+        });
+      }
+      
+      res.json(subscription);
+    } catch (error) {
+      console.error('Create subscription error:', error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+  
+  // Update subscription
+  app.put('/api/subscriptions/:id', isAuthenticated, async (req, res) => {
+    try {
+      const userId = String(req.user.claims?.sub);
+      const currentUser = await prisma.users.findUnique({ where: { id: userId } });
+      
+      // Check if user is super admin or owner of subscription
+      const isOwner = await prisma.subscription_users.findFirst({
+        where: { subscription_id: req.params.id, user_id: userId, is_owner: true }
+      });
+      
+      if (!currentUser?.is_super_admin && !isOwner) {
+        return res.status(403).json({ error: 'No tiene permiso para modificar esta suscripción' });
+      }
+      
+      const { name, description, plan_type, max_users, max_organizations, is_active } = req.body;
+      
+      const subscription = await prisma.subscriptions.update({
+        where: { id: req.params.id },
+        data: {
+          name,
+          description,
+          plan_type,
+          max_users,
+          max_organizations,
+          is_active
+        }
+      });
+      
+      res.json(subscription);
+    } catch (error) {
+      console.error('Update subscription error:', error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+  
+  // Delete subscription (super admin only)
+  app.delete('/api/subscriptions/:id', isAuthenticated, async (req, res) => {
+    try {
+      const userId = String(req.user.claims?.sub);
+      const currentUser = await prisma.users.findUnique({ where: { id: userId } });
+      
+      if (!currentUser?.is_super_admin) {
+        return res.status(403).json({ error: 'Solo los super administradores pueden eliminar suscripciones' });
+      }
+      
+      // Check if subscription has users
+      const userCount = await prisma.subscription_users.count({
+        where: { subscription_id: req.params.id }
+      });
+      
+      if (userCount > 0) {
+        return res.status(400).json({ error: `No se puede eliminar la suscripción porque tiene ${userCount} usuario(s) asignado(s)` });
+      }
+      
+      await prisma.subscriptions.delete({
+        where: { id: req.params.id }
+      });
+      
+      res.json({ success: true });
+    } catch (error) {
+      console.error('Delete subscription error:', error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
   // Add user to subscription
   app.post('/api/subscriptions/:id/users', isAuthenticated, async (req, res) => {
     try {
@@ -2436,7 +2549,7 @@ async function startServer() {
         where: { subscription_id: req.params.id, user_id: userId, is_owner: true }
       });
       
-      if (!currentUser?.is_super_admin && !hasPermission(req.userPermissions, 'subscription:manage') && !isOwner) {
+      if (!currentUser?.is_super_admin && !hasPermission(req.userPermissions || [], 'subscription:manage') && !isOwner) {
         return res.status(403).json({ error: 'No tiene permiso para agregar usuarios a esta suscripción' });
       }
       
@@ -2493,7 +2606,7 @@ async function startServer() {
         where: { subscription_id: req.params.id, user_id: currentUserId, is_owner: true }
       });
       
-      if (!currentUser?.is_super_admin && !hasPermission(req.userPermissions, 'subscription:manage') && !isOwner) {
+      if (!currentUser?.is_super_admin && !hasPermission(req.userPermissions || [], 'subscription:manage') && !isOwner) {
         return res.status(403).json({ error: 'No tiene permiso para remover usuarios de esta suscripción' });
       }
       
