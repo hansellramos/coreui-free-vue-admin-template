@@ -754,12 +754,12 @@ async function startServer() {
 
   app.post('/api/payments', isAuthenticated, async (req, res) => {
     try {
-      // Look up the user's UUID from the users table using Replit ID
+      // Look up the user by their Replit ID (which is the primary key in users table)
       const replitId = String(req.user?.claims?.sub);
-      const dbUser = await prisma.users.findFirst({
-        where: { replit_id: replitId }
+      const dbUser = await prisma.users.findUnique({
+        where: { id: replitId }
       });
-      const userUuid = dbUser?.id || null;
+      const userId = dbUser?.id || null;
       
       const { type, accommodation, amount, payment_method, payment_date, reference, notes, receipt_url } = req.body;
       const data = {
@@ -770,7 +770,7 @@ async function startServer() {
         reference: reference || null,
         notes: notes || null,
         receipt_url: receipt_url || null,
-        created_by: userUuid
+        created_by: userId
       };
       
       if (payment_date && typeof payment_date === 'string') {
@@ -798,12 +798,12 @@ async function startServer() {
         return res.status(403).json({ error: 'No se puede modificar un pago verificado' });
       }
       
-      // Look up the user's UUID from the users table using Replit ID
+      // Look up the user by their Replit ID (which is the primary key in users table)
       const replitId = String(req.user?.claims?.sub);
-      const dbUser = await prisma.users.findFirst({
-        where: { replit_id: replitId }
+      const dbUser = await prisma.users.findUnique({
+        where: { id: replitId }
       });
-      const userUuid = dbUser?.id || null;
+      const userId = dbUser?.id || null;
       
       const { type, accommodation, amount, payment_method, payment_date, reference, notes, receipt_url } = req.body;
       const data = {
@@ -815,7 +815,7 @@ async function startServer() {
         notes: notes || null,
         receipt_url: receipt_url || null,
         updated_at: new Date(),
-        updated_by: userUuid
+        updated_by: userId
       };
       
       if (payment_date && typeof payment_date === 'string' && !payment_date.includes('T')) {
@@ -848,19 +848,19 @@ async function startServer() {
         return res.status(404).json({ error: 'Payment not found' });
       }
       
-      // Look up the user's UUID from the users table using Replit ID
+      // Look up the user by their Replit ID (which is the primary key in users table)
       const replitId = String(req.user?.claims?.sub);
-      const dbUser = await prisma.users.findFirst({
-        where: { replit_id: replitId }
+      const dbUser = await prisma.users.findUnique({
+        where: { id: replitId }
       });
-      const userUuid = dbUser?.id || null;
+      const userId = dbUser?.id || null;
       
       const data = {
         verified: verified === true,
         verified_at: verified === true ? new Date() : null,
-        verified_by: verified === true ? userUuid : null,
+        verified_by: verified === true ? userId : null,
         updated_at: new Date(),
-        updated_by: userUuid
+        updated_by: userId
       };
       
       const payment = await prisma.payments.update({
