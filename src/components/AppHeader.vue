@@ -50,7 +50,7 @@ onMounted(() => {
         <CNavItem>
           <CButton color="success" size="sm" class="d-flex align-items-center gap-1" @click="createNewAccommodation">
             <CIcon icon="cil-plus" />
-            <span class="d-none d-lg-inline">Nueva Reserva</span>
+            Crear Hospedaje
           </CButton>
         </CNavItem>
       </CHeaderNav>
