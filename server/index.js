@@ -304,6 +304,48 @@ async function startServer() {
     }
   });
 
+  // Venue Amenities
+  app.get('/api/venues/:id/amenities', async (req, res) => {
+    try {
+      const venueAmenities = await prisma.venue_amenities.findMany({
+        where: { venue_id: req.params.id }
+      });
+      const amenityIds = venueAmenities.map(va => va.amenity_id);
+      const amenities = await prisma.amenities.findMany({
+        where: { id: { in: amenityIds } }
+      });
+      res.json(amenities);
+    } catch (error) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.put('/api/venues/:id/amenities', isAuthenticated, async (req, res) => {
+    try {
+      const { amenity_ids } = req.body;
+      const venueId = req.params.id;
+      
+      // Delete existing venue amenities
+      await prisma.venue_amenities.deleteMany({
+        where: { venue_id: venueId }
+      });
+      
+      // Create new venue amenities
+      if (amenity_ids && amenity_ids.length > 0) {
+        await prisma.venue_amenities.createMany({
+          data: amenity_ids.map(amenityId => ({
+            venue_id: venueId,
+            amenity_id: amenityId
+          }))
+        });
+      }
+      
+      res.json({ success: true });
+    } catch (error) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
   app.get('/api/contacts', async (req, res) => {
     try {
       const viewAll = req.query.viewAll === 'true';
@@ -2138,7 +2180,7 @@ async function startServer() {
   // Availability check endpoint - returns venues with plans and their availability status
   app.get('/api/availability', async (req, res) => {
     try {
-      const { check_in, check_out, adults, children } = req.query;
+      const { check_in, check_out, adults, children, amenities } = req.query;
       
       if (!check_in) {
         return res.status(400).json({ error: 'check_in es requerido' });
@@ -2156,6 +2198,9 @@ async function startServer() {
       const numAdults = parseInt(adults) || 1;
       const numChildren = parseInt(children) || 0;
       const totalGuests = numAdults + numChildren;
+      
+      // Parse amenity filter
+      const requiredAmenityIds = amenities ? amenities.split(',').filter(Boolean) : [];
       
       // Get all venues that have active plans
       const venuesWithPlans = await prisma.venues.findMany({
@@ -2182,8 +2227,30 @@ async function startServer() {
       const orgMap = {};
       organizations.forEach(o => { orgMap[o.id] = o; });
       
-      // Check for existing accommodations in the date range for each venue
+      // Get venue amenities for all venues
       const venueIds = venuesWithPlans.map(v => v.id);
+      const venueAmenities = await prisma.venue_amenities.findMany({
+        where: { venue_id: { in: venueIds } }
+      });
+      const allAmenityIds = [...new Set(venueAmenities.map(va => va.amenity_id))];
+      const amenitiesData = allAmenityIds.length > 0 ? await prisma.amenities.findMany({
+        where: { id: { in: allAmenityIds } }
+      }) : [];
+      const amenityMap = {};
+      amenitiesData.forEach(a => { amenityMap[a.id] = a; });
+      
+      // Build venue amenities map
+      const venueAmenitiesMap = {};
+      venueAmenities.forEach(va => {
+        if (!venueAmenitiesMap[va.venue_id]) {
+          venueAmenitiesMap[va.venue_id] = [];
+        }
+        if (amenityMap[va.amenity_id]) {
+          venueAmenitiesMap[va.venue_id].push(amenityMap[va.amenity_id]);
+        }
+      });
+      
+      // Check for existing accommodations in the date range for each venue
       
       // Get all accommodations for these venues
       const existingAccommodations = await prisma.accommodations.findMany({
@@ -2214,8 +2281,9 @@ async function startServer() {
       });
       
       // Build result with availability info
-      const result = venuesWithPlans.map(venue => {
+      let result = venuesWithPlans.map(venue => {
         const plans = venue.venue_plans || [];
+        const venueAmenityList = venueAmenitiesMap[venue.id] || [];
         
         // Check each plan for guest suitability
         const plansWithSuitability = plans.map(p => {
@@ -2249,9 +2317,18 @@ async function startServer() {
           min_guests: minGuests,
           max_capacity: maxCapacity === 999 ? null : maxCapacity,
           plans_count: plans.length,
-          plans: plansWithSuitability
+          plans: plansWithSuitability,
+          amenities: venueAmenityList
         };
       });
+      
+      // Filter by required amenities
+      if (requiredAmenityIds.length > 0) {
+        result = result.filter(venue => {
+          const venueAmenityIdSet = new Set(venue.amenities.map(a => a.id));
+          return requiredAmenityIds.every(reqId => venueAmenityIdSet.has(reqId));
+        });
+      }
       
       // Sort: available first, then has matching plan, then by name
       result.sort((a, b) => {
