@@ -19,7 +19,6 @@ model accommodations {
   plan_id          String?   @db.Uuid
   calculated_price Decimal?  @db.Decimal
   agreed_price     Decimal?  @db.Decimal
-  waze_link        String?   @db.Text
 }
 
 model payments {
@@ -210,6 +209,7 @@ model venues {
   instagram         String?       @db.VarChar
   organization      String?       @db.Uuid
   is_public         Boolean       @default(false)
+  waze_link         String?       @db.Text
   venue_plans       venue_plans[]
 }
 
