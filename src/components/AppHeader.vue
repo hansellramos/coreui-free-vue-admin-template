@@ -15,7 +15,7 @@ const settings = useSettingsStore()
 const router = useRouter()
 
 function createNewAccommodation() {
-  router.push('/business/accommodations/new')
+  router.push('/business/accommodations/create')
 }
 
 onMounted(() => {
