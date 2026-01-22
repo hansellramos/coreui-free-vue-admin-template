@@ -1,6 +1,6 @@
 <template>
   <CRow>
-    <CCol :md="8" :lg="6">
+    <CCol :md="6" :lg="6">
       <CCard class="mb-4">
         <CCardHeader>
           <strong>Mi Perfil</strong>
@@ -122,6 +122,74 @@
         </CCardBody>
       </CCard>
     </CCol>
+    
+    <CCol v-if="isAuthenticated && !isLoading" :md="6" :lg="6">
+      <CCard class="mb-4">
+        <CCardHeader>
+          <strong>Mi Suscripción</strong>
+        </CCardHeader>
+        <CCardBody>
+          <div v-if="user?.subscription">
+            <div class="text-center mb-4">
+              <CIcon 
+                :icon="subscriptionIcon" 
+                size="3xl" 
+                :class="subscriptionIconColor" 
+              />
+            </div>
+            
+            <CListGroup flush>
+              <CListGroupItem class="d-flex justify-content-between">
+                <span class="text-secondary">Plan</span>
+                <strong>{{ user.subscription.name }}</strong>
+              </CListGroupItem>
+              <CListGroupItem class="d-flex justify-content-between">
+                <span class="text-secondary">Estado</span>
+                <CBadge :color="user.subscription.is_active ? 'success' : 'danger'">
+                  {{ user.subscription.is_active ? 'Activa' : 'Inactiva' }}
+                </CBadge>
+              </CListGroupItem>
+              <CListGroupItem v-if="user.subscription.trial_days_remaining" class="d-flex justify-content-between">
+                <span class="text-secondary">Días de prueba</span>
+                <CBadge :color="trialBadgeColor">
+                  {{ user.subscription.trial_days_remaining }} días restantes
+                </CBadge>
+              </CListGroupItem>
+              <CListGroupItem v-if="user.subscription.is_trial_expired" class="d-flex justify-content-between">
+                <span class="text-secondary">Prueba</span>
+                <CBadge color="danger">Expirada</CBadge>
+              </CListGroupItem>
+              <CListGroupItem v-if="user.subscription.trial_expires_at || user.subscription.expires_at" class="d-flex justify-content-between">
+                <span class="text-secondary">{{ user.subscription.trial_expires_at ? 'Prueba expira' : 'Expira' }}</span>
+                <span>{{ formatDate(user.subscription.trial_expires_at || user.subscription.expires_at) }}</span>
+              </CListGroupItem>
+              <CListGroupItem class="d-flex justify-content-between">
+                <span class="text-secondary">Rol</span>
+                <CBadge :color="user.subscription.is_owner ? 'primary' : 'secondary'">
+                  {{ user.subscription.is_owner ? 'Propietario' : 'Miembro' }}
+                </CBadge>
+              </CListGroupItem>
+            </CListGroup>
+            
+            <CAlert v-if="user.subscription.trial_days_remaining && user.subscription.trial_days_remaining <= 7" :color="trialAlertColor" class="mt-4">
+              <CIcon icon="cil-bell" class="me-2" />
+              <span v-if="user.subscription.trial_days_remaining <= 3">
+                <strong>¡Tu prueba está por expirar!</strong> Contacta al administrador para activar tu suscripción.
+              </span>
+              <span v-else>
+                Tu período de prueba expirará pronto. Considera activar una suscripción.
+              </span>
+            </CAlert>
+          </div>
+          
+          <div v-else class="text-center py-4">
+            <CIcon icon="cil-x-circle" size="3xl" class="text-danger mb-3" />
+            <p class="text-muted">No tienes una suscripción activa.</p>
+            <p class="small text-muted">Contacta al administrador para obtener acceso.</p>
+          </div>
+        </CCardBody>
+      </CCard>
+    </CCol>
   </CRow>
 </template>
 
@@ -136,6 +204,34 @@ const userInitials = computed(() => {
   if (!user.value) return '?'
   const name = user.value.display_name || user.value.email || ''
   return name.charAt(0).toUpperCase()
+})
+
+const subscriptionIcon = computed(() => {
+  if (!user.value?.subscription) return 'cil-x-circle'
+  if (user.value.subscription.is_trial_expired) return 'cil-clock'
+  if (user.value.subscription.trial_expires_at) return 'cil-clock'
+  return 'cil-check-circle'
+})
+
+const subscriptionIconColor = computed(() => {
+  if (!user.value?.subscription) return 'text-danger'
+  if (user.value.subscription.is_trial_expired) return 'text-danger'
+  if (!user.value.subscription.is_active) return 'text-danger'
+  if (user.value.subscription.trial_days_remaining <= 3) return 'text-warning'
+  return 'text-success'
+})
+
+const trialBadgeColor = computed(() => {
+  const days = user.value?.subscription?.trial_days_remaining || 0
+  if (days <= 3) return 'danger'
+  if (days <= 7) return 'warning'
+  return 'info'
+})
+
+const trialAlertColor = computed(() => {
+  const days = user.value?.subscription?.trial_days_remaining || 0
+  if (days <= 3) return 'danger'
+  return 'warning'
 })
 
 function getRoleColor(role) {
