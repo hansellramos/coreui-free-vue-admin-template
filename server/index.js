@@ -96,7 +96,16 @@ async function startServer() {
     }
   });
 
-  app.get('/objects/:type/:id', isAuthenticated, async (req, res) => {
+  // Serve objects - public for venues/plans, authenticated for receipts
+  app.get('/objects/:type/:id', async (req, res, next) => {
+    const { type } = req.params;
+    // Allow public access for venue and plan images
+    if (type === 'venues' || type === 'plans') {
+      return next();
+    }
+    // Require authentication for receipts and other types
+    return isAuthenticated(req, res, next);
+  }, async (req, res) => {
     try {
       const objectPath = `${req.params.type}/${req.params.id}`;
       const privateObjectDir = process.env.PRIVATE_OBJECT_DIR || '';
@@ -115,9 +124,10 @@ async function startServer() {
       }
       
       const [metadata] = await file.getMetadata();
+      const isPublicType = ['venues', 'plans'].includes(req.params.type);
       res.set({
         'Content-Type': metadata.contentType || 'application/octet-stream',
-        'Cache-Control': 'private, max-age=3600',
+        'Cache-Control': isPublicType ? 'public, max-age=31536000' : 'private, max-age=3600',
       });
       
       file.createReadStream().pipe(res);
@@ -1628,6 +1638,425 @@ async function startServer() {
       res.json(user);
     } catch (error) {
       res.status(500).json({ error: error.message });
+    }
+  });
+
+  // =====================
+  // AMENITIES CRUD
+  // =====================
+  app.get('/api/amenities', async (req, res) => {
+    try {
+      const amenities = await prisma.amenities.findMany({
+        orderBy: { name: 'asc' }
+      });
+      res.json(amenities);
+    } catch (error) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.get('/api/amenities/:id', async (req, res) => {
+    try {
+      const amenity = await prisma.amenities.findUnique({ where: { id: req.params.id } });
+      if (!amenity) return res.status(404).json({ error: 'Amenidad no encontrada' });
+      res.json(amenity);
+    } catch (error) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.post('/api/amenities', isAuthenticated, async (req, res) => {
+    try {
+      const { name, description, icon, category, is_active } = req.body;
+      const amenity = await prisma.amenities.create({
+        data: { name, description, icon, category, is_active: is_active !== false }
+      });
+      res.status(201).json(amenity);
+    } catch (error) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.put('/api/amenities/:id', isAuthenticated, async (req, res) => {
+    try {
+      const { name, description, icon, category, is_active } = req.body;
+      const amenity = await prisma.amenities.update({
+        where: { id: req.params.id },
+        data: { name, description, icon, category, is_active }
+      });
+      res.json(amenity);
+    } catch (error) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.delete('/api/amenities/:id', isAuthenticated, async (req, res) => {
+    try {
+      await prisma.amenities.delete({ where: { id: req.params.id } });
+      res.json({ success: true });
+    } catch (error) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // =====================
+  // VENUE PLANS CRUD
+  // =====================
+  app.get('/api/venue-plans', async (req, res) => {
+    try {
+      const { venue_id } = req.query;
+      const where = venue_id ? { venue_id } : {};
+      const plans = await prisma.venue_plans.findMany({
+        where,
+        orderBy: { name: 'asc' }
+      });
+      
+      // Fetch amenities and images for each plan
+      const plansWithDetails = await Promise.all(plans.map(async (plan) => {
+        const planAmenities = await prisma.plan_amenities.findMany({
+          where: { plan_id: plan.id }
+        });
+        const amenityIds = planAmenities.map(pa => pa.amenity_id);
+        const amenities = amenityIds.length > 0 
+          ? await prisma.amenities.findMany({ where: { id: { in: amenityIds } } })
+          : [];
+        
+        const images = await prisma.plan_images.findMany({
+          where: { plan_id: plan.id },
+          orderBy: { sort_order: 'asc' }
+        });
+        
+        return {
+          ...plan,
+          amenities: amenities.map(a => ({
+            ...a,
+            ...(planAmenities.find(pa => pa.amenity_id === a.id) || {})
+          })),
+          images
+        };
+      }));
+      
+      res.json(plansWithDetails);
+    } catch (error) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.get('/api/venue-plans/:id', async (req, res) => {
+    try {
+      const plan = await prisma.venue_plans.findUnique({ where: { id: req.params.id } });
+      if (!plan) return res.status(404).json({ error: 'Plan no encontrado' });
+      
+      const planAmenities = await prisma.plan_amenities.findMany({
+        where: { plan_id: plan.id }
+      });
+      const amenityIds = planAmenities.map(pa => pa.amenity_id);
+      const amenities = amenityIds.length > 0 
+        ? await prisma.amenities.findMany({ where: { id: { in: amenityIds } } })
+        : [];
+      
+      const images = await prisma.plan_images.findMany({
+        where: { plan_id: plan.id },
+        orderBy: { sort_order: 'asc' }
+      });
+      
+      res.json({
+        ...plan,
+        amenities: amenities.map(a => ({
+          ...a,
+          ...(planAmenities.find(pa => pa.amenity_id === a.id) || {})
+        })),
+        images
+      });
+    } catch (error) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.post('/api/venue-plans', isAuthenticated, async (req, res) => {
+    try {
+      const {
+        venue_id, name, plan_type, description,
+        adult_price, child_price, infant_max_age, child_max_age,
+        free_children_qty, free_children_max_age, free_children_condition, child_food_price,
+        min_guests, max_capacity, check_in_time, check_out_time,
+        includes_overnight, includes_rooms, includes_food, food_description, includes_beverages,
+        terms_conditions, is_active, amenity_ids
+      } = req.body;
+      
+      const plan = await prisma.venue_plans.create({
+        data: {
+          venue_id, name, plan_type, description,
+          adult_price, child_price,
+          infant_max_age: infant_max_age || 2,
+          child_max_age: child_max_age || 12,
+          free_children_qty, free_children_max_age, free_children_condition, child_food_price,
+          min_guests: min_guests || 1, max_capacity, check_in_time, check_out_time,
+          includes_overnight: includes_overnight || false,
+          includes_rooms: includes_rooms || false,
+          includes_food: includes_food || false,
+          food_description,
+          includes_beverages: includes_beverages || false,
+          terms_conditions,
+          is_active: is_active !== false
+        }
+      });
+      
+      // Add amenities if provided
+      if (amenity_ids && amenity_ids.length > 0) {
+        await prisma.plan_amenities.createMany({
+          data: amenity_ids.map(aid => ({
+            plan_id: plan.id,
+            amenity_id: typeof aid === 'object' ? aid.id : aid,
+            quantity: typeof aid === 'object' ? aid.quantity : 1,
+            notes: typeof aid === 'object' ? aid.notes : null
+          }))
+        });
+      }
+      
+      res.status(201).json(plan);
+    } catch (error) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.put('/api/venue-plans/:id', isAuthenticated, async (req, res) => {
+    try {
+      const {
+        name, plan_type, description,
+        adult_price, child_price, infant_max_age, child_max_age,
+        free_children_qty, free_children_max_age, free_children_condition, child_food_price,
+        min_guests, max_capacity, check_in_time, check_out_time,
+        includes_overnight, includes_rooms, includes_food, food_description, includes_beverages,
+        terms_conditions, is_active, amenity_ids
+      } = req.body;
+      
+      const plan = await prisma.venue_plans.update({
+        where: { id: req.params.id },
+        data: {
+          name, plan_type, description,
+          adult_price, child_price, infant_max_age, child_max_age,
+          free_children_qty, free_children_max_age, free_children_condition, child_food_price,
+          min_guests, max_capacity, check_in_time, check_out_time,
+          includes_overnight, includes_rooms, includes_food, food_description, includes_beverages,
+          terms_conditions, is_active
+        }
+      });
+      
+      // Update amenities if provided
+      if (amenity_ids !== undefined) {
+        await prisma.plan_amenities.deleteMany({ where: { plan_id: plan.id } });
+        if (amenity_ids.length > 0) {
+          await prisma.plan_amenities.createMany({
+            data: amenity_ids.map(aid => ({
+              plan_id: plan.id,
+              amenity_id: typeof aid === 'object' ? aid.id : aid,
+              quantity: typeof aid === 'object' ? aid.quantity : 1,
+              notes: typeof aid === 'object' ? aid.notes : null
+            }))
+          });
+        }
+      }
+      
+      res.json(plan);
+    } catch (error) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.delete('/api/venue-plans/:id', isAuthenticated, async (req, res) => {
+    try {
+      // Delete related data first
+      await prisma.plan_amenities.deleteMany({ where: { plan_id: req.params.id } });
+      await prisma.plan_images.deleteMany({ where: { plan_id: req.params.id } });
+      await prisma.venue_plans.delete({ where: { id: req.params.id } });
+      res.json({ success: true });
+    } catch (error) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // Plan images
+  app.post('/api/venue-plans/:id/images', isAuthenticated, async (req, res) => {
+    try {
+      const { image_url, is_cover } = req.body;
+      
+      // If setting as cover, unset other covers
+      if (is_cover) {
+        await prisma.plan_images.updateMany({
+          where: { plan_id: req.params.id },
+          data: { is_cover: false }
+        });
+      }
+      
+      const maxOrder = await prisma.plan_images.aggregate({
+        where: { plan_id: req.params.id },
+        _max: { sort_order: true }
+      });
+      
+      const image = await prisma.plan_images.create({
+        data: {
+          plan_id: req.params.id,
+          image_url,
+          is_cover: is_cover || false,
+          sort_order: (maxOrder._max.sort_order || 0) + 1
+        }
+      });
+      res.status(201).json(image);
+    } catch (error) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.put('/api/plan-images/:id/cover', isAuthenticated, async (req, res) => {
+    try {
+      const image = await prisma.plan_images.findUnique({ where: { id: req.params.id } });
+      if (!image) return res.status(404).json({ error: 'Imagen no encontrada' });
+      
+      await prisma.plan_images.updateMany({
+        where: { plan_id: image.plan_id },
+        data: { is_cover: false }
+      });
+      
+      const updated = await prisma.plan_images.update({
+        where: { id: req.params.id },
+        data: { is_cover: true }
+      });
+      res.json(updated);
+    } catch (error) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.delete('/api/plan-images/:id', isAuthenticated, async (req, res) => {
+    try {
+      await prisma.plan_images.delete({ where: { id: req.params.id } });
+      res.json({ success: true });
+    } catch (error) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // =====================
+  // VENUE IMAGES
+  // =====================
+  app.get('/api/venues/:id/images', async (req, res) => {
+    try {
+      const images = await prisma.venue_images.findMany({
+        where: { venue_id: req.params.id },
+        orderBy: { sort_order: 'asc' }
+      });
+      res.json(images);
+    } catch (error) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.post('/api/venues/:id/images', isAuthenticated, async (req, res) => {
+    try {
+      const { image_url, is_cover } = req.body;
+      
+      if (is_cover) {
+        await prisma.venue_images.updateMany({
+          where: { venue_id: req.params.id },
+          data: { is_cover: false }
+        });
+      }
+      
+      const maxOrder = await prisma.venue_images.aggregate({
+        where: { venue_id: req.params.id },
+        _max: { sort_order: true }
+      });
+      
+      const image = await prisma.venue_images.create({
+        data: {
+          venue_id: req.params.id,
+          image_url,
+          is_cover: is_cover || false,
+          sort_order: (maxOrder._max.sort_order || 0) + 1
+        }
+      });
+      res.status(201).json(image);
+    } catch (error) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.put('/api/venue-images/:id/cover', isAuthenticated, async (req, res) => {
+    try {
+      const image = await prisma.venue_images.findUnique({ where: { id: req.params.id } });
+      if (!image) return res.status(404).json({ error: 'Imagen no encontrada' });
+      
+      await prisma.venue_images.updateMany({
+        where: { venue_id: image.venue_id },
+        data: { is_cover: false }
+      });
+      
+      const updated = await prisma.venue_images.update({
+        where: { id: req.params.id },
+        data: { is_cover: true }
+      });
+      res.json(updated);
+    } catch (error) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.delete('/api/venue-images/:id', isAuthenticated, async (req, res) => {
+    try {
+      await prisma.venue_images.delete({ where: { id: req.params.id } });
+      res.json({ success: true });
+    } catch (error) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // Generic upload URL for plans/venues images
+  app.post('/api/uploads/image-url', isAuthenticated, async (req, res) => {
+    try {
+      const { contentType, size, type } = req.body; // type: 'plan' or 'venue'
+      
+      if (!contentType || !ALLOWED_IMAGE_TYPES.includes(contentType)) {
+        return res.status(400).json({ error: 'Solo se permiten imágenes (JPEG, PNG, GIF, WebP)' });
+      }
+      
+      if (size && size > MAX_FILE_SIZE) {
+        return res.status(400).json({ error: 'El archivo no puede superar 10MB' });
+      }
+      
+      const privateObjectDir = process.env.PRIVATE_OBJECT_DIR || '';
+      if (!privateObjectDir) {
+        throw new Error('PRIVATE_OBJECT_DIR not set');
+      }
+      
+      const objectId = randomUUID();
+      const folder = type === 'venue' ? 'venues' : 'plans';
+      const fullPath = `${privateObjectDir}/${folder}/${objectId}`;
+      
+      const pathParts = fullPath.startsWith('/') ? fullPath.slice(1).split('/') : fullPath.split('/');
+      const bucketName = pathParts[0];
+      const objectName = pathParts.slice(1).join('/');
+      
+      const response = await fetch(`${REPLIT_SIDECAR_ENDPOINT}/object-storage/signed-object-url`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          bucket_name: bucketName,
+          object_name: objectName,
+          method: 'PUT',
+          expires_at: new Date(Date.now() + 900 * 1000).toISOString(),
+        }),
+      });
+      
+      if (!response.ok) {
+        throw new Error(`Failed to sign object URL: ${response.status}`);
+      }
+      
+      const { signed_url } = await response.json();
+      res.json({ uploadURL: signed_url, objectPath: `/objects/${folder}/${objectId}` });
+    } catch (error) {
+      console.error('Error generating upload URL:', error);
+      res.status(500).json({ error: 'Failed to generate upload URL' });
     }
   });
 

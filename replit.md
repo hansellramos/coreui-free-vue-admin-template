@@ -128,6 +128,20 @@ Replit Auth is integrated using OpenID Connect:
 - Protected API endpoints use `isAuthenticated` middleware
 - Vue composable `useAuth()` provides authentication state
 
+## Venue Plans System
+Venues can have multiple plans (pasadía/pasanoche/hospedaje) with:
+- Adult/child/infant pricing with configurable max ages
+- Courtesies (free children, food-only pricing conditions)
+- Schedule (check-in/out times)
+- Capacity (min guests, max capacity)
+- Food descriptions (almuerzo, cena, medianoche)
+- Amenities selection from system-level amenities
+- Photo galleries with cover photo selection
+- Terms and conditions
+- Active/inactive status
+
+Access venue plans via the "Planes" button in the Cabañas list.
+
 ## Environment Variables
 - `VITE_MAPBOX_ACCESS_TOKEN` - Mapbox API token (optional)
 - `DATABASE_URL` - PostgreSQL connection string (auto-configured)

@@ -7,15 +7,18 @@ datasource db {
 }
 
 model accommodations {
-  created_at DateTime  @default(now()) @db.Timestamptz(6)
-  venue      String?   @db.Uuid
-  date       DateTime? @db.Date
-  duration   Decimal?  @db.Decimal
-  time       DateTime? @db.Time(6)
-  customer   String?   @db.Uuid
-  adults     Int?      @default(0)
-  children   Int?      @default(0)
-  id         String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  created_at       DateTime  @default(now()) @db.Timestamptz(6)
+  venue            String?   @db.Uuid
+  date             DateTime? @db.Date
+  duration         Decimal?  @db.Decimal
+  time             DateTime? @db.Time(6)
+  customer         String?   @db.Uuid
+  adults           Int?      @default(0)
+  children         Int?      @default(0)
+  id               String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  plan_id          String?   @db.Uuid
+  calculated_price Decimal?  @db.Decimal
+  agreed_price     Decimal?  @db.Decimal
 }
 
 model payments {
@@ -172,6 +175,7 @@ model venues {
   address_reference String?
   instagram         String?  @db.VarChar
   organization      String?  @db.Uuid
+  is_public         Boolean  @default(false)
 }
 
 model sessions {
@@ -191,4 +195,70 @@ model incomes {
   type            String?  @db.VarChar(50)
   date            DateTime? @db.Date
   created_at      DateTime @default(now()) @db.Timestamptz(6)
+}
+
+model amenities {
+  id          String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  name        String   @db.VarChar(255)
+  description String?  @db.Text
+  icon        String?  @db.VarChar(100)
+  category    String?  @db.VarChar(100)
+  is_active   Boolean  @default(true)
+  created_at  DateTime @default(now()) @db.Timestamptz(6)
+}
+
+model venue_plans {
+  id                    String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  venue_id              String    @db.Uuid
+  name                  String    @db.VarChar(255)
+  plan_type             String    @db.VarChar(50)
+  description           String?   @db.Text
+  adult_price           Decimal   @db.Decimal
+  child_price           Decimal   @db.Decimal
+  infant_max_age        Int       @default(2)
+  child_max_age         Int       @default(12)
+  free_children_qty     Int?      @default(0)
+  free_children_max_age Int?
+  free_children_condition String? @db.Text
+  child_food_price      Decimal?  @db.Decimal
+  min_guests            Int       @default(1)
+  max_capacity          Int?
+  check_in_time         String?   @db.VarChar(10)
+  check_out_time        String?   @db.VarChar(10)
+  includes_overnight    Boolean   @default(false)
+  includes_rooms        Boolean   @default(false)
+  includes_food         Boolean   @default(false)
+  food_description      String?   @db.Text
+  includes_beverages    Boolean   @default(false)
+  terms_conditions      String?   @db.Text
+  is_active             Boolean   @default(true)
+  created_at            DateTime  @default(now()) @db.Timestamptz(6)
+}
+
+model plan_amenities {
+  plan_id    String   @db.Uuid
+  amenity_id String   @db.Uuid
+  quantity   Int?     @default(1)
+  notes      String?  @db.VarChar(255)
+  created_at DateTime @default(now()) @db.Timestamptz(6)
+
+  @@id([plan_id, amenity_id])
+}
+
+model plan_images {
+  id         String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  plan_id    String   @db.Uuid
+  image_url  String   @db.Text
+  is_cover   Boolean  @default(false)
+  sort_order Int      @default(0)
+  created_at DateTime @default(now()) @db.Timestamptz(6)
+}
+
+model venue_images {
+  id         String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  venue_id   String   @db.Uuid
+  image_url  String   @db.Text
+  is_cover   Boolean  @default(false)
+  sort_order Int      @default(0)
+  created_at DateTime @default(now()) @db.Timestamptz(6)
 }

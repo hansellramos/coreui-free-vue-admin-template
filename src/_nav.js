@@ -69,6 +69,12 @@ export default [
   },
   {
     component: 'CNavItem',
+    name: 'Amenidades',
+    to: '/admin/amenities',
+    icon: 'cil-list-rich',
+  },
+  {
+    component: 'CNavItem',
     name: 'Configuración',
     to: '/settings',
     icon: 'cil-settings',

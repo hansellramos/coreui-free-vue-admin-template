@@ -132,6 +132,14 @@
         placeholder="Enter address reference"
       />
     </div>
+    <div class="mb-3">
+      <CFormCheck
+        id="venueIsPublic"
+        v-model="form.is_public"
+        label="Publicar en página de disponibilidad"
+      />
+      <div class="form-text">Si está activo, esta cabaña aparecerá en la página pública de búsqueda de disponibilidad.</div>
+    </div>
     <CButton type="submit" color="primary" class="me-2">{{ isEdit ? 'Update' : 'Create' }}</CButton>
     <CButton color="secondary" variant="outline" @click="onCancel">Cancel</CButton>
   </CForm>

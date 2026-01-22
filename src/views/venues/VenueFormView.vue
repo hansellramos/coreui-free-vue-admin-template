@@ -38,7 +38,8 @@ let form = ref({
   country: '',
   department: '',
   suburb: '',
-  address_reference: ''
+  address_reference: '',
+  is_public: false
 })
 const isEdit = computed(() => !!route.params.id)
 

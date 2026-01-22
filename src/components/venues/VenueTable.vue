@@ -37,9 +37,10 @@
               </RouterLink>
             </CTableDataCell>
             <CTableDataCell>
-              <CButton color="primary" size="sm" @click="onEdit(venue)">Edit</CButton>
-              <CButton color="info" size="sm" class="ms-2" @click="viewUpcoming(venue)">Upcoming</CButton>
-              <CButton color="danger" size="sm" class="ms-2" @click="onDelete(venue)">Delete</CButton>
+              <CButton color="primary" size="sm" @click="onEdit(venue)">Editar</CButton>
+              <CButton color="success" size="sm" class="ms-2" @click="viewPlans(venue)">Planes</CButton>
+              <CButton color="info" size="sm" class="ms-2" @click="viewUpcoming(venue)">Próximos</CButton>
+              <CButton color="danger" size="sm" class="ms-2" @click="onDelete(venue)">Eliminar</CButton>
             </CTableDataCell>
           </CTableRow>
         </CTableBody>
@@ -121,11 +122,14 @@ function onEdit(venue) {
 }
 
 function viewUpcoming(venue) {
-  // Redireccionar a la página Next con el ID del venue como parámetro en la URL
   router.push({
     path: '/next',
     query: { venues: venue.id }
   })
+}
+
+function viewPlans(venue) {
+  router.push(`/business/venues/${venue.id}/plans`)
 }
 
 async function onDelete(venue) {

@@ -404,6 +404,17 @@ const routes = [
       ...accommodationsRoutes,
       ...paymentsRoutes,
       ...profilesRoutes,
+      {
+        path: '/admin/amenities',
+        name: 'AmenityList',
+        component: () => import('@/views/amenities/AmenityListView.vue'),
+      },
+      {
+        path: '/business/venues/:id/plans',
+        name: 'VenuePlans',
+        component: () => import('@/views/venues/VenuePlansView.vue'),
+        props: true,
+      },
     ],
   },
   {
