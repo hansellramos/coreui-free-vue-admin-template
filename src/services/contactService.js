@@ -1,7 +1,12 @@
 const API_BASE = '/api';
 
-export async function fetchContacts() {
-  const response = await fetch(`${API_BASE}/contacts`, {
+export async function fetchContacts(options = {}) {
+  const params = new URLSearchParams();
+  if (options.viewAll) {
+    params.append('viewAll', 'true');
+  }
+  const url = params.toString() ? `${API_BASE}/contacts?${params}` : `${API_BASE}/contacts`;
+  const response = await fetch(url, {
     credentials: 'include'
   });
   if (!response.ok) {

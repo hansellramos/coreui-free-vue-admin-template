@@ -42,6 +42,8 @@
 import { ref, computed, onMounted, watch } from 'vue'
 import { CModal, CModalHeader, CModalTitle, CModalBody, CModalFooter, CButton, CFormInput, CFormLabel } from '@coreui/vue'
 import { fetchContacts, createContact } from '@/services/contactService'
+import { useSettingsStore } from '@/stores/settings'
+import { useAuth } from '@/composables/useAuth'
 
 const props = defineProps({
   modelValue: String,
@@ -54,6 +56,8 @@ const showDropdown = ref(false)
 const contacts = ref([])
 const showCreateForm = ref(false)
 const newCustomer = ref({ fullname: '', whatsapp: '' })
+const settingsStore = useSettingsStore()
+const { user } = useAuth()
 
 const filteredContacts = computed(() => {
   if (!query.value) return contacts.value.slice(0, 10)
@@ -128,12 +132,21 @@ async function createCustomer() {
   }
 }
 
+async function loadContacts() {
+  const viewAll = user.value?.is_super_admin ? settingsStore.godModeViewAll : false
+  contacts.value = await fetchContacts({ viewAll })
+}
+
 onMounted(async () => {
-  contacts.value = await fetchContacts()
+  await loadContacts()
   if (props.modelValue) {
     const c = contacts.value.find(c => c.id === props.modelValue)
     if (c) query.value = c.fullname
   }
+})
+
+watch(() => settingsStore.godModeViewAll, () => {
+  loadContacts()
 })
 
 watch(() => props.modelValue, val => {

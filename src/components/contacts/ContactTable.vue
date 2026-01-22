@@ -54,9 +54,11 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, watch } from 'vue'
 import { RouterLink, useRouter } from 'vue-router'
 import { fetchContacts, deleteContact } from '@/services/contactService'
+import { useSettingsStore } from '@/stores/settings'
+import { useAuth } from '@/composables/useAuth'
 
 const contacts = ref([])
 const allContacts = ref([])
@@ -64,14 +66,23 @@ const nameInput = ref('')
 const filteredNames = ref([])
 const selectedNames = ref([])
 const router = useRouter()
+const settingsStore = useSettingsStore()
+const { user } = useAuth()
 
 async function loadContacts(names = []) {
-  contacts.value = await fetchContacts(names)
+  const viewAll = user.value?.is_super_admin ? settingsStore.godModeViewAll : false
+  contacts.value = await fetchContacts({ viewAll })
 }
 
 async function loadAllContacts() {
-  allContacts.value = await fetchContacts()
+  const viewAll = user.value?.is_super_admin ? settingsStore.godModeViewAll : false
+  allContacts.value = await fetchContacts({ viewAll })
 }
+
+watch(() => settingsStore.godModeViewAll, () => {
+  loadContacts(selectedNames.value)
+  loadAllContacts()
+})
 
 function onNameInput() {
   if (!nameInput.value) { filteredNames.value = []; return }

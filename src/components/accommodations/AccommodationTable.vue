@@ -54,17 +54,26 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, watch } from 'vue'
 import { fetchAccommodations, deleteAccommodation } from '@/services/accommodationService'
+import { useSettingsStore } from '@/stores/settings'
+import { useAuth } from '@/composables/useAuth'
 
 const accommodations = ref([])
 const dateInput = ref('')
 const selectedDates = ref([])
 const searchQuery = ref('')
+const settingsStore = useSettingsStore()
+const { user } = useAuth()
 
 async function load() {
-  accommodations.value = await fetchAccommodations(selectedDates.value)
+  const viewAll = user.value?.is_super_admin ? settingsStore.godModeViewAll : false
+  accommodations.value = await fetchAccommodations({ viewAll })
 }
+
+watch(() => settingsStore.godModeViewAll, () => {
+  load()
+})
 
 const filteredAccommodations = computed(() => {
   if (!searchQuery.value.trim()) return accommodations.value

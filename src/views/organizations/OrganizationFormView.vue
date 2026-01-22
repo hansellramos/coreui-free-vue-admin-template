@@ -79,9 +79,13 @@ import OrganizationForm from '@/components/organizations/OrganizationForm.vue'
 import { getOrganizationById, createOrganization, updateOrganization } from '@/services/organizationService'
 import { fetchContactsByOrganization, addContactToOrganization, removeContactFromOrganization } from '@/services/contactOrganizationService'
 import { fetchContacts } from '@/services/contactService'
+import { useSettingsStore } from '@/stores/settings'
+import { useAuth } from '@/composables/useAuth'
 
 const route = useRoute()
 const router = useRouter()
+const settingsStore = useSettingsStore()
+const { user } = useAuth()
 let form = ref({ name: '' })
 const isEdit = computed(() => !!route.params.id)
 
@@ -134,7 +138,8 @@ onMounted(async () => {
   }
   // Load all contacts for autocomplete
   try {
-    const allContacts = await fetchContacts()
+    const viewAll = user.value?.is_super_admin ? settingsStore.godModeViewAll : false
+    const allContacts = await fetchContacts({ viewAll })
     usersList.value = allContacts.map(c => ({
       id: c.id,
       display_name: c.fullname,

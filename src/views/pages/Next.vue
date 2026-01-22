@@ -98,9 +98,13 @@
 import { ref, onMounted, computed, watch } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { CCard, CCardBody, CInputGroup, CFormInput, CButton } from '@coreui/vue'
+import { useSettingsStore } from '@/stores/settings'
+import { useAuth } from '@/composables/useAuth'
 
 const router = useRouter()
 const route = useRoute()
+const settingsStore = useSettingsStore()
+const { user } = useAuth()
 
 const accommodations = ref([])
 const allVenues = ref([])
@@ -110,7 +114,8 @@ const filteredVenues = ref([])
 
 const fetchVenues = async () => {
   try {
-    const response = await fetch('/api/venues', { credentials: 'include' })
+    const viewAll = user.value?.is_super_admin ? settingsStore.godModeViewAll : false
+    const response = await fetch(`/api/venues?viewAll=${viewAll}`, { credentials: 'include' })
     if (response.ok) {
       allVenues.value = await response.json()
     }
@@ -122,7 +127,8 @@ const fetchVenues = async () => {
 const fetchAccommodations = async () => {
   try {
     const today = new Date().toISOString().split('T')[0]
-    let url = `/api/accommodations?from_date=${today}`
+    const viewAll = user.value?.is_super_admin ? settingsStore.godModeViewAll : false
+    let url = `/api/accommodations?from_date=${today}&viewAll=${viewAll}`
     
     if (selectedVenues.value.length > 0) {
       const venueIds = selectedVenues.value.map(v => v.id).join(',')
@@ -181,6 +187,11 @@ const loadVenuesFromUrl = async () => {
     }
   }
 }
+
+watch(() => settingsStore.godModeViewAll, () => {
+  fetchVenues()
+  fetchAccommodations()
+})
 
 const selectVenue = (venue) => {
   selectedVenues.value.push(venue)

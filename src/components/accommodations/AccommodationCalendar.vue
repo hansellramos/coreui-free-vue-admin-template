@@ -14,13 +14,15 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, watch } from 'vue'
 import FullCalendar from '@fullcalendar/vue3'
 import dayGridPlugin from '@fullcalendar/daygrid'
 import timeGridPlugin from '@fullcalendar/timegrid'
 import interactionPlugin from '@fullcalendar/interaction'
 import { useRouter } from 'vue-router'
 import { fetchAccommodations } from '@/services/accommodationService'
+import { useSettingsStore } from '@/stores/settings'
+import { useAuth } from '@/composables/useAuth'
 import { CButton } from '@coreui/vue'
 import { CIcon } from '@coreui/icons-vue'
 import { cilPlus } from '@coreui/icons'
@@ -28,10 +30,17 @@ import { cilPlus } from '@coreui/icons'
 const router = useRouter()
 const accommodations = ref([])
 const searchQuery = ref('')
+const settingsStore = useSettingsStore()
+const { user } = useAuth()
 
 async function load() {
-  accommodations.value = await fetchAccommodations([])
+  const viewAll = user.value?.is_super_admin ? settingsStore.godModeViewAll : false
+  accommodations.value = await fetchAccommodations({ viewAll })
 }
+
+watch(() => settingsStore.godModeViewAll, () => {
+  load()
+})
 
 const filteredAccommodations = computed(() => {
   if (!searchQuery.value.trim()) return accommodations.value

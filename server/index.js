@@ -296,19 +296,47 @@ async function startServer() {
 
   app.get('/api/contacts', async (req, res) => {
     try {
-      const accessibleOrgIds = await getAccessibleOrganizationIds(req.userPermissions);
+      const viewAll = req.query.viewAll === 'true';
+      let accessibleOrgIds = null;
+      
+      if (req.user) {
+        const userId = String(req.user.claims?.sub);
+        const currentUser = await prisma.users.findUnique({ where: { id: userId } });
+        
+        if (viewAll && currentUser?.is_super_admin) {
+          // Super admin with viewAll=true: show all contacts
+          accessibleOrgIds = null;
+        } else if (currentUser?.is_super_admin) {
+          // Super admin with viewAll=false: show contacts from assigned organizations only
+          const userOrgs = await prisma.user_organizations.findMany({
+            where: { user_id: userId }
+          });
+          accessibleOrgIds = userOrgs.map(uo => uo.organization_id);
+        } else {
+          // Non-super admin: use permission-based access
+          accessibleOrgIds = await getAccessibleOrganizationIds(req.userPermissions);
+        }
+      } else {
+        accessibleOrgIds = [];
+      }
       
       let contacts;
       if (accessibleOrgIds !== null) {
-        const contactOrgs = await prisma.contact_organization.findMany({
-          where: { organization: { in: accessibleOrgIds } },
-          select: { contact: true }
-        });
-        const contactIds = [...new Set(contactOrgs.map(co => co.contact))];
-        contacts = await prisma.contacts.findMany({
-          where: { id: { in: contactIds } },
-          orderBy: { fullname: 'asc' }
-        });
+        if (accessibleOrgIds.length === 0) {
+          contacts = [];
+        } else {
+          const contactOrgs = await prisma.contact_organization.findMany({
+            where: { organization: { in: accessibleOrgIds } },
+            select: { contact: true }
+          });
+          const contactIds = [...new Set(contactOrgs.map(co => co.contact))];
+          contacts = contactIds.length > 0 
+            ? await prisma.contacts.findMany({
+                where: { id: { in: contactIds } },
+                orderBy: { fullname: 'asc' }
+              })
+            : [];
+        }
       } else {
         contacts = await prisma.contacts.findMany({
           orderBy: { fullname: 'asc' }
@@ -380,9 +408,40 @@ async function startServer() {
 
   app.get('/api/accommodations', async (req, res) => {
     try {
-      const { from_date, venue_ids } = req.query;
+      const { from_date, venue_ids, viewAll } = req.query;
+      const viewAllFlag = viewAll === 'true';
       
-      const accessibleVenueIds = await getAccessibleVenueIds(req.userPermissions);
+      let accessibleVenueIds = null;
+      
+      if (req.user) {
+        const userId = String(req.user.claims?.sub);
+        const currentUser = await prisma.users.findUnique({ where: { id: userId } });
+        
+        if (viewAllFlag && currentUser?.is_super_admin) {
+          // Super admin with viewAll=true: show all accommodations
+          accessibleVenueIds = null;
+        } else if (currentUser?.is_super_admin) {
+          // Super admin with viewAll=false: show accommodations from venues in assigned organizations
+          const userOrgs = await prisma.user_organizations.findMany({
+            where: { user_id: userId }
+          });
+          const orgIds = userOrgs.map(uo => uo.organization_id);
+          if (orgIds.length > 0) {
+            const venues = await prisma.venues.findMany({
+              where: { organization: { in: orgIds } },
+              select: { id: true }
+            });
+            accessibleVenueIds = venues.map(v => v.id);
+          } else {
+            accessibleVenueIds = [];
+          }
+        } else {
+          // Non-super admin: use permission-based access
+          accessibleVenueIds = await getAccessibleVenueIds(req.userPermissions);
+        }
+      } else {
+        accessibleVenueIds = [];
+      }
       
       const whereClause = {};
       
@@ -390,10 +449,18 @@ async function startServer() {
         whereClause.date = { gte: new Date(from_date) };
       }
       
+      // Handle case where user has no accessible venues - return empty result early
+      if (accessibleVenueIds !== null && accessibleVenueIds.length === 0) {
+        return res.json([]);
+      }
+      
       if (venue_ids) {
         const ids = venue_ids.split(',');
         if (accessibleVenueIds !== null) {
           const filteredIds = ids.filter(id => accessibleVenueIds.includes(id));
+          if (filteredIds.length === 0) {
+            return res.json([]);
+          }
           whereClause.venue = { in: filteredIds };
         } else {
           whereClause.venue = { in: ids };
@@ -571,16 +638,57 @@ async function startServer() {
   // Payments CRUD
   app.get('/api/payments', async (req, res) => {
     try {
-      const { accommodation_id } = req.query;
-      const accessibleVenueIds = await getAccessibleVenueIds(req.userPermissions);
+      const { accommodation_id, viewAll } = req.query;
+      const viewAllFlag = viewAll === 'true';
+      
+      let accessibleVenueIds = null;
+      
+      if (req.user) {
+        const userId = String(req.user.claims?.sub);
+        const currentUser = await prisma.users.findUnique({ where: { id: userId } });
+        
+        if (viewAllFlag && currentUser?.is_super_admin) {
+          // Super admin with viewAll=true: show all payments
+          accessibleVenueIds = null;
+        } else if (currentUser?.is_super_admin) {
+          // Super admin with viewAll=false: show payments from accommodations in assigned organizations
+          const userOrgs = await prisma.user_organizations.findMany({
+            where: { user_id: userId }
+          });
+          const orgIds = userOrgs.map(uo => uo.organization_id);
+          if (orgIds.length > 0) {
+            const venues = await prisma.venues.findMany({
+              where: { organization: { in: orgIds } },
+              select: { id: true }
+            });
+            accessibleVenueIds = venues.map(v => v.id);
+          } else {
+            accessibleVenueIds = [];
+          }
+        } else {
+          // Non-super admin: use permission-based access
+          accessibleVenueIds = await getAccessibleVenueIds(req.userPermissions);
+        }
+      } else {
+        accessibleVenueIds = [];
+      }
       
       let accessibleAccommodationIds = null;
       if (accessibleVenueIds !== null) {
-        const accs = await prisma.accommodations.findMany({
-          where: { venue: { in: accessibleVenueIds } },
-          select: { id: true }
-        });
-        accessibleAccommodationIds = accs.map(a => a.id);
+        if (accessibleVenueIds.length === 0) {
+          accessibleAccommodationIds = [];
+        } else {
+          const accs = await prisma.accommodations.findMany({
+            where: { venue: { in: accessibleVenueIds } },
+            select: { id: true }
+          });
+          accessibleAccommodationIds = accs.map(a => a.id);
+        }
+      }
+      
+      // Handle case where user has no accessible accommodations - return empty result early
+      if (accessibleAccommodationIds !== null && accessibleAccommodationIds.length === 0) {
+        return res.json([]);
       }
       
       let where = {};

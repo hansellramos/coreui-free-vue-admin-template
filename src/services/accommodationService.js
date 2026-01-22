@@ -1,7 +1,18 @@
 const API_BASE = '/api';
 
-export async function fetchAccommodations() {
-  const response = await fetch(`${API_BASE}/accommodations`, {
+export async function fetchAccommodations(options = {}) {
+  const params = new URLSearchParams();
+  if (options.viewAll) {
+    params.append('viewAll', 'true');
+  }
+  if (options.from_date) {
+    params.append('from_date', options.from_date);
+  }
+  if (options.venue_ids) {
+    params.append('venue_ids', options.venue_ids);
+  }
+  const url = params.toString() ? `${API_BASE}/accommodations?${params}` : `${API_BASE}/accommodations`;
+  const response = await fetch(url, {
     credentials: 'include'
   });
   if (!response.ok) {
