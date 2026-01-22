@@ -4,6 +4,7 @@ const { Storage } = require('@google-cloud/storage');
 const { randomUUID } = require('crypto');
 const { prisma } = require('./db');
 const { setupAuth, isAuthenticated } = require('./auth/replitAuth');
+const { loadUserPermissions, hasPermission, getAccessibleOrganizationIds, getAccessibleVenueIds, requirePermission } = require('./auth/permissions');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -68,6 +69,8 @@ app.use(express.json());
 
 async function startServer() {
   await setupAuth(app);
+  
+  app.use(loadUserPermissions);
 
   // Upload endpoints for receipts
   const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
@@ -126,7 +129,14 @@ async function startServer() {
 
   app.get('/api/organizations', async (req, res) => {
     try {
+      const accessibleOrgIds = await getAccessibleOrganizationIds(req.userPermissions);
+      
+      const whereClause = accessibleOrgIds !== null 
+        ? { id: { in: accessibleOrgIds } }
+        : {};
+      
       const organizations = await prisma.organizations.findMany({
+        where: whereClause,
         orderBy: { name: 'asc' }
       });
       res.json(organizations);
@@ -182,7 +192,14 @@ async function startServer() {
 
   app.get('/api/venues', async (req, res) => {
     try {
+      const accessibleOrgIds = await getAccessibleOrganizationIds(req.userPermissions);
+      
+      const whereClause = accessibleOrgIds !== null
+        ? { organization: { in: accessibleOrgIds } }
+        : {};
+      
       const venues = await prisma.venues.findMany({
+        where: whereClause,
         orderBy: { name: 'asc' }
       });
       res.json(venues);
@@ -238,9 +255,25 @@ async function startServer() {
 
   app.get('/api/contacts', async (req, res) => {
     try {
-      const contacts = await prisma.contacts.findMany({
-        orderBy: { fullname: 'asc' }
-      });
+      const accessibleOrgIds = await getAccessibleOrganizationIds(req.userPermissions);
+      
+      let contacts;
+      if (accessibleOrgIds !== null) {
+        const contactOrgs = await prisma.contact_organization.findMany({
+          where: { organization: { in: accessibleOrgIds } },
+          select: { contact: true }
+        });
+        const contactIds = [...new Set(contactOrgs.map(co => co.contact))];
+        contacts = await prisma.contacts.findMany({
+          where: { id: { in: contactIds } },
+          orderBy: { fullname: 'asc' }
+        });
+      } else {
+        contacts = await prisma.contacts.findMany({
+          orderBy: { fullname: 'asc' }
+        });
+      }
+      
       res.json(contacts);
     } catch (error) {
       res.status(500).json({ error: error.message });
@@ -308,6 +341,8 @@ async function startServer() {
     try {
       const { from_date, venue_ids } = req.query;
       
+      const accessibleVenueIds = await getAccessibleVenueIds(req.userPermissions);
+      
       const whereClause = {};
       
       if (from_date) {
@@ -316,7 +351,14 @@ async function startServer() {
       
       if (venue_ids) {
         const ids = venue_ids.split(',');
-        whereClause.venue = { in: ids };
+        if (accessibleVenueIds !== null) {
+          const filteredIds = ids.filter(id => accessibleVenueIds.includes(id));
+          whereClause.venue = { in: filteredIds };
+        } else {
+          whereClause.venue = { in: ids };
+        }
+      } else if (accessibleVenueIds !== null) {
+        whereClause.venue = { in: accessibleVenueIds };
       }
       
       const accommodations = await prisma.accommodations.findMany({
@@ -489,7 +531,26 @@ async function startServer() {
   app.get('/api/payments', async (req, res) => {
     try {
       const { accommodation_id } = req.query;
-      const where = accommodation_id ? { accommodation: accommodation_id } : {};
+      const accessibleVenueIds = await getAccessibleVenueIds(req.userPermissions);
+      
+      let accessibleAccommodationIds = null;
+      if (accessibleVenueIds !== null) {
+        const accs = await prisma.accommodations.findMany({
+          where: { venue: { in: accessibleVenueIds } },
+          select: { id: true }
+        });
+        accessibleAccommodationIds = accs.map(a => a.id);
+      }
+      
+      let where = {};
+      if (accommodation_id) {
+        if (accessibleAccommodationIds !== null && !accessibleAccommodationIds.includes(accommodation_id)) {
+          return res.json([]);
+        }
+        where.accommodation = accommodation_id;
+      } else if (accessibleAccommodationIds !== null) {
+        where.accommodation = { in: accessibleAccommodationIds };
+      }
       
       const payments = await prisma.payments.findMany({
         where,
@@ -827,6 +888,174 @@ async function startServer() {
         }
       });
       res.json({ success: true });
+    } catch (error) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // Profiles CRUD
+  app.get('/api/profiles', async (req, res) => {
+    try {
+      const profiles = await prisma.profiles.findMany({
+        orderBy: { name: 'asc' }
+      });
+      res.json(profiles);
+    } catch (error) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.get('/api/profiles/:id', async (req, res) => {
+    try {
+      const profile = await prisma.profiles.findUnique({
+        where: { id: req.params.id }
+      });
+      if (!profile) {
+        return res.status(404).json({ error: 'Perfil no encontrado' });
+      }
+      res.json(profile);
+    } catch (error) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.post('/api/profiles', isAuthenticated, async (req, res) => {
+    try {
+      if (!hasPermission(req.userPermissions, 'profiles:create')) {
+        return res.status(403).json({ error: 'No tiene permiso para crear perfiles' });
+      }
+      const { code, name, description, permissions } = req.body;
+      const profile = await prisma.profiles.create({
+        data: {
+          code,
+          name,
+          description,
+          permissions: permissions || [],
+          is_system: false
+        }
+      });
+      res.json(profile);
+    } catch (error) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.put('/api/profiles/:id', isAuthenticated, async (req, res) => {
+    try {
+      if (!hasPermission(req.userPermissions, 'profiles:edit')) {
+        return res.status(403).json({ error: 'No tiene permiso para editar perfiles' });
+      }
+      
+      const existing = await prisma.profiles.findUnique({ where: { id: req.params.id } });
+      if (!existing) {
+        return res.status(404).json({ error: 'Perfil no encontrado' });
+      }
+      if (existing.is_system) {
+        return res.status(403).json({ error: 'No se pueden modificar perfiles del sistema' });
+      }
+      
+      const { code, name, description, permissions } = req.body;
+      const profile = await prisma.profiles.update({
+        where: { id: req.params.id },
+        data: { code, name, description, permissions }
+      });
+      res.json(profile);
+    } catch (error) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.delete('/api/profiles/:id', isAuthenticated, async (req, res) => {
+    try {
+      if (!hasPermission(req.userPermissions, 'profiles:delete')) {
+        return res.status(403).json({ error: 'No tiene permiso para eliminar perfiles' });
+      }
+      
+      const existing = await prisma.profiles.findUnique({ where: { id: req.params.id } });
+      if (!existing) {
+        return res.status(404).json({ error: 'Perfil no encontrado' });
+      }
+      if (existing.is_system) {
+        return res.status(403).json({ error: 'No se pueden eliminar perfiles del sistema' });
+      }
+      
+      await prisma.profiles.delete({ where: { id: req.params.id } });
+      res.json({ success: true });
+    } catch (error) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // Permissions list
+  app.get('/api/permissions', async (req, res) => {
+    try {
+      const permissions = await prisma.permissions.findMany({
+        orderBy: { code: 'asc' }
+      });
+      res.json(permissions);
+    } catch (error) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // User organizations
+  app.get('/api/users/:id/organizations', isAuthenticated, async (req, res) => {
+    try {
+      const userOrgs = await prisma.user_organizations.findMany({
+        where: { user_id: req.params.id }
+      });
+      const orgIds = userOrgs.map(uo => uo.organization_id);
+      const organizations = orgIds.length > 0 
+        ? await prisma.organizations.findMany({ where: { id: { in: orgIds } } })
+        : [];
+      res.json(organizations);
+    } catch (error) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.put('/api/users/:id/organizations', isAuthenticated, async (req, res) => {
+    try {
+      if (!hasPermission(req.userPermissions, 'users:edit')) {
+        return res.status(403).json({ error: 'No tiene permiso para editar usuarios' });
+      }
+      
+      const { organization_ids } = req.body;
+      
+      await prisma.user_organizations.deleteMany({
+        where: { user_id: req.params.id }
+      });
+      
+      if (organization_ids && organization_ids.length > 0) {
+        await prisma.user_organizations.createMany({
+          data: organization_ids.map(orgId => ({
+            user_id: req.params.id,
+            organization_id: orgId
+          }))
+        });
+      }
+      
+      res.json({ success: true });
+    } catch (error) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // Update user profile
+  app.put('/api/users/:id/profile', isAuthenticated, async (req, res) => {
+    try {
+      if (!hasPermission(req.userPermissions, 'users:edit')) {
+        return res.status(403).json({ error: 'No tiene permiso para editar usuarios' });
+      }
+      
+      const { profile_id } = req.body;
+      
+      const user = await prisma.users.update({
+        where: { id: req.params.id },
+        data: { profile_id }
+      });
+      
+      res.json(user);
     } catch (error) {
       res.status(500).json({ error: error.message });
     }
