@@ -116,9 +116,9 @@
                       </CBadge>
                     </CTableDataCell>
                     <CTableDataCell>
-                      <a v-if="payment.receipt_url" :href="payment.receipt_url" target="_blank" class="btn btn-sm btn-outline-info">
+                      <CButton v-if="payment.receipt_url" color="info" size="sm" variant="outline" @click="openReceipt(payment.receipt_url)">
                         Ver
-                      </a>
+                      </CButton>
                       <span v-else class="text-muted">—</span>
                     </CTableDataCell>
                   </CTableRow>
@@ -127,7 +127,7 @@
               <div v-else class="text-muted text-center py-3">
                 No hay pagos registrados para esta reservación
               </div>
-              <div v-if="payments.length > 0" class="mt-2 p-2 bg-light rounded">
+              <div v-if="payments.length > 0" class="mt-2 p-2 border rounded">
                 <strong>Total pagado:</strong> {{ formatCurrency(totalPaid) }}
               </div>
             </CCol>
@@ -139,6 +139,36 @@
       </CCard>
     </CCol>
   </CRow>
+
+  <CModal 
+    :visible="showReceiptModal" 
+    @close="showReceiptModal = false" 
+    size="xl"
+    :keyboard="true"
+    backdrop="true"
+  >
+    <CModalHeader close-button>
+      <CModalTitle>Comprobante</CModalTitle>
+    </CModalHeader>
+    <CModalBody class="text-center p-4">
+      <img 
+        v-if="!receiptLoadError"
+        :src="selectedReceiptUrl" 
+        class="img-fluid rounded" 
+        style="max-height: 70vh;"
+        @error="receiptLoadError = true"
+      />
+      <div v-else class="text-muted py-5">
+        <CIcon name="cil-image" size="3xl" class="mb-3" />
+        <p>No se pudo cargar la imagen</p>
+      </div>
+    </CModalBody>
+    <CModalFooter class="justify-content-center">
+      <CButton color="secondary" variant="outline" @click="showReceiptModal = false">
+        Cerrar
+      </CButton>
+    </CModalFooter>
+  </CModal>
 </template>
 
 <script setup>
@@ -149,6 +179,15 @@ import { CIcon } from '@coreui/icons-vue'
 const route = useRoute()
 const accommodation = ref(null)
 const payments = ref([])
+const showReceiptModal = ref(false)
+const selectedReceiptUrl = ref('')
+const receiptLoadError = ref(false)
+
+function openReceipt(url) {
+  selectedReceiptUrl.value = url
+  receiptLoadError.value = false
+  showReceiptModal.value = true
+}
 
 const totalPaid = computed(() => {
   return payments.value.reduce((sum, p) => sum + (parseFloat(p.amount) || 0), 0)
