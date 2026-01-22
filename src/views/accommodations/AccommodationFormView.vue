@@ -3,7 +3,7 @@
     <CCol :xs="12">
       <CCard class="mb-4">
         <CCardHeader>
-          <strong>{{ isEdit ? 'Edit' : 'Create' }} Accommodation</strong>
+          <strong>{{ isEdit ? 'Editar' : 'Crear' }} Hospedaje</strong>
         </CCardHeader>
         <CCardBody>
           <AccommodationForm
