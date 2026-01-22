@@ -529,12 +529,35 @@ async function startServer() {
         };
       });
       
+      // Fetch payments for all accommodations
+      const accommodationIds = accommodations.map(a => a.id);
+      const payments = accommodationIds.length > 0 ? await prisma.payments.findMany({
+        where: { accommodation: { in: accommodationIds } }
+      }) : [];
+      
+      // Calculate total paid per accommodation
+      const paymentsByAccommodation = {};
+      payments.forEach(p => {
+        if (p.accommodation) {
+          if (!paymentsByAccommodation[p.accommodation]) {
+            paymentsByAccommodation[p.accommodation] = 0;
+          }
+          paymentsByAccommodation[p.accommodation] += parseFloat(p.amount) || 0;
+        }
+      });
+      
       // Enrich accommodations with related data
-      const enriched = accommodations.map(a => ({
-        ...a,
-        venue_data: a.venue ? venuesMap[a.venue] : null,
-        customer_data: a.customer ? customersMap[a.customer] : null
-      }));
+      const enriched = accommodations.map(a => {
+        const agreedPrice = parseFloat(a.agreed_price) || parseFloat(a.calculated_price) || 0;
+        const totalPaid = paymentsByAccommodation[a.id] || 0;
+        return {
+          ...a,
+          venue_data: a.venue ? venuesMap[a.venue] : null,
+          customer_data: a.customer ? customersMap[a.customer] : null,
+          total_paid: totalPaid,
+          pending_balance: agreedPrice - totalPaid
+        };
+      });
       
       res.json(enriched);
     } catch (error) {

@@ -30,7 +30,9 @@
           <th>Check In</th>
           <th>Check Out</th>
           <th>Cliente</th>
-          <th>Precio</th>
+          <th>Valor</th>
+          <th>Abonado</th>
+          <th>Saldo</th>
           <th>Acciones</th>
         </tr>
       </thead>
@@ -44,20 +46,27 @@
           <td>{{ calcCheckout(item.time, item.duration, item.date) }}</td>
           <td>{{ item.customer_data?.fullname || item.customer_data?.user_data?.email || '—' }}</td>
           <td>
-            <template v-if="item.agreed_price !== null || item.calculated_price !== null">
+            <template v-if="getAgreedPrice(item) > 0">
+              <span class="fw-bold">${{ formatCurrency(getAgreedPrice(item)) }}</span>
               <template v-if="pricesDiffer(item)">
-                <span v-if="hasDiscount(item)" class="text-success">
-                  <s class="text-muted small">${{ formatCurrency(item.calculated_price) }}</s>
-                  <strong>${{ formatCurrency(item.agreed_price) }}</strong>
-                  <span class="badge bg-success ms-1">-{{ getDiscountPercent(item) }}%</span>
-                </span>
-                <span v-else class="text-warning">
-                  <s class="text-muted small">${{ formatCurrency(item.calculated_price) }}</s>
-                  <strong>${{ formatCurrency(item.agreed_price) }}</strong>
-                  <span class="badge bg-warning text-dark ms-1">+{{ Math.abs(getDiscountPercent(item)) }}%</span>
-                </span>
+                <br>
+                <small v-if="hasDiscount(item)" class="text-success">
+                  <s class="text-muted">${{ formatCurrency(item.calculated_price) }}</s>
+                  (-{{ getDiscountPercent(item) }}%)
+                </small>
               </template>
-              <span v-else class="fw-bold">${{ formatCurrency(item.agreed_price ?? item.calculated_price) }}</span>
+            </template>
+            <span v-else>—</span>
+          </td>
+          <td>
+            <span v-if="item.total_paid > 0" class="text-success fw-bold">${{ formatCurrency(item.total_paid) }}</span>
+            <span v-else class="text-muted">$0</span>
+          </td>
+          <td>
+            <template v-if="getAgreedPrice(item) > 0">
+              <span v-if="item.pending_balance > 0" class="text-danger fw-bold">${{ formatCurrency(item.pending_balance) }}</span>
+              <span v-else-if="item.pending_balance === 0" class="badge bg-success">Pagado</span>
+              <span v-else class="text-warning">${{ formatCurrency(item.pending_balance) }}</span>
             </template>
             <span v-else>—</span>
           </td>
@@ -232,6 +241,10 @@ function calcCheckout(timeStr, duration, dateStr) {
 function formatCurrency(value) {
   if (value == null) return '0'
   return Number(value).toLocaleString('es-CO', { minimumFractionDigits: 0, maximumFractionDigits: 0 })
+}
+
+function getAgreedPrice(item) {
+  return Number(item.agreed_price) || Number(item.calculated_price) || 0
 }
 
 function pricesDiffer(item) {

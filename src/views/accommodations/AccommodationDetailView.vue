@@ -69,6 +69,39 @@
             </CCol>
           </CRow>
           <hr />
+          <CRow class="mt-3">
+            <CCol :xs="12">
+              <h5 class="mb-3">Resumen Financiero</h5>
+              <div class="row g-3">
+                <div class="col-md-4">
+                  <div class="p-3 border rounded text-center">
+                    <h6 class="text-muted mb-2">Valor Alquilado</h6>
+                    <p class="fs-4 fw-bold text-primary mb-0">{{ formatCurrency(accommodation.agreed_price || accommodation.calculated_price || 0) }}</p>
+                    <small v-if="hasDiscount" class="text-success">
+                      <s class="text-muted">${{ formatNumber(accommodation.calculated_price) }}</s>
+                      (-{{ discountPercent }}%)
+                    </small>
+                  </div>
+                </div>
+                <div class="col-md-4">
+                  <div class="p-3 border rounded text-center">
+                    <h6 class="text-muted mb-2">Total Abonado</h6>
+                    <p class="fs-4 fw-bold text-success mb-0">{{ formatCurrency(totalPaid) }}</p>
+                  </div>
+                </div>
+                <div class="col-md-4">
+                  <div class="p-3 border rounded text-center" :class="{ 'border-danger': pendingBalance > 0, 'border-success': pendingBalance <= 0 }">
+                    <h6 class="text-muted mb-2">Saldo Pendiente</h6>
+                    <p class="fs-4 fw-bold mb-0" :class="{ 'text-danger': pendingBalance > 0, 'text-success': pendingBalance <= 0 }">
+                      {{ formatCurrency(pendingBalance) }}
+                    </p>
+                    <small v-if="pendingBalance <= 0" class="text-success">Pagado</small>
+                  </div>
+                </div>
+              </div>
+            </CCol>
+          </CRow>
+          <hr />
           <CRow class="mt-3" v-if="accommodation.customer_data">
             <CCol :xs="12">
               <h6 class="text-muted">Contacto del Cliente</h6>
@@ -295,6 +328,35 @@ async function verifyPayment() {
 const totalPaid = computed(() => {
   return payments.value.reduce((sum, p) => sum + (parseFloat(p.amount) || 0), 0)
 })
+
+const agreedPrice = computed(() => {
+  if (!accommodation.value) return 0
+  return parseFloat(accommodation.value.agreed_price) || parseFloat(accommodation.value.calculated_price) || 0
+})
+
+const pendingBalance = computed(() => {
+  return agreedPrice.value - totalPaid.value
+})
+
+const hasDiscount = computed(() => {
+  if (!accommodation.value) return false
+  const calc = parseFloat(accommodation.value.calculated_price) || 0
+  const agreed = parseFloat(accommodation.value.agreed_price) || 0
+  return agreed > 0 && calc > 0 && agreed < calc
+})
+
+const discountPercent = computed(() => {
+  if (!accommodation.value) return 0
+  const calc = parseFloat(accommodation.value.calculated_price) || 0
+  const agreed = parseFloat(accommodation.value.agreed_price) || 0
+  if (calc === 0) return 0
+  return Math.round(((calc - agreed) / calc) * 100)
+})
+
+function formatNumber(value) {
+  if (value == null) return '0'
+  return Number(value).toLocaleString('es-CO', { minimumFractionDigits: 0, maximumFractionDigits: 0 })
+}
 
 async function load() {
   const res = await fetch(`/api/accommodations/${route.params.id}`, { credentials: 'include' })
