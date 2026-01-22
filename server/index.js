@@ -739,6 +739,60 @@ async function startServer() {
     }
   });
 
+  // Super Admin Management - MUST be before /api/users/:id to avoid route conflicts
+  app.get('/api/users/super-admins', isAuthenticated, async (req, res) => {
+    try {
+      const userId = String(req.user.claims?.sub);
+      console.log('super-admins endpoint - userId:', userId);
+      
+      const currentUser = await prisma.users.findUnique({ where: { id: userId } });
+      console.log('super-admins endpoint - currentUser:', currentUser?.email, 'is_super_admin:', currentUser?.is_super_admin);
+      
+      if (!currentUser?.is_super_admin) {
+        return res.status(403).json({ error: 'Solo super admins pueden acceder' });
+      }
+      const superAdmins = await prisma.users.findMany({
+        where: { is_super_admin: true },
+        orderBy: { email: 'asc' },
+        select: { id: true, email: true, display_name: true, avatar_url: true }
+      });
+      console.log('super-admins endpoint - found:', superAdmins.length, 'admins');
+      res.json(superAdmins);
+    } catch (error) {
+      console.error('super-admins endpoint error:', error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.put('/api/users/:id/super-admin', isAuthenticated, async (req, res) => {
+    try {
+      const userId = String(req.user.claims?.sub);
+      const currentUser = await prisma.users.findUnique({ where: { id: userId } });
+      
+      if (!currentUser?.is_super_admin) {
+        return res.status(403).json({ error: 'Solo super admins pueden modificar este permiso' });
+      }
+      
+      if (typeof req.body.is_super_admin !== 'boolean') {
+        return res.status(400).json({ error: 'Valor de is_super_admin inválido' });
+      }
+      
+      const newValue = req.body.is_super_admin;
+      
+      if (String(req.params.id) === String(currentUser.id) && !newValue) {
+        return res.status(400).json({ error: 'No puedes quitarte el permiso de super admin a ti mismo' });
+      }
+      
+      const user = await prisma.users.update({
+        where: { id: req.params.id },
+        data: { is_super_admin: newValue }
+      });
+      res.json(user);
+    } catch (error) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
   app.get('/api/users/:id', isAuthenticated, async (req, res) => {
     try {
       const user = await prisma.users.findUnique({
@@ -823,62 +877,6 @@ async function startServer() {
           locked_at: null,
           locked_by: null
         }
-      });
-      res.json(user);
-    } catch (error) {
-      res.status(500).json({ error: error.message });
-    }
-  });
-
-  // Super Admin Management (only accessible to super admins)
-  app.get('/api/users/super-admins', isAuthenticated, async (req, res) => {
-    try {
-      const userId = req.user.claims?.sub;
-      console.log('super-admins endpoint - userId:', userId, 'type:', typeof userId);
-      
-      const currentUser = await prisma.users.findUnique({ where: { id: String(userId) } });
-      console.log('super-admins endpoint - currentUser:', currentUser);
-      
-      if (!currentUser?.is_super_admin) {
-        return res.status(403).json({ error: 'Solo super admins pueden acceder' });
-      }
-      const superAdmins = await prisma.users.findMany({
-        where: { is_super_admin: true },
-        orderBy: { email: 'asc' },
-        select: { id: true, email: true, display_name: true, avatar_url: true }
-      });
-      console.log('super-admins endpoint - superAdmins:', superAdmins);
-      res.json(superAdmins);
-    } catch (error) {
-      console.error('super-admins endpoint error:', error);
-      res.status(500).json({ error: error.message });
-    }
-  });
-
-  app.put('/api/users/:id/super-admin', isAuthenticated, async (req, res) => {
-    try {
-      const userId = String(req.user.claims?.sub);
-      const currentUser = await prisma.users.findUnique({ where: { id: userId } });
-      
-      if (!currentUser?.is_super_admin) {
-        return res.status(403).json({ error: 'Solo super admins pueden modificar este permiso' });
-      }
-      
-      // Validate input - is_super_admin must be explicitly provided as boolean
-      if (typeof req.body.is_super_admin !== 'boolean') {
-        return res.status(400).json({ error: 'Valor de is_super_admin inválido' });
-      }
-      
-      const newValue = req.body.is_super_admin;
-      
-      // Cannot remove super admin from yourself (any value that results in false)
-      if (req.params.id === currentUser.id && !newValue) {
-        return res.status(400).json({ error: 'No puedes quitarte el permiso de super admin a ti mismo' });
-      }
-      
-      const user = await prisma.users.update({
-        where: { id: req.params.id },
-        data: { is_super_admin: newValue }
       });
       res.json(user);
     } catch (error) {
