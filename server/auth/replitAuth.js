@@ -144,9 +144,28 @@ async function setupAuth(app) {
     try {
       const userId = String(req.user.claims.sub);
       const user = await prisma.users.findUnique({
-        where: { id: userId }
+        where: { id: userId },
+        include: {
+          profile: true
+        }
       });
-      res.json(user);
+      
+      // If user has a profile, fetch permission descriptions
+      let permissionDetails = [];
+      if (user?.profile?.permissions && Array.isArray(user.profile.permissions)) {
+        const permissions = await prisma.permissions.findMany({
+          where: {
+            code: { in: user.profile.permissions }
+          },
+          orderBy: { code: 'asc' }
+        });
+        permissionDetails = permissions;
+      }
+      
+      res.json({
+        ...user,
+        permissionDetails
+      });
     } catch (error) {
       console.error('Error fetching user:', error);
       res.status(500).json({ message: 'Failed to fetch user' });

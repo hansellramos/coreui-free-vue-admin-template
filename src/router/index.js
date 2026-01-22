@@ -499,10 +499,10 @@ export function resetAuthState() {
 }
 
 // Navigation guard to protect routes
-router.beforeEach(async (to, from, next) => {
+router.beforeEach(async (to, from) => {
   // Allow public routes
   if (isPublicRoute(to.path)) {
-    return next()
+    return true
   }
   
   // Check authentication
@@ -511,10 +511,10 @@ router.beforeEach(async (to, from, next) => {
   if (!authenticated) {
     // Redirect to login
     window.location.href = '/api/login'
-    return
+    return false
   }
   
-  next()
+  return true
 })
 
 export default router
