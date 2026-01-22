@@ -9,45 +9,57 @@
           </CButton>
         </CCardHeader>
         <CCardBody>
-          <CTable hover responsive>
-            <CTableHead>
-              <CTableRow>
-                <CTableHeaderCell>Nombre</CTableHeaderCell>
-                <CTableHeaderCell>Categoría</CTableHeaderCell>
-                <CTableHeaderCell>Descripción</CTableHeaderCell>
-                <CTableHeaderCell>Estado</CTableHeaderCell>
-                <CTableHeaderCell class="text-end">Acciones</CTableHeaderCell>
-              </CTableRow>
-            </CTableHead>
-            <CTableBody>
-              <CTableRow v-for="amenity in amenities" :key="amenity.id">
-                <CTableDataCell>
-                  <CIcon v-if="amenity.icon" :name="amenity.icon" class="me-2" />
-                  {{ amenity.name }}
-                </CTableDataCell>
-                <CTableDataCell>{{ amenity.category || '-' }}</CTableDataCell>
-                <CTableDataCell>{{ amenity.description || '-' }}</CTableDataCell>
-                <CTableDataCell>
-                  <CBadge :color="amenity.is_active ? 'success' : 'secondary'">
-                    {{ amenity.is_active ? 'Activo' : 'Inactivo' }}
-                  </CBadge>
-                </CTableDataCell>
-                <CTableDataCell class="text-end">
-                  <CButton color="primary" size="sm" variant="ghost" @click="editAmenity(amenity)">
-                    <CIcon name="cil-pencil" />
-                  </CButton>
-                  <CButton color="danger" size="sm" variant="ghost" @click="confirmDelete(amenity)">
-                    <CIcon name="cil-trash" />
-                  </CButton>
-                </CTableDataCell>
-              </CTableRow>
-              <CTableRow v-if="amenities.length === 0">
-                <CTableDataCell colspan="5" class="text-center text-muted py-4">
-                  No hay amenidades registradas
-                </CTableDataCell>
-              </CTableRow>
-            </CTableBody>
-          </CTable>
+          <div v-if="amenities.length === 0" class="text-center text-muted py-4">
+            No hay amenidades registradas
+          </div>
+          <div v-else>
+            <div v-for="(items, category) in groupedAmenities" :key="category" class="mb-3">
+              <div 
+                class="category-header d-flex justify-content-between align-items-center p-2 bg-light rounded cursor-pointer"
+                @click="toggleCategory(category)"
+              >
+                <div>
+                  <strong>{{ category }}</strong>
+                  <CBadge color="secondary" class="ms-2">{{ items.length }}</CBadge>
+                </div>
+                <CIcon :name="expandedCategories[category] ? 'cil-chevron-top' : 'cil-chevron-bottom'" />
+              </div>
+              <CCollapse :visible="expandedCategories[category] !== false">
+                <CTable hover responsive class="mb-0 mt-2">
+                  <CTableHead>
+                    <CTableRow>
+                      <CTableHeaderCell>Nombre</CTableHeaderCell>
+                      <CTableHeaderCell>Descripción</CTableHeaderCell>
+                      <CTableHeaderCell>Estado</CTableHeaderCell>
+                      <CTableHeaderCell class="text-end">Acciones</CTableHeaderCell>
+                    </CTableRow>
+                  </CTableHead>
+                  <CTableBody>
+                    <CTableRow v-for="amenity in items" :key="amenity.id">
+                      <CTableDataCell>
+                        <CIcon v-if="amenity.icon" :name="amenity.icon" class="me-2" />
+                        {{ amenity.name }}
+                      </CTableDataCell>
+                      <CTableDataCell>{{ amenity.description || '-' }}</CTableDataCell>
+                      <CTableDataCell>
+                        <CBadge :color="amenity.is_active ? 'success' : 'secondary'">
+                          {{ amenity.is_active ? 'Activo' : 'Inactivo' }}
+                        </CBadge>
+                      </CTableDataCell>
+                      <CTableDataCell class="text-end">
+                        <CButton color="primary" size="sm" variant="ghost" @click="editAmenity(amenity)">
+                          <CIcon name="cil-pencil" />
+                        </CButton>
+                        <CButton color="danger" size="sm" variant="ghost" @click="confirmDelete(amenity)">
+                          <CIcon name="cil-trash" />
+                        </CButton>
+                      </CTableDataCell>
+                    </CTableRow>
+                  </CTableBody>
+                </CTable>
+              </CCollapse>
+            </div>
+          </div>
         </CCardBody>
       </CCard>
     </CCol>
@@ -68,12 +80,7 @@
             <CFormLabel>Categoría</CFormLabel>
             <CFormSelect v-model="form.category">
               <option value="">Sin categoría</option>
-              <option value="instalaciones">Instalaciones</option>
-              <option value="equipamiento">Equipamiento</option>
-              <option value="servicios">Servicios</option>
-              <option value="cocina">Cocina</option>
-              <option value="entretenimiento">Entretenimiento</option>
-              <option value="estacionamiento">Estacionamiento</option>
+              <option v-for="cat in categories" :key="cat" :value="cat">{{ cat }}</option>
             </CFormSelect>
           </CCol>
         </CRow>
@@ -130,17 +137,46 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import {
   CRow, CCol, CCard, CCardHeader, CCardBody, CButton,
   CTable, CTableHead, CTableRow, CTableHeaderCell, CTableBody, CTableDataCell,
   CBadge, CModal, CModalHeader, CModalTitle, CModalBody, CModalFooter,
-  CForm, CFormLabel, CFormInput, CFormTextarea, CFormSelect, CFormCheck
+  CForm, CFormLabel, CFormInput, CFormTextarea, CFormSelect, CFormCheck,
+  CCollapse
 } from '@coreui/vue'
 import { CIcon } from '@coreui/icons-vue'
 
 const amenities = ref([])
 const loading = ref(false)
+const expandedCategories = ref({})
+
+const categories = [
+  'Kiosco', 'Piscina', 'Canchas', 'Exteriores', 'Salón de Eventos',
+  'Parrilla BBQ', 'Cocina', 'Recreación', 'Parqueadero', 'Acuático',
+  'Utensilios de Cocina'
+]
+
+const groupedAmenities = computed(() => {
+  const groups = {}
+  amenities.value.forEach(amenity => {
+    const cat = amenity.category || 'Sin categoría'
+    if (!groups[cat]) {
+      groups[cat] = []
+    }
+    groups[cat].push(amenity)
+  })
+  // Sort by category name
+  const sortedGroups = {}
+  Object.keys(groups).sort().forEach(key => {
+    sortedGroups[key] = groups[key]
+  })
+  return sortedGroups
+})
+
+const toggleCategory = (category) => {
+  expandedCategories.value[category] = !expandedCategories.value[category]
+}
 const saving = ref(false)
 const deleting = ref(false)
 const showFormModal = ref(false)
@@ -255,3 +291,12 @@ const deleteAmenity = async () => {
 
 onMounted(loadAmenities)
 </script>
+
+<style scoped>
+.cursor-pointer {
+  cursor: pointer;
+}
+.category-header:hover {
+  background-color: #e9ecef !important;
+}
+</style>
