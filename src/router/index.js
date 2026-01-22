@@ -1,5 +1,6 @@
 import { h, resolveComponent } from 'vue'
 import { createRouter, createWebHashHistory } from 'vue-router'
+import { usePostHog } from '@/composables/usePostHog'
 
 import DefaultLayout from '@/layouts/DefaultLayout'
 import accommodationsRoutes from './routes/accommodations'
@@ -474,6 +475,9 @@ const router = createRouter({
     return { top: 0 }
   },
 })
+
+// Initialize PostHog for analytics
+const { posthog } = usePostHog()
 
 // Public routes that don't require authentication
 const publicRoutes = ['/availability', '/pages/login', '/pages/register', '/pages/404', '/pages/500']
