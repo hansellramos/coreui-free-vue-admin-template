@@ -51,7 +51,7 @@
                   <div class="event-time mb-1">{{ formatTime(item.time) }}</div>
                   <div class="event-duration badge bg-info mb-2">{{ formatDurationHuman(item.duration) }}</div>
                 </div>
-                <div class="col-8">
+                <div class="col-5">
                   <div class="venue-name">
                     <h4>{{ item.venue_data?.name || 'Sin venue' }}</h4>
                   </div>
@@ -84,6 +84,25 @@
                       <i class="cil-zoom"></i> Ver detalles
                     </router-link>
                   </div>
+                </div>
+                <div class="col-3">
+                  <div class="financial-summary" v-if="getAgreedPrice(item) > 0">
+                    <div class="financial-row">
+                      <span class="financial-label">Valor:</span>
+                      <span class="financial-value text-primary fw-bold">{{ formatCurrency(getAgreedPrice(item)) }}</span>
+                    </div>
+                    <div class="financial-row">
+                      <span class="financial-label">Abonado:</span>
+                      <span class="financial-value text-success">{{ formatCurrency(item.total_paid || 0) }}</span>
+                    </div>
+                    <div class="financial-row">
+                      <span class="financial-label">Saldo:</span>
+                      <span v-if="item.pending_balance > 0" class="financial-value text-danger fw-bold">{{ formatCurrency(item.pending_balance) }}</span>
+                      <span v-else-if="item.pending_balance === 0" class="badge bg-success">Pagado</span>
+                      <span v-else class="financial-value text-warning">{{ formatCurrency(item.pending_balance) }}</span>
+                    </div>
+                  </div>
+                  <div v-else class="text-muted small">Sin precio definido</div>
                 </div>
               </CCardBody>
             </CCard>
@@ -273,6 +292,15 @@ const formatAttendees = (adults, children) => {
   return `${total}(${a}A/${c}N)`
 }
 
+const getAgreedPrice = (item) => {
+  return Number(item.agreed_price) || Number(item.calculated_price) || 0
+}
+
+const formatCurrency = (amount) => {
+  if (amount === null || amount === undefined) return '$0'
+  return new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', maximumFractionDigits: 0 }).format(amount)
+}
+
 onMounted(async () => {
   await fetchVenues()
   await loadVenuesFromUrl()
@@ -394,6 +422,31 @@ watch(
 
 .event-customer {
   line-height: 1.2;
+  font-weight: 500;
+}
+
+.financial-summary {
+  background-color: #f8f9fa;
+  padding: 8px 12px;
+  border-radius: 8px;
+  font-size: 0.9rem;
+}
+
+.financial-row {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 4px;
+}
+
+.financial-row:last-child {
+  margin-bottom: 0;
+}
+
+.financial-label {
+  color: #6c757d;
+}
+
+.financial-value {
   font-weight: 500;
 }
 </style>
