@@ -724,7 +724,7 @@ async function startServer() {
 
   app.post('/api/accommodations', isAuthenticated, async (req, res) => {
     try {
-      const { venue, date, time, duration, customer, adults, children, plan_id, calculated_price, agreed_price, waze_link } = req.body;
+      const { venue, date, time, duration, customer, adults, children, plan_id, calculated_price, agreed_price } = req.body;
       const parseFloatOrNull = (val) => val === '' || val === null || val === undefined ? null : parseFloat(val);
       
       const data = {
@@ -734,8 +734,7 @@ async function startServer() {
         children: parseInt(children, 10) || 0,
         plan_id: plan_id || null,
         calculated_price: parseFloatOrNull(calculated_price),
-        agreed_price: parseFloatOrNull(agreed_price),
-        waze_link: waze_link || null
+        agreed_price: parseFloatOrNull(agreed_price)
       };
       
       if (date && typeof date === 'string' && !date.includes('T')) {
@@ -759,7 +758,7 @@ async function startServer() {
 
   app.put('/api/accommodations/:id', isAuthenticated, async (req, res) => {
     try {
-      const { venue, date, time, duration, customer, adults, children, plan_id, calculated_price, agreed_price, waze_link } = req.body;
+      const { venue, date, time, duration, customer, adults, children, plan_id, calculated_price, agreed_price } = req.body;
       const parseFloatOrNull = (val) => val === '' || val === null || val === undefined ? null : parseFloat(val);
       
       const data = {
@@ -769,8 +768,7 @@ async function startServer() {
         children: parseInt(children, 10) || 0,
         plan_id: plan_id || null,
         calculated_price: parseFloatOrNull(calculated_price),
-        agreed_price: parseFloatOrNull(agreed_price),
-        waze_link: waze_link || null
+        agreed_price: parseFloatOrNull(agreed_price)
       };
       
       if (date && typeof date === 'string' && !date.includes('T')) {

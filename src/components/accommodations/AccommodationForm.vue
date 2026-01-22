@@ -94,17 +94,6 @@
         </div>
       </div>
       
-      <div class="mb-3">
-        <CFormLabel for="waze_link">Link de Waze (opcional)</CFormLabel>
-        <CFormInput 
-          id="waze_link" 
-          v-model="form.waze_link" 
-          type="url" 
-          placeholder="https://waze.com/ul?ll=..."
-        />
-        <div class="form-text">Pega aquí el link de Waze para facilitar la llegada del cliente</div>
-      </div>
-
       <CButton type="submit" color="primary">{{ isEdit ? 'Actualizar' : 'Crear' }}</CButton>
       <CButton color="secondary" variant="outline" class="ms-2" @click="onCancel">Cancelar</CButton>
     </template>

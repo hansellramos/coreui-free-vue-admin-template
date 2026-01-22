@@ -80,7 +80,7 @@ const formattedTime = computed(() => {
 })
 
 const wazeLink = computed(() => {
-  return props.accommodation?.waze_link || ''
+  return props.accommodation?.venue_data?.waze_link || ''
 })
 
 const googleMapsLink = computed(() => {

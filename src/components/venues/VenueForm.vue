@@ -35,6 +35,16 @@
         placeholder="Ingresa el usuario de Instagram"
       />
     </div>
+    <div class="mb-3">
+      <CFormLabel for="venueWazeLink">Link de Waze</CFormLabel>
+      <CFormInput
+        id="venueWazeLink"
+        v-model="form.waze_link"
+        type="url"
+        placeholder="https://waze.com/ul?ll=..."
+      />
+      <div class="form-text">Pega aquí el link de Waze para facilitar la llegada de los clientes</div>
+    </div>
     
     <div class="mb-3">
       <CFormLabel>Ubicación</CFormLabel>
