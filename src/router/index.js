@@ -6,6 +6,9 @@ import accommodationsRoutes from './routes/accommodations'
 import paymentsRoutes from './routes/payments'
 import profilesRoutes from './routes/profiles'
 
+let authChecked = false
+let isAuthenticated = false
+
 const routes = [
   {
     path: '/',
@@ -465,9 +468,53 @@ const router = createRouter({
   },
 })
 
+// Public routes that don't require authentication
+const publicRoutes = ['/availability', '/pages/login', '/pages/register', '/pages/404', '/pages/500']
+
+// Check if route is public
+const isPublicRoute = (path) => {
+  return publicRoutes.some(route => path.startsWith(route))
+}
+
+// Check authentication status
+async function checkAuth() {
+  if (authChecked) return isAuthenticated
+  
+  try {
+    const response = await fetch('/api/auth/user', { credentials: 'include' })
+    isAuthenticated = response.ok
+    authChecked = true
+    return isAuthenticated
+  } catch (error) {
+    isAuthenticated = false
+    authChecked = true
+    return false
+  }
+}
+
+// Reset auth state (call after logout)
+export function resetAuthState() {
+  authChecked = false
+  isAuthenticated = false
+}
+
 // Navigation guard to protect routes
 router.beforeEach(async (to, from, next) => {
-  next();
-});
+  // Allow public routes
+  if (isPublicRoute(to.path)) {
+    return next()
+  }
+  
+  // Check authentication
+  const authenticated = await checkAuth()
+  
+  if (!authenticated) {
+    // Redirect to login
+    window.location.href = '/api/login'
+    return
+  }
+  
+  next()
+})
 
 export default router
