@@ -267,8 +267,10 @@ async function verifyPayment() {
   verifying.value = true
   try {
     const res = await fetch(`/api/payments/${selectedPayment.value.id}/verify`, {
-      method: 'POST',
-      credentials: 'include'
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify({ verified: true })
     })
     
     if (res.ok) {
