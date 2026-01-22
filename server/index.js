@@ -1784,20 +1784,30 @@ async function startServer() {
         terms_conditions, is_active, amenity_ids
       } = req.body;
       
+      const parseIntOrNull = (val) => val === '' || val === null || val === undefined ? null : parseInt(val, 10);
+      const parseFloatOrNull = (val) => val === '' || val === null || val === undefined ? null : parseFloat(val);
+      
       const plan = await prisma.venue_plans.create({
         data: {
-          venue_id, name, plan_type, description,
-          adult_price, child_price,
-          infant_max_age: infant_max_age || 2,
-          child_max_age: child_max_age || 12,
-          free_children_qty, free_children_max_age, free_children_condition, child_food_price,
-          min_guests: min_guests || 1, max_capacity, check_in_time, check_out_time,
+          venue_id, name, plan_type, description: description || null,
+          adult_price: parseFloatOrNull(adult_price),
+          child_price: parseFloatOrNull(child_price),
+          infant_max_age: parseIntOrNull(infant_max_age) ?? 2,
+          child_max_age: parseIntOrNull(child_max_age) ?? 12,
+          free_children_qty: parseIntOrNull(free_children_qty),
+          free_children_max_age: parseIntOrNull(free_children_max_age),
+          free_children_condition: free_children_condition || null,
+          child_food_price: parseFloatOrNull(child_food_price),
+          min_guests: parseIntOrNull(min_guests) ?? 1,
+          max_capacity: parseIntOrNull(max_capacity),
+          check_in_time: check_in_time || null,
+          check_out_time: check_out_time || null,
           includes_overnight: includes_overnight || false,
           includes_rooms: includes_rooms || false,
           includes_food: includes_food || false,
-          food_description,
+          food_description: food_description || null,
           includes_beverages: includes_beverages || false,
-          terms_conditions,
+          terms_conditions: terms_conditions || null,
           is_active: is_active !== false
         }
       });
@@ -1831,15 +1841,32 @@ async function startServer() {
         terms_conditions, is_active, amenity_ids
       } = req.body;
       
+      const parseIntOrNull = (val) => val === '' || val === null || val === undefined ? null : parseInt(val, 10);
+      const parseFloatOrNull = (val) => val === '' || val === null || val === undefined ? null : parseFloat(val);
+      
       const plan = await prisma.venue_plans.update({
         where: { id: req.params.id },
         data: {
-          name, plan_type, description,
-          adult_price, child_price, infant_max_age, child_max_age,
-          free_children_qty, free_children_max_age, free_children_condition, child_food_price,
-          min_guests, max_capacity, check_in_time, check_out_time,
-          includes_overnight, includes_rooms, includes_food, food_description, includes_beverages,
-          terms_conditions, is_active
+          name, plan_type, description: description || null,
+          adult_price: parseFloatOrNull(adult_price),
+          child_price: parseFloatOrNull(child_price),
+          infant_max_age: parseIntOrNull(infant_max_age) ?? 2,
+          child_max_age: parseIntOrNull(child_max_age) ?? 12,
+          free_children_qty: parseIntOrNull(free_children_qty),
+          free_children_max_age: parseIntOrNull(free_children_max_age),
+          free_children_condition: free_children_condition || null,
+          child_food_price: parseFloatOrNull(child_food_price),
+          min_guests: parseIntOrNull(min_guests) ?? 1,
+          max_capacity: parseIntOrNull(max_capacity),
+          check_in_time: check_in_time || null,
+          check_out_time: check_out_time || null,
+          includes_overnight: includes_overnight || false,
+          includes_rooms: includes_rooms || false,
+          includes_food: includes_food || false,
+          food_description: food_description || null,
+          includes_beverages: includes_beverages || false,
+          terms_conditions: terms_conditions || null,
+          is_active: is_active !== false
         }
       });
       
