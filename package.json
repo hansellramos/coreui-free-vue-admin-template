@@ -15,7 +15,9 @@
     "dev": "vite --force",
     "build": "vite build",
     "lint": "eslint",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "seed:permissions": "node server/scripts/seed-permissions.js",
+    "make-admin": "node server/scripts/make-admin.js"
   },
   "dependencies": {
     "@coreui/chartjs": "^4.1.0",
