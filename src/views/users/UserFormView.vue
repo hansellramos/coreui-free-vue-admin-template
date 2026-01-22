@@ -89,7 +89,27 @@ async function handleSubmit(data) {
         body: JSON.stringify({ organization_ids: organization_ids || [] })
       })
     } else {
-      await createUser(userData)
+      const newUser = await createUser(userData)
+      
+      if (newUser && newUser.id) {
+        if (data.profile_id) {
+          await fetch(`/api/users/${newUser.id}/profile`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            credentials: 'include',
+            body: JSON.stringify({ profile_id: data.profile_id })
+          })
+        }
+        
+        if (organization_ids && organization_ids.length > 0) {
+          await fetch(`/api/users/${newUser.id}/organizations`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            credentials: 'include',
+            body: JSON.stringify({ organization_ids })
+          })
+        }
+      }
     }
     router.push('/users')
   } catch (error) {

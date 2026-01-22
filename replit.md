@@ -40,15 +40,19 @@ The Express backend runs on port 3000 and provides:
 - `/api/logout` - Logout and end session
 - `/api/callback` - OAuth callback handler
 - `/api/auth/user` - Get current authenticated user
-- `/api/organizations` - CRUD for organizations
-- `/api/venues` - CRUD for venues
-- `/api/contacts` - CRUD for contacts
-- `/api/accommodations` - CRUD for accommodations
-- `/api/payments` - CRUD for payments with verification workflow
+- `/api/organizations` - CRUD for organizations (filtered by user permissions)
+- `/api/venues` - CRUD for venues (filtered by user permissions)
+- `/api/contacts` - CRUD for contacts (filtered by user permissions)
+- `/api/accommodations` - CRUD for accommodations (filtered by user permissions)
+- `/api/payments` - CRUD for payments with verification workflow (filtered by user permissions)
 - `/api/payments/:id/verify` - Verify/unverify a payment (protected)
 - `/api/countries` - List countries
 - `/api/states` - List states (filter by country)
 - `/api/users` - List users (protected)
+- `/api/users/:id/organizations` - GET/PUT user's assigned organizations
+- `/api/users/:id/profile` - PUT to assign profile to user
+- `/api/profiles` - CRUD for permission profiles
+- `/api/permissions` - List available permissions
 - `/api/uploads/request-url` - Get presigned URL for file upload (protected)
 - `/objects/:type/:id` - Serve uploaded objects (protected)
 
@@ -65,7 +69,7 @@ Restrictions: Images only (JPEG, PNG, GIF, WebP), max 10MB.
 
 ## Database
 A PostgreSQL database is available with the following tables:
-- `users` - User accounts (synced with Replit Auth)
+- `users` - User accounts (synced with Replit Auth, includes profile_id and is_super_admin)
 - `organizations` - Organizations
 - `venues` - Venues/locations
 - `contacts` - Contact information
@@ -78,8 +82,36 @@ A PostgreSQL database is available with the following tables:
 - `venue_packages` - Venue package options
 - `package_prices` - Package pricing
 - `sessions` - Session storage for authentication
+- `permissions` - Available permission codes and descriptions
+- `profiles` - Permission profiles with JSON permissions array
+- `user_organizations` - Many-to-many relationship for user-to-organization access
 
 The database connection is available via the `DATABASE_URL` environment variable.
+
+## Permissions System
+The application implements a role-based access control system:
+
+### Profiles
+- `organization:view` (default) - Can only view data from assigned organizations
+- `organization:admin` - Full CRUD within assigned organizations
+- Super Admin - Full access (set via `npm run make-admin`)
+
+### How it works
+1. Users are assigned a profile that defines their permissions
+2. Users are assigned to one or more organizations
+3. API endpoints automatically filter data based on user's accessible organizations
+4. Users with `organizations:view:all` permission can see all organizations
+
+### Creating a Super Admin
+```bash
+# Set the APP_ADMIN_SECRET environment variable first
+npm run make-admin <secret> <user-email>
+```
+
+### Managing Profiles
+- Navigate to System > Perfiles in the sidebar
+- Create custom profiles with specific permission combinations
+- System profiles (organization:view, organization:admin) cannot be modified
 
 ## Authentication
 Replit Auth is integrated using OpenID Connect:
