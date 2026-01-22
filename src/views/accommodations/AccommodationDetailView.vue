@@ -116,7 +116,7 @@
                       </CBadge>
                     </CTableDataCell>
                     <CTableDataCell>
-                      <CButton v-if="payment.receipt_url" color="info" size="sm" variant="outline" @click="openReceipt(payment.receipt_url)">
+                      <CButton v-if="payment.receipt_url" color="info" size="sm" variant="outline" @click="openReceipt(payment)">
                         Ver
                       </CButton>
                       <span v-else class="text-muted">—</span>
@@ -148,25 +148,62 @@
     backdrop="true"
   >
     <CModalHeader close-button>
-      <CModalTitle>Comprobante</CModalTitle>
+      <CModalTitle>Comprobante de Pago</CModalTitle>
     </CModalHeader>
-    <CModalBody class="text-center p-4">
-      <img 
-        v-if="!receiptLoadError"
-        :src="selectedReceiptUrl" 
-        class="img-fluid rounded" 
-        style="max-height: 70vh;"
-        @error="receiptLoadError = true"
-      />
-      <div v-else class="text-muted py-5">
-        <CIcon name="cil-image" size="3xl" class="mb-3" />
-        <p>No se pudo cargar la imagen</p>
+    <CModalBody class="p-4">
+      <div v-if="selectedPayment" class="mb-3 p-3 border rounded">
+        <CRow>
+          <CCol :md="4">
+            <div class="small text-muted">Monto</div>
+            <div class="fw-bold">{{ formatCurrency(selectedPayment.amount) }}</div>
+          </CCol>
+          <CCol :md="4">
+            <div class="small text-muted">Método</div>
+            <div>{{ selectedPayment.payment_method || '—' }}</div>
+          </CCol>
+          <CCol :md="4">
+            <div class="small text-muted">Fecha</div>
+            <div>{{ formatPaymentDate(selectedPayment.payment_date) }}</div>
+          </CCol>
+        </CRow>
+        <CRow class="mt-2" v-if="selectedPayment.reference">
+          <CCol>
+            <div class="small text-muted">Referencia</div>
+            <div>{{ selectedPayment.reference }}</div>
+          </CCol>
+        </CRow>
+      </div>
+      <div class="text-center">
+        <img 
+          v-if="!receiptLoadError"
+          :src="selectedReceiptUrl" 
+          class="img-fluid rounded" 
+          style="max-height: 60vh;"
+          @error="receiptLoadError = true"
+        />
+        <div v-else class="text-muted py-5">
+          <CIcon name="cil-image" size="3xl" class="mb-3" />
+          <p>No se pudo cargar la imagen</p>
+        </div>
       </div>
     </CModalBody>
-    <CModalFooter class="justify-content-center">
-      <CButton color="secondary" variant="outline" @click="showReceiptModal = false">
-        Cerrar
-      </CButton>
+    <CModalFooter class="justify-content-between">
+      <div>
+        <CButton 
+          v-if="selectedPayment" 
+          color="warning" 
+          variant="outline"
+          @click="editPayment"
+        >
+          <CIcon name="cil-pencil" class="me-1" />
+          Editar pago
+        </CButton>
+      </div>
+      <div>
+        <CButton color="secondary" variant="outline" @click="showReceiptModal = false">
+          Cerrar
+        </CButton>
+      </div>
     </CModalFooter>
   </CModal>
 </template>
@@ -176,17 +213,27 @@ import { ref, computed, onMounted } from 'vue'
 import { useRoute } from 'vue-router'
 import { CIcon } from '@coreui/icons-vue'
 
+import { useRouter } from 'vue-router'
+
 const route = useRoute()
+const router = useRouter()
 const accommodation = ref(null)
 const payments = ref([])
 const showReceiptModal = ref(false)
 const selectedReceiptUrl = ref('')
+const selectedPayment = ref(null)
 const receiptLoadError = ref(false)
 
-function openReceipt(url) {
-  selectedReceiptUrl.value = url
+function openReceipt(payment) {
+  selectedPayment.value = payment
+  selectedReceiptUrl.value = payment.receipt_url
   receiptLoadError.value = false
   showReceiptModal.value = true
+}
+
+function editPayment() {
+  showReceiptModal.value = false
+  router.push(`/business/payments/${selectedPayment.value.id}/edit?accommodation_id=${route.params.id}`)
 }
 
 const totalPaid = computed(() => {
