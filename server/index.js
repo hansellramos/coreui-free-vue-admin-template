@@ -625,7 +625,7 @@ async function startServer() {
         reference: reference || null,
         notes: notes || null,
         receipt_url: receipt_url || null,
-        created_by: req.user?.id || null
+        created_by: String(req.user?.claims?.sub) || null
       };
       
       if (payment_date && typeof payment_date === 'string') {
@@ -663,7 +663,7 @@ async function startServer() {
         notes: notes || null,
         receipt_url: receipt_url || null,
         updated_at: new Date(),
-        updated_by: req.user?.id || null
+        updated_by: String(req.user?.claims?.sub) || null
       };
       
       if (payment_date && typeof payment_date === 'string' && !payment_date.includes('T')) {
@@ -688,9 +688,9 @@ async function startServer() {
       const data = {
         verified: verified === true,
         verified_at: verified === true ? new Date() : null,
-        verified_by: verified === true ? (req.user?.id || null) : null,
+        verified_by: verified === true ? String(req.user?.claims?.sub) : null,
         updated_at: new Date(),
-        updated_by: req.user?.id || null
+        updated_by: String(req.user?.claims?.sub) || null
       };
       
       const payment = await prisma.payments.update({
@@ -866,7 +866,7 @@ async function startServer() {
         data: {
           is_locked: true,
           locked_at: new Date(),
-          locked_by: req.user.id
+          locked_by: String(req.user.claims?.sub)
         }
       });
       res.json(user);

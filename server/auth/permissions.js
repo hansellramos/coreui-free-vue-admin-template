@@ -47,7 +47,8 @@ function requirePermission(permission) {
       return res.status(401).json({ error: 'No autenticado' });
     }
     
-    const userPerms = await getUserPermissions(req.user.id);
+    const userId = String(req.user.claims?.sub || req.user.id);
+    const userPerms = await getUserPermissions(userId);
     req.userPermissions = userPerms;
     
     if (!hasPermission(userPerms, permission)) {
@@ -60,7 +61,8 @@ function requirePermission(permission) {
 
 async function loadUserPermissions(req, res, next) {
   if (req.user) {
-    req.userPermissions = await getUserPermissions(req.user.id);
+    const userId = String(req.user.claims?.sub || req.user.id);
+    req.userPermissions = await getUserPermissions(userId);
   } else {
     req.userPermissions = { permissions: [], organizationIds: [], isSuperAdmin: false };
   }
