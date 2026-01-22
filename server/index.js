@@ -588,16 +588,31 @@ async function startServer() {
 
   app.post('/api/accommodations', isAuthenticated, async (req, res) => {
     try {
-      const data = { ...req.body };
-      if (data.date && typeof data.date === 'string' && !data.date.includes('T')) {
-        data.date = new Date(data.date + 'T00:00:00.000Z');
+      const { venue, date, time, duration, customer, adults, children, plan_id, calculated_price, agreed_price } = req.body;
+      const parseFloatOrNull = (val) => val === '' || val === null || val === undefined ? null : parseFloat(val);
+      
+      const data = {
+        venue,
+        duration: parseFloat(duration) || null,
+        adults: parseInt(adults, 10) || 0,
+        children: parseInt(children, 10) || 0,
+        plan_id: plan_id || null,
+        calculated_price: parseFloatOrNull(calculated_price),
+        agreed_price: parseFloatOrNull(agreed_price)
+      };
+      
+      if (date && typeof date === 'string' && !date.includes('T')) {
+        data.date = new Date(date + 'T00:00:00.000Z');
+      } else if (date) {
+        data.date = new Date(date);
       }
-      if (data.time && typeof data.time === 'string' && !data.time.includes('T')) {
-        data.time = new Date('1970-01-01T' + data.time + ':00.000Z');
+      if (time && typeof time === 'string' && !time.includes('T')) {
+        data.time = new Date('1970-01-01T' + time + ':00.000Z');
+      } else if (time) {
+        data.time = new Date(time);
       }
-      if (data.customer === '') {
-        data.customer = null;
-      }
+      data.customer = customer === '' ? null : customer;
+      
       const accommodation = await prisma.accommodations.create({ data });
       res.json(accommodation);
     } catch (error) {
@@ -607,8 +622,18 @@ async function startServer() {
 
   app.put('/api/accommodations/:id', isAuthenticated, async (req, res) => {
     try {
-      const { venue, date, time, duration, customer, adults, children } = req.body;
-      const data = { venue, duration, adults, children };
+      const { venue, date, time, duration, customer, adults, children, plan_id, calculated_price, agreed_price } = req.body;
+      const parseFloatOrNull = (val) => val === '' || val === null || val === undefined ? null : parseFloat(val);
+      
+      const data = {
+        venue,
+        duration: parseFloat(duration) || null,
+        adults: parseInt(adults, 10) || 0,
+        children: parseInt(children, 10) || 0,
+        plan_id: plan_id || null,
+        calculated_price: parseFloatOrNull(calculated_price),
+        agreed_price: parseFloatOrNull(agreed_price)
+      };
       
       if (date && typeof date === 'string' && !date.includes('T')) {
         data.date = new Date(date + 'T00:00:00.000Z');

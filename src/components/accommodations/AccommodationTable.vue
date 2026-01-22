@@ -23,14 +23,15 @@
     <CTable>
       <thead>
         <tr>
-          <th>Venue</th>
-          <th>Organization</th>
-          <th>Date</th>
-          <th>Duration</th>
+          <th>Cabaña</th>
+          <th>Organización</th>
+          <th>Fecha</th>
+          <th>Duración</th>
           <th>Check In</th>
           <th>Check Out</th>
-          <th>Customer</th>
-          <th>Actions</th>
+          <th>Cliente</th>
+          <th>Precio</th>
+          <th>Acciones</th>
         </tr>
       </thead>
       <tbody>
@@ -43,9 +44,20 @@
           <td>{{ calcCheckout(item.time, item.duration, item.date) }}</td>
           <td>{{ item.customer_data?.fullname || item.customer_data?.user_data?.email || '—' }}</td>
           <td>
-            <CButton size="sm" color="info" @click="$router.push(`/business/accommodations/${item.id}`)">View</CButton>
-            <CButton size="sm" color="warning" class="ms-2" @click="$router.push(`/business/accommodations/${item.id}/edit`)">Edit</CButton>
-            <CButton size="sm" color="danger" class="ms-2" @click="onDelete(item)">Delete</CButton>
+            <template v-if="item.agreed_price || item.calculated_price">
+              <span v-if="hasDiscount(item)" class="text-success">
+                <s class="text-muted small">${{ formatCurrency(item.calculated_price) }}</s>
+                <strong>${{ formatCurrency(item.agreed_price) }}</strong>
+                <span class="badge bg-success ms-1">-{{ getDiscountPercent(item) }}%</span>
+              </span>
+              <span v-else class="fw-bold">${{ formatCurrency(item.agreed_price || item.calculated_price) }}</span>
+            </template>
+            <span v-else>—</span>
+          </td>
+          <td>
+            <CButton size="sm" color="info" @click="$router.push(`/business/accommodations/${item.id}`)">Ver</CButton>
+            <CButton size="sm" color="warning" class="ms-2" @click="$router.push(`/business/accommodations/${item.id}/edit`)">Editar</CButton>
+            <CButton size="sm" color="danger" class="ms-2" @click="onDelete(item)">Eliminar</CButton>
           </td>
         </tr>
       </tbody>
@@ -208,6 +220,22 @@ function calcCheckout(timeStr, duration, dateStr) {
   const endMins = String(end.getUTCMinutes()).padStart(2, '0')
   
   return `${endDay}/${endMonth}/${endYear} ${endHours}:${endMins}`
+}
+
+function formatCurrency(value) {
+  if (value == null) return '0'
+  return Number(value).toLocaleString('es-CO', { minimumFractionDigits: 0, maximumFractionDigits: 0 })
+}
+
+function hasDiscount(item) {
+  if (!item.calculated_price || !item.agreed_price) return false
+  return Number(item.agreed_price) < Number(item.calculated_price)
+}
+
+function getDiscountPercent(item) {
+  if (!item.calculated_price || !item.agreed_price) return 0
+  const diff = Number(item.calculated_price) - Number(item.agreed_price)
+  return Math.round((diff / Number(item.calculated_price)) * 100)
 }
 
 onMounted(load)

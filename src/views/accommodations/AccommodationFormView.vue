@@ -26,7 +26,7 @@ import { getAccommodationById, createAccommodation, updateAccommodation } from '
 
 const route = useRoute()
 const router = useRouter()
-let form = ref({ venue: '', date: '', time: '', duration: '', customer: '' })
+let form = ref({ venue: '', date: '', time: '', duration: '', customer: '', adults: 0, children: 0, plan_id: '', calculated_price: null, agreed_price: null })
 const isEdit = computed(() => !!route.params.id)
 
 function formatDateForInput(dateStr) {
