@@ -569,6 +569,18 @@ async function startServer() {
 
   app.put('/api/payments/:id', isAuthenticated, async (req, res) => {
     try {
+      const existingPayment = await prisma.payments.findUnique({
+        where: { id: req.params.id }
+      });
+      
+      if (!existingPayment) {
+        return res.status(404).json({ error: 'Pago no encontrado' });
+      }
+      
+      if (existingPayment.verified) {
+        return res.status(403).json({ error: 'No se puede modificar un pago verificado' });
+      }
+      
       const { type, accommodation, amount, payment_method, payment_date, reference, notes, receipt_url } = req.body;
       const data = {
         type: type || null,

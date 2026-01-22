@@ -172,6 +172,16 @@
             <div>{{ selectedPayment.reference }}</div>
           </CCol>
         </CRow>
+        <CRow class="mt-2">
+          <CCol>
+            <CBadge :color="selectedPayment.verified ? 'success' : 'warning'" class="px-3 py-2">
+              {{ selectedPayment.verified ? 'Verificado' : 'Pendiente de verificación' }}
+            </CBadge>
+            <div v-if="selectedPayment.verified && selectedPayment.verified_by_user" class="small text-muted mt-1">
+              Verificado por {{ selectedPayment.verified_by_user.name || selectedPayment.verified_by_user.email }}
+            </div>
+          </CCol>
+        </CRow>
       </div>
       <div class="text-center">
         <img 
@@ -190,14 +200,28 @@
     <CModalFooter class="justify-content-between">
       <div>
         <CButton 
-          v-if="selectedPayment" 
+          v-if="selectedPayment && !selectedPayment.verified" 
           color="warning" 
           variant="outline"
+          class="me-2"
           @click="editPayment"
         >
           <CIcon name="cil-pencil" class="me-1" />
-          Editar pago
+          Editar
         </CButton>
+        <CButton 
+          v-if="selectedPayment && !selectedPayment.verified" 
+          color="success"
+          :disabled="verifying"
+          @click="verifyPayment"
+        >
+          <CIcon name="cil-check-circle" class="me-1" />
+          {{ verifying ? 'Verificando...' : 'Verificar pago' }}
+        </CButton>
+        <span v-if="selectedPayment?.verified" class="text-success">
+          <CIcon name="cil-lock-locked" class="me-1" />
+          Pago bloqueado (verificado)
+        </span>
       </div>
       <div>
         <CButton color="secondary" variant="outline" @click="showReceiptModal = false">
@@ -223,6 +247,7 @@ const showReceiptModal = ref(false)
 const selectedReceiptUrl = ref('')
 const selectedPayment = ref(null)
 const receiptLoadError = ref(false)
+const verifying = ref(false)
 
 function openReceipt(payment) {
   selectedPayment.value = payment
@@ -234,6 +259,35 @@ function openReceipt(payment) {
 function editPayment() {
   showReceiptModal.value = false
   router.push(`/business/payments/${selectedPayment.value.id}/edit?accommodation_id=${route.params.id}`)
+}
+
+async function verifyPayment() {
+  if (!selectedPayment.value) return
+  
+  verifying.value = true
+  try {
+    const res = await fetch(`/api/payments/${selectedPayment.value.id}/verify`, {
+      method: 'POST',
+      credentials: 'include'
+    })
+    
+    if (res.ok) {
+      const updated = await res.json()
+      selectedPayment.value = updated
+      const idx = payments.value.findIndex(p => p.id === updated.id)
+      if (idx !== -1) {
+        payments.value[idx] = updated
+      }
+    } else {
+      const err = await res.json()
+      alert(err.error || 'Error al verificar el pago')
+    }
+  } catch (error) {
+    console.error('Error verifying payment:', error)
+    alert('Error al verificar el pago')
+  } finally {
+    verifying.value = false
+  }
 }
 
 const totalPaid = computed(() => {

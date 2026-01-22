@@ -263,6 +263,13 @@ const loadPayment = async () => {
     if (response.ok) {
       const payment = await response.json()
       existingPayment.value = payment
+      
+      if (payment.verified) {
+        alert('Este pago ya fue verificado y no puede ser modificado.')
+        goBack()
+        return
+      }
+      
       form.value = {
         type: payment.type || '',
         accommodation: payment.accommodation || '',
