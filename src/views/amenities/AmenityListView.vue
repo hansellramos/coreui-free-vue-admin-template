@@ -132,11 +132,12 @@
 <script setup>
 import { ref, onMounted } from 'vue'
 import {
-  CRow, CCol, CCard, CCardHeader, CCardBody, CButton, CIcon,
+  CRow, CCol, CCard, CCardHeader, CCardBody, CButton,
   CTable, CTableHead, CTableRow, CTableHeaderCell, CTableBody, CTableDataCell,
   CBadge, CModal, CModalHeader, CModalTitle, CModalBody, CModalFooter,
   CForm, CFormLabel, CFormInput, CFormTextarea, CFormSelect, CFormCheck
 } from '@coreui/vue'
+import { CIcon } from '@coreui/icons-vue'
 
 const amenities = ref([])
 const loading = ref(false)
