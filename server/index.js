@@ -189,9 +189,20 @@ async function startServer() {
 
   app.post('/api/organizations', isAuthenticated, async (req, res) => {
     try {
+      const userId = String(req.user.claims?.sub);
+      
       const organization = await prisma.organizations.create({
         data: req.body
       });
+      
+      // Associate the creating user with the new organization
+      await prisma.user_organizations.create({
+        data: {
+          user_id: userId,
+          organization_id: organization.id
+        }
+      });
+      
       res.json(organization);
     } catch (error) {
       res.status(500).json({ error: error.message });
