@@ -56,61 +56,51 @@
       </CCol>
     </CRow>
 
-    <CRow class="mb-4">
+    <CRow class="mb-4 g-3">
       <CCol :sm="6" :lg="3">
-        <CWidgetStatsA color="primary">
-          <template #value>
-            <span class="fs-4 fw-semibold">
+        <CCard class="text-white bg-primary h-100">
+          <CCardBody class="pb-3">
+            <div class="fs-4 fw-semibold">
               {{ formatCurrency(incomeSummary.currentMonth.total) }}
-            </span>
-            <span v-if="incomeSummary.percentChange !== 0" class="fs-6 fw-normal ms-2" :class="incomeSummary.percentChange >= 0 ? 'text-success' : 'text-danger'">
-              {{ incomeSummary.percentChange >= 0 ? '+' : '' }}{{ incomeSummary.percentChange }}%
-            </span>
-          </template>
-          <template #title>Ingresos Este Mes</template>
-          <template #action>
-            <span class="text-white-50 small">{{ incomeSummary.currentMonth.count }} pagos verificados</span>
-          </template>
-        </CWidgetStatsA>
+              <span v-if="incomeSummary.percentChange !== 0" class="fs-6 fw-normal ms-2" :class="incomeSummary.percentChange >= 0 ? 'text-white' : 'text-danger'">
+                {{ incomeSummary.percentChange >= 0 ? '+' : '' }}{{ incomeSummary.percentChange }}%
+              </span>
+            </div>
+            <div class="text-white-50">Ingresos Este Mes</div>
+          </CCardBody>
+        </CCard>
       </CCol>
       <CCol :sm="6" :lg="3">
-        <CWidgetStatsA color="info">
-          <template #value>
-            <span class="fs-4 fw-semibold">
+        <CCard class="text-white bg-info h-100">
+          <CCardBody class="pb-3">
+            <div class="fs-4 fw-semibold">
               {{ formatCurrency(incomeSummary.previousMonth.total) }}
-            </span>
-          </template>
-          <template #title>Ingresos Mes Anterior</template>
-          <template #action>
-            <span class="text-white-50 small">{{ incomeSummary.previousMonth.count }} pagos verificados</span>
-          </template>
-        </CWidgetStatsA>
+            </div>
+            <div class="text-white-50">Ingresos Mes Anterior</div>
+          </CCardBody>
+        </CCard>
       </CCol>
       <CCol :sm="6" :lg="3">
-        <CWidgetStatsA color="success">
-          <template #value>
-            <span class="fs-4 fw-semibold">
+        <CCard class="text-white bg-success h-100">
+          <CCardBody class="pb-3">
+            <div class="fs-4 fw-semibold">
               {{ totalIncomeByVenue }}
-            </span>
-          </template>
-          <template #title>Ingresos Totales</template>
-          <template #action>
-            <span class="text-white-50 small">{{ incomeByVenue.length }} venues con ingresos</span>
-          </template>
-        </CWidgetStatsA>
+            </div>
+            <div class="text-white-50">Ingresos Totales</div>
+            <small class="text-white-50">{{ incomeByVenue.length }} venues con ingresos</small>
+          </CCardBody>
+        </CCard>
       </CCol>
       <CCol :sm="6" :lg="3">
-        <CWidgetStatsA color="warning">
-          <template #value>
-            <span class="fs-4 fw-semibold">
+        <CCard class="text-white bg-warning h-100">
+          <CCardBody class="pb-3">
+            <div class="fs-4 fw-semibold">
               {{ totalAccommodationsNext12 }}
-            </span>
-          </template>
-          <template #title>Reservas Proximos 12M</template>
-          <template #action>
-            <span class="text-white-50 small">{{ accommodationsForecast.venues?.length || 0 }} venues</span>
-          </template>
-        </CWidgetStatsA>
+            </div>
+            <div class="text-white-50">Reservas Proximos 12M</div>
+            <small class="text-white-50">{{ accommodationsForecast.venues?.length || 0 }} venues</small>
+          </CCardBody>
+        </CCard>
       </CCol>
     </CRow>
 

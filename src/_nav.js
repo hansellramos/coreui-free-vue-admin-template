@@ -2,25 +2,20 @@ export default [
   {
     component: 'CNavItem',
     name: 'Inicio',
-    to: '/business/accommodations',
+    to: '/dashboard',
     icon: 'cil-home',
+  },
+  {
+    component: 'CNavItem',
+    name: 'Analytics',
+    to: '/dashboard',
+    icon: 'cil-chart-pie',
   },
   {
     component: 'CNavItem',
     name: 'Next',
     to: '/next',
     icon: 'cil-arrow-right',
-  },
-  {
-    component: 'CNavItem',
-    name: 'Dashboard',
-    to: '/dashboard',
-    icon: 'cil-speedometer',
-    badge: {
-      color: 'primary',
-      text: 'NEW',
-    },
-    devOnly: true,
   },
   {
     component: 'CNavTitle',

@@ -81,6 +81,7 @@
                       <CIcon :icon="cilX" />
                     </CButton>
                     <CButton
+                      v-if="!payment.verified"
                       color="info"
                       size="sm"
                       variant="ghost"
@@ -90,6 +91,7 @@
                       <CIcon :icon="cilPencil" />
                     </CButton>
                     <CButton
+                      v-if="!payment.verified"
                       color="danger"
                       size="sm"
                       variant="ghost"

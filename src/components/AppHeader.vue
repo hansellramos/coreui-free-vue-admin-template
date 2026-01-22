@@ -30,13 +30,13 @@ onMounted(() => {
       </CHeaderToggler>
       <CHeaderNav class="d-none d-md-flex">
         <CNavItem>
+          <RouterLink to="/dashboard" class="nav-link">Dashboard</RouterLink>
+        </CNavItem>
+        <CNavItem>
           <RouterLink to="/business/accommodations" class="nav-link">Calendar</RouterLink>
         </CNavItem>
         <CNavItem>
           <RouterLink to="/next" class="nav-link">Next</RouterLink>
-        </CNavItem>
-        <CNavItem>
-          <RouterLink to="/business/venues" class="nav-link">Venues</RouterLink>
         </CNavItem>
       </CHeaderNav>
       <CHeaderNav class="ms-auto">
