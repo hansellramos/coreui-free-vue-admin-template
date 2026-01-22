@@ -37,7 +37,7 @@
             <CSpinner size="sm" />
           </div>
           
-          <CTable v-else-if="superAdmins.length > 0" hover responsive>
+          <CTable v-else-if="superAdmins && superAdmins.length > 0" hover responsive>
             <CTableHead>
               <CTableRow>
                 <CTableHeaderCell>Usuario</CTableHeaderCell>
