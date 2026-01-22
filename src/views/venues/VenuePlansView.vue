@@ -228,14 +228,34 @@ No incluye bebidas" />
             <div v-if="allAmenities.length === 0" class="text-muted">
               No hay amenidades disponibles. <RouterLink to="/admin/amenities">Crear amenidades</RouterLink>
             </div>
-            <div class="amenities-grid">
-              <div v-for="amenity in allAmenities" :key="amenity.id" class="amenity-item">
-                <CFormCheck
-                  :id="`amenity-${amenity.id}`"
-                  :checked="selectedAmenityIds.includes(amenity.id)"
-                  @change="toggleAmenity(amenity.id)"
-                  :label="amenity.name"
-                />
+            <div v-else>
+              <div v-for="(items, category) in groupedAmenities" :key="category" class="mb-3">
+                <div 
+                  class="category-header d-flex justify-content-between align-items-center p-2 bg-light rounded"
+                  style="cursor: pointer;"
+                  @click="toggleAmenityCategory(category)"
+                >
+                  <div>
+                    <strong>{{ category }}</strong>
+                    <CBadge color="secondary" class="ms-2">{{ items.length }}</CBadge>
+                    <CBadge v-if="getSelectedCountInCategory(category)" color="primary" class="ms-1">
+                      {{ getSelectedCountInCategory(category) }} seleccionadas
+                    </CBadge>
+                  </div>
+                  <CIcon :name="expandedAmenityCategories[category] ? 'cil-chevron-top' : 'cil-chevron-bottom'" />
+                </div>
+                <CCollapse :visible="expandedAmenityCategories[category] !== false">
+                  <div class="amenities-grid mt-2 ps-2">
+                    <div v-for="amenity in items" :key="amenity.id" class="amenity-item">
+                      <CFormCheck
+                        :id="`amenity-${amenity.id}`"
+                        :checked="selectedAmenityIds.includes(amenity.id)"
+                        @change="toggleAmenity(amenity.id)"
+                        :label="amenity.name"
+                      />
+                    </div>
+                  </div>
+                </CCollapse>
               </div>
             </div>
           </CTabPanel>
@@ -287,7 +307,8 @@ import {
   CRow, CCol, CCard, CCardHeader, CCardBody, CCardFooter, CButton, CSpinner,
   CBadge, CModal, CModalHeader, CModalTitle, CModalBody, CModalFooter,
   CForm, CFormLabel, CFormInput, CFormTextarea, CFormSelect, CFormCheck,
-  CInputGroup, CInputGroupText, CTabs, CTabList, CTab, CTabContent, CTabPanel
+  CInputGroup, CInputGroupText, CTabs, CTabList, CTab, CTabContent, CTabPanel,
+  CCollapse
 } from '@coreui/vue'
 import { CIcon } from '@coreui/icons-vue'
 import ImageUploader from '@/components/ImageUploader.vue'
@@ -310,6 +331,32 @@ const activeTab = ref('basico')
 
 const selectedAmenityIds = ref([])
 const planImages = ref([])
+const expandedAmenityCategories = ref({})
+
+const groupedAmenities = computed(() => {
+  const groups = {}
+  allAmenities.value.forEach(amenity => {
+    const cat = amenity.category || 'Sin categoría'
+    if (!groups[cat]) {
+      groups[cat] = []
+    }
+    groups[cat].push(amenity)
+  })
+  const sortedGroups = {}
+  Object.keys(groups).sort().forEach(key => {
+    sortedGroups[key] = groups[key]
+  })
+  return sortedGroups
+})
+
+const toggleAmenityCategory = (category) => {
+  expandedAmenityCategories.value[category] = !expandedAmenityCategories.value[category]
+}
+
+const getSelectedCountInCategory = (category) => {
+  const items = groupedAmenities.value[category] || []
+  return items.filter(a => selectedAmenityIds.value.includes(a.id)).length
+}
 
 const defaultForm = {
   name: '',
