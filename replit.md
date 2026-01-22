@@ -43,9 +43,9 @@ The Express backend runs on port 3000 and provides:
 - `/api/callback` - OAuth callback handler
 - `/api/auth/user` - Get current authenticated user
 - `/api/organizations` - CRUD for organizations (filtered by user permissions)
-- `/api/venues` - CRUD for venues (filtered by user permissions)
+- `/api/venues` - CRUD for venues with waze_link field (filtered by user permissions)
 - `/api/contacts` - CRUD for contacts (filtered by user permissions)
-- `/api/accommodations` - CRUD for accommodations with waze_link field (filtered by user permissions)
+- `/api/accommodations` - CRUD for accommodations (filtered by user permissions)
 - `/api/payments` - CRUD for payments with verification workflow (filtered by user permissions)
 - `/api/payments/:id/verify` - Verify/unverify a payment (protected)
 - `/api/payments/extract-receipt` - AI-powered receipt data extraction using Claude Vision
