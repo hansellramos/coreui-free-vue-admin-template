@@ -181,3 +181,14 @@ model sessions {
 
   @@index([expire], name: "IDX_session_expire")
 }
+
+model incomes {
+  id              String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  payment_id      String?  @db.Uuid
+  organization_id String?  @db.Uuid
+  venue_id        String?  @db.Uuid
+  amount          Decimal? @db.Decimal
+  type            String?  @db.VarChar(50)
+  date            DateTime? @db.Date
+  created_at      DateTime @default(now()) @db.Timestamptz(6)
+}
