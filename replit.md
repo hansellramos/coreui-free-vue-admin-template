@@ -7,7 +7,7 @@ This is a Vue.js 3 admin dashboard template built with CoreUI components. It pro
 - `src/` - Main source directory
   - `assets/` - Static assets and icons
   - `components/` - Reusable Vue components
-  - `composables/` - Vue composables (useAuth for authentication)
+  - `composables/` - Vue composables (useAuth for authentication, usePostHog for analytics)
   - `layouts/` - Layout templates (DefaultLayout)
   - `router/` - Vue Router configuration
   - `services/` - API service modules (placeholder stubs)
@@ -29,6 +29,7 @@ This is a Vue.js 3 admin dashboard template built with CoreUI components. It pro
 - Pinia (state management)
 - Mapbox GL (maps)
 - Chart.js (charts)
+- PostHog (analytics with autocapture)
 - SCSS for styling
 - Express.js (backend)
 - Prisma 7 with @prisma/adapter-pg (ORM)
