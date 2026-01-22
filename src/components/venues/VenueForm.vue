@@ -1,19 +1,19 @@
 <template>
   <CForm @submit.prevent="handleSubmit">
     <div class="mb-3">
-      <CFormLabel for="venueName">Venue Name</CFormLabel>
+      <CFormLabel for="venueName">Nombre de la Cabaña *</CFormLabel>
       <CFormInput
         id="venueName"
         v-model="form.name"
         type="text"
-        placeholder="Enter venue name"
+        placeholder="Ingresa el nombre de la cabaña"
         required
       />
     </div>
     <div class="mb-3">
-      <CFormLabel for="venueOrganization">Organization</CFormLabel>
+      <CFormLabel for="venueOrganization">Organización</CFormLabel>
       <CFormSelect id="venueOrganization" v-model="form.organization">
-        <option value="">-- Select Organization --</option>
+        <option value="">-- Selecciona una organización --</option>
         <option v-for="org in organizations" :key="org.id" :value="org.id">{{ org.name }}</option>
       </CFormSelect>
     </div>
@@ -23,7 +23,7 @@
         id="venueWhatsapp"
         v-model="form.whatsapp"
         type="text"
-        placeholder="Enter WhatsApp number"
+        placeholder="Ingresa el número de WhatsApp"
       />
     </div>
     <div class="mb-3">
@@ -32,16 +32,17 @@
         id="venueInstagram"
         v-model="form.instagram"
         type="text"
-        placeholder="Enter Instagram handle"
+        placeholder="Ingresa el usuario de Instagram"
       />
     </div>
-    <!-- Mapbox map and geocoder -->
+    
     <div class="mb-3">
       <CFormLabel>Ubicación</CFormLabel>
+      <div class="form-text mb-2">Mueve el mapa o usa el buscador para ubicar la cabaña. Los datos geográficos se llenarán automáticamente.</div>
       <div ref="mapContainer" class="map-container"></div>
       <div class="d-flex gap-3 mt-2">
         <div class="flex-grow-1">
-          <CFormLabel for="venueLatitude">Latitude</CFormLabel>
+          <CFormLabel for="venueLatitude">Latitud</CFormLabel>
           <CFormInput
             id="venueLatitude"
             v-model="form.latitude"
@@ -50,7 +51,7 @@
           />
         </div>
         <div class="flex-grow-1">
-          <CFormLabel for="venueLongitude">Longitude</CFormLabel>
+          <CFormLabel for="venueLongitude">Longitud</CFormLabel>
           <CFormInput
             id="venueLongitude"
             v-model="form.longitude"
@@ -70,66 +71,66 @@
       </CButton>
     </div>
     <div class="mb-3">
-      <CFormLabel for="venueAddress">Address</CFormLabel>
+      <CFormLabel for="venueAddress">Dirección</CFormLabel>
       <CFormInput
         id="venueAddress"
         v-model="form.address"
         type="text"
-        placeholder="Enter address"
+        placeholder="Ingresa la dirección"
       />
     </div>
     <div class="mb-3">
-      <CFormLabel for="venueZip">ZIP Code</CFormLabel>
+      <CFormLabel for="venueZip">Código Postal</CFormLabel>
       <CFormInput
         id="venueZip"
         v-model="form.zip_code"
         type="text"
-        placeholder="Enter ZIP code"
+        placeholder="Ingresa el código postal"
       />
     </div>
     <div class="mb-3">
-      <CFormLabel for="venueCity">City</CFormLabel>
+      <CFormLabel for="venueCity">Ciudad</CFormLabel>
       <CFormInput
         id="venueCity"
         v-model="form.city"
         type="text"
-        placeholder="Enter city"
+        placeholder="Ingresa la ciudad"
       />
     </div>
     <div class="mb-3">
-      <CFormLabel for="venueCountry">Country</CFormLabel>
+      <CFormLabel for="venueCountry">País</CFormLabel>
       <CFormInput
         id="venueCountry"
         v-model="form.country"
         type="text"
-        placeholder="Enter country"
+        placeholder="Ingresa el país"
       />
     </div>
     <div class="mb-3">
-      <CFormLabel for="venueDepartment">Department</CFormLabel>
+      <CFormLabel for="venueDepartment">Departamento</CFormLabel>
       <CFormInput
         id="venueDepartment"
         v-model="form.department"
         type="text"
-        placeholder="Enter department"
+        placeholder="Ingresa el departamento"
       />
     </div>
     <div class="mb-3">
-      <CFormLabel for="venueSuburb">Suburb</CFormLabel>
+      <CFormLabel for="venueSuburb">Barrio / Localidad</CFormLabel>
       <CFormInput
         id="venueSuburb"
         v-model="form.suburb"
         type="text"
-        placeholder="Enter suburb"
+        placeholder="Ingresa el barrio o localidad"
       />
     </div>
     <div class="mb-3">
-      <CFormLabel for="venueAddressReference">Address Reference</CFormLabel>
+      <CFormLabel for="venueAddressReference">Referencia de Dirección</CFormLabel>
       <CFormInput
         id="venueAddressReference"
         v-model="form.address_reference"
         type="text"
-        placeholder="Enter address reference"
+        placeholder="Ingresa una referencia (ej: cerca del parque)"
       />
     </div>
     <div class="mb-3">
@@ -140,8 +141,8 @@
       />
       <div class="form-text">Si está activo, esta cabaña aparecerá en la página pública de búsqueda de disponibilidad.</div>
     </div>
-    <CButton type="submit" color="primary" class="me-2">{{ isEdit ? 'Update' : 'Create' }}</CButton>
-    <CButton color="secondary" variant="outline" @click="onCancel">Cancel</CButton>
+    <CButton type="submit" color="primary" class="me-2">{{ isEdit ? 'Actualizar' : 'Crear' }}</CButton>
+    <CButton color="secondary" variant="outline" @click="onCancel">Cancelar</CButton>
   </CForm>
 </template>
 
@@ -177,6 +178,7 @@ const token = import.meta.env.VITE_MAPBOX_ACCESS_TOKEN
 const mapInstance = ref(null)
 const markerInstance = ref(null)
 const originalLocation = ref({ latitude: null, longitude: null })
+const skipReverseGeocode = ref(false)
 
 const locationChanged = computed(() => {
   if (!props.isEdit || originalLocation.value.latitude === null) return false
@@ -210,6 +212,8 @@ watch(
       // Update map and marker if they exist and coordinates are available
       if (mapInstance.value && markerInstance.value && val.latitude && val.longitude) {
         const coords = [val.longitude, val.latitude]
+        // Skip reverse geocoding for this programmatic move
+        skipReverseGeocode.value = true
         mapInstance.value.setCenter(coords)
         markerInstance.value.setLngLat(coords)
       }
@@ -224,6 +228,54 @@ function handleSubmit() {
 
 function onCancel() {
   emit('cancel')
+}
+
+async function reverseGeocode(lng, lat) {
+  try {
+    const response = await fetch(
+      `https://api.mapbox.com/geocoding/v5/mapbox.places/${lng},${lat}.json?access_token=${token}&language=es&types=address,poi,place&limit=1`
+    )
+    const data = await response.json()
+    if (data.features && data.features.length > 0) {
+      const result = data.features[0]
+      
+      // Clear all geographic fields first to avoid stale data
+      form.value.zip_code = ''
+      form.value.suburb = ''
+      form.value.city = ''
+      form.value.department = ''
+      form.value.country = ''
+      
+      // Use place_name for full address, or build from components
+      if (result.address && result.text) {
+        form.value.address = `${result.address} ${result.text}`
+      } else if (result.text) {
+        form.value.address = result.text
+      } else if (result.place_name) {
+        form.value.address = result.place_name
+      }
+      
+      // Parse context for geographic details
+      if (result.context) {
+        result.context.forEach(ctx => {
+          const id = ctx.id
+          if (id.startsWith('postcode')) {
+            form.value.zip_code = ctx.text
+          } else if (id.startsWith('locality') || id.startsWith('neighborhood')) {
+            form.value.suburb = ctx.text
+          } else if (id.startsWith('place')) {
+            form.value.city = ctx.text
+          } else if (id.startsWith('region')) {
+            form.value.department = ctx.text
+          } else if (id.startsWith('country')) {
+            form.value.country = ctx.text
+          }
+        })
+      }
+    }
+  } catch (error) {
+    console.error('Error in reverse geocoding:', error)
+  }
 }
 
 onMounted(async () => {
@@ -253,17 +305,69 @@ onMounted(async () => {
   map.addControl(geocoder)
   const marker = new mapboxgl.Marker({ draggable: false }).setLngLat(initialCenter).addTo(map)
   markerInstance.value = marker
+  let reverseGeocodeTimeout = null
   map.on('moveend', () => {
     const center = map.getCenter()
     marker.setLngLat(center)
     form.value.longitude = center.lng
     form.value.latitude = center.lat
+    
+    // Skip reverse geocoding for programmatic moves (e.g., loading data in edit mode)
+    if (skipReverseGeocode.value) {
+      skipReverseGeocode.value = false
+      return
+    }
+    
+    // Debounce reverse geocoding to avoid too many API calls
+    if (reverseGeocodeTimeout) clearTimeout(reverseGeocodeTimeout)
+    reverseGeocodeTimeout = setTimeout(() => {
+      reverseGeocode(center.lng, center.lat)
+    }, 800)
   })
   geocoder.on('result', ev => {
     const [lng, lat] = ev.result.center
+    // Skip reverse geocoding since we're extracting data from geocoder result
+    skipReverseGeocode.value = true
     form.value.longitude = lng
     form.value.latitude = lat
     marker.setLngLat([lng, lat])
+    
+    // Extract geographic data from geocoder result
+    const result = ev.result
+    
+    // Clear all geographic fields first to avoid stale data
+    form.value.zip_code = ''
+    form.value.suburb = ''
+    form.value.city = ''
+    form.value.department = ''
+    form.value.country = ''
+    
+    // Set address: prefer street address if available, otherwise use text/place_name
+    if (result.address && result.text) {
+      form.value.address = `${result.address} ${result.text}`
+    } else if (result.text) {
+      form.value.address = result.text
+    } else if (result.place_name) {
+      form.value.address = result.place_name
+    }
+    
+    // Parse context for city, country, department, etc.
+    if (result.context) {
+      result.context.forEach(ctx => {
+        const id = ctx.id
+        if (id.startsWith('postcode')) {
+          form.value.zip_code = ctx.text
+        } else if (id.startsWith('locality') || id.startsWith('neighborhood')) {
+          form.value.suburb = ctx.text
+        } else if (id.startsWith('place')) {
+          form.value.city = ctx.text
+        } else if (id.startsWith('region')) {
+          form.value.department = ctx.text
+        } else if (id.startsWith('country')) {
+          form.value.country = ctx.text
+        }
+      })
+    }
   })
 })
 </script>
