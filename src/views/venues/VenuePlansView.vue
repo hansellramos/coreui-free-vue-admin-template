@@ -227,16 +227,19 @@ No incluye bebidas" />
             <div class="d-flex justify-content-between align-items-center mb-3">
               <p class="text-muted mb-0">Selecciona las amenidades incluidas en este plan:</p>
               <CButton 
-                v-if="venueAmenityIds.length > 0" 
                 color="secondary" 
                 size="sm" 
                 variant="outline"
+                :disabled="venueAmenityIds.length === 0"
                 @click="resetAmenitiesFromVenue"
               >
                 <CIcon name="cil-reload" class="me-1" />
-                Cargar de la cabaña ({{ venueAmenityIds.length }})
+                Copiar de la cabaña{{ venueAmenityIds.length > 0 ? ` (${venueAmenityIds.length})` : '' }}
               </CButton>
             </div>
+            <CAlert v-if="venueAmenityIds.length === 0" color="info" class="mb-3">
+              Esta cabaña no tiene amenidades asignadas. Puedes asignarlas desde el formulario de la cabaña.
+            </CAlert>
             <div v-if="allAmenities.length === 0" class="text-muted">
               No hay amenidades disponibles. <RouterLink to="/admin/amenities">Crear amenidades</RouterLink>
             </div>
