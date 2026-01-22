@@ -148,3 +148,9 @@ Replit Auth is integrated using OpenID Connect:
 - Prisma 7 requires driver adapters; using @prisma/adapter-pg for PostgreSQL
 - Frontend services in `src/services/` are placeholder stubs that need updating to call backend API
 - Authentication composable available at `src/composables/useAuth.js`
+
+## Language
+- The application is fully translated to Spanish
+- "Venues" are referred to as "Cabañas" throughout the application
+- Navigation and UI elements are in Spanish (Panel, Calendario, Próximos, Organizaciones, Cabañas, Contactos, Hospedajes, Pagos, etc.)
+- Theme selector: Claro/Oscuro/Automático
