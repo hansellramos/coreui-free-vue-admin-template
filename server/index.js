@@ -2135,6 +2135,138 @@ async function startServer() {
     }
   });
 
+  // Availability check endpoint - returns venues with plans and their availability status
+  app.get('/api/availability', async (req, res) => {
+    try {
+      const { check_in, check_out, adults, children } = req.query;
+      
+      if (!check_in) {
+        return res.status(400).json({ error: 'check_in es requerido' });
+      }
+      
+      const checkInDate = new Date(check_in);
+      // For pasadia, check_out can be same as check_in or null
+      const checkOutDate = check_out ? new Date(check_out) : checkInDate;
+      
+      // Validate date range
+      if (checkOutDate < checkInDate) {
+        return res.status(400).json({ error: 'La fecha de salida debe ser posterior a la fecha de entrada' });
+      }
+      
+      const numAdults = parseInt(adults) || 1;
+      const numChildren = parseInt(children) || 0;
+      const totalGuests = numAdults + numChildren;
+      
+      // Get all venues that have active plans
+      const venuesWithPlans = await prisma.venues.findMany({
+        where: {
+          venue_plans: {
+            some: {
+              is_active: true
+            }
+          }
+        },
+        include: {
+          venue_plans: {
+            where: { is_active: true },
+            orderBy: { name: 'asc' }
+          }
+        }
+      });
+      
+      // Get organization data for each venue
+      const orgIds = [...new Set(venuesWithPlans.filter(v => v.organization).map(v => v.organization))];
+      const organizations = orgIds.length > 0 ? await prisma.organizations.findMany({
+        where: { id: { in: orgIds } }
+      }) : [];
+      const orgMap = {};
+      organizations.forEach(o => { orgMap[o.id] = o; });
+      
+      // Check for existing accommodations in the date range for each venue
+      const venueIds = venuesWithPlans.map(v => v.id);
+      
+      // Get all accommodations for these venues
+      const existingAccommodations = await prisma.accommodations.findMany({
+        where: {
+          venue: { in: venueIds }
+        }
+      });
+      
+      // Calculate accommodation end dates and check for overlaps
+      const busyVenueIds = new Set();
+      existingAccommodations.forEach(acc => {
+        const accDate = new Date(acc.date);
+        // Duration is stored in seconds, default to 12 hours (pasadia) if missing
+        const durationSeconds = parseInt(acc.duration) || 43200;
+        const accEndDate = new Date(accDate.getTime() + durationSeconds * 1000);
+        
+        // Normalize dates to day boundaries for comparison
+        const accStartDay = new Date(accDate.getUTCFullYear(), accDate.getUTCMonth(), accDate.getUTCDate());
+        const accEndDay = new Date(accEndDate.getUTCFullYear(), accEndDate.getUTCMonth(), accEndDate.getUTCDate());
+        const checkInDay = new Date(checkInDate.getUTCFullYear(), checkInDate.getUTCMonth(), checkInDate.getUTCDate());
+        const checkOutDay = new Date(checkOutDate.getUTCFullYear(), checkOutDate.getUTCMonth(), checkOutDate.getUTCDate());
+        
+        // Check if this accommodation overlaps with requested dates
+        // Overlap condition: accStart <= checkOut AND accEnd >= checkIn
+        if (accStartDay <= checkOutDay && accEndDay >= checkInDay) {
+          busyVenueIds.add(acc.venue);
+        }
+      });
+      
+      // Build result with availability info
+      const result = venuesWithPlans.map(venue => {
+        const plans = venue.venue_plans || [];
+        
+        // Check each plan for guest suitability
+        const plansWithSuitability = plans.map(p => {
+          const planMin = p.min_guests || 1;
+          const planMax = p.max_capacity || 999;
+          const isSuitable = totalGuests >= planMin && totalGuests <= planMax;
+          return {
+            id: p.id,
+            name: p.name,
+            plan_type: p.plan_type,
+            adult_price: p.adult_price,
+            child_price: p.child_price,
+            min_guests: p.min_guests,
+            max_capacity: p.max_capacity,
+            is_suitable: isSuitable
+          };
+        });
+        
+        // Venue has a matching plan if at least one plan is suitable
+        const hasMatchingPlan = plansWithSuitability.some(p => p.is_suitable);
+        const minGuests = Math.min(...plans.map(p => p.min_guests || 1));
+        const maxCapacity = Math.max(...plans.map(p => p.max_capacity || 999));
+        
+        return {
+          id: venue.id,
+          name: venue.name,
+          organization: venue.organization,
+          organization_name: orgMap[venue.organization]?.name || null,
+          is_available: !busyVenueIds.has(venue.id),
+          has_matching_plan: hasMatchingPlan,
+          min_guests: minGuests,
+          max_capacity: maxCapacity === 999 ? null : maxCapacity,
+          plans_count: plans.length,
+          plans: plansWithSuitability
+        };
+      });
+      
+      // Sort: available first, then has matching plan, then by name
+      result.sort((a, b) => {
+        if (a.is_available !== b.is_available) return b.is_available - a.is_available;
+        if (a.has_matching_plan !== b.has_matching_plan) return b.has_matching_plan - a.has_matching_plan;
+        return a.name.localeCompare(b.name);
+      });
+      
+      res.json(result);
+    } catch (error) {
+      console.error('Availability error:', error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
   app.listen(PORT, '0.0.0.0', () => {
     console.log(`Server running on port ${PORT}`);
   });

@@ -18,6 +18,12 @@ export default [
     icon: 'cil-arrow-right',
   },
   {
+    component: 'CNavItem',
+    name: 'Disponibilidad',
+    to: '/disponibilidad',
+    icon: 'cil-check-circle',
+  },
+  {
     component: 'CNavTitle',
     name: 'Negocio',
   },

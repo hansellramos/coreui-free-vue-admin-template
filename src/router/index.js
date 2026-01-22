@@ -61,6 +61,11 @@ const routes = [
         component: () => import('@/views/pages/Next.vue'),
       },
       {
+        path: '/disponibilidad',
+        name: 'Availability',
+        component: () => import('@/views/availability/AvailabilityView.vue'),
+      },
+      {
         path: '/theme',
         name: 'Theme',
         redirect: '/theme/typography',
