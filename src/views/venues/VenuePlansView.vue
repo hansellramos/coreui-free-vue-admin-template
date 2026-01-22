@@ -170,11 +170,17 @@
             <CRow class="mb-3">
               <CCol :md="6">
                 <CFormLabel>Hora de Entrada (Check-in)</CFormLabel>
-                <CFormInput v-model="form.check_in_time" type="time" />
+                <CFormInput v-model="form.check_in_time" type="time" @focus="showCheckInOptions = true" @blur="hideCheckInOptionsWithDelay" />
+                <div v-if="showCheckInOptions" class="d-flex gap-2 flex-wrap mt-2">
+                  <CButton v-for="t in checkInTimeOptions" :key="t" size="sm" color="secondary" variant="outline" @mousedown.prevent="selectCheckInTime(t)">{{ t }}</CButton>
+                </div>
               </CCol>
               <CCol :md="6">
                 <CFormLabel>Hora de Salida (Check-out)</CFormLabel>
-                <CFormInput v-model="form.check_out_time" type="time" />
+                <CFormInput v-model="form.check_out_time" type="time" @focus="showCheckOutOptions = true" @blur="hideCheckOutOptionsWithDelay" />
+                <div v-if="showCheckOutOptions" class="d-flex gap-2 flex-wrap mt-2">
+                  <CButton v-for="t in checkOutTimeOptions" :key="t" size="sm" color="secondary" variant="outline" @mousedown.prevent="selectCheckOutTime(t)">{{ t }}</CButton>
+                </div>
               </CCol>
             </CRow>
             <CRow class="mb-3">
@@ -331,6 +337,35 @@ const defaultForm = {
 }
 
 const form = ref({ ...defaultForm })
+
+const showCheckInOptions = ref(false)
+const showCheckOutOptions = ref(false)
+const checkInTimeOptions = ref(['08:00', '09:00', '10:00', '11:00', '12:00'])
+const checkOutTimeOptions = ref(['15:00', '17:00', '18:00', '19:00', '20:00'])
+let checkInTimeout = null
+let checkOutTimeout = null
+
+const selectCheckInTime = (time) => {
+  form.value.check_in_time = time
+  showCheckInOptions.value = false
+}
+
+const selectCheckOutTime = (time) => {
+  form.value.check_out_time = time
+  showCheckOutOptions.value = false
+}
+
+const hideCheckInOptionsWithDelay = () => {
+  checkInTimeout = setTimeout(() => {
+    showCheckInOptions.value = false
+  }, 200)
+}
+
+const hideCheckOutOptionsWithDelay = () => {
+  checkOutTimeout = setTimeout(() => {
+    showCheckOutOptions.value = false
+  }, 200)
+}
 
 const formatCurrency = (value) => {
   const num = parseFloat(value) || 0
