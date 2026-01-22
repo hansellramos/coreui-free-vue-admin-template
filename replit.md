@@ -27,13 +27,14 @@ This is a Vue.js 3 admin dashboard template built with CoreUI components. It pro
 - CoreUI Vue components
 - Vue Router
 - Pinia (state management)
-- Mapbox GL (maps)
+- Mapbox GL (maps with geocoding and reverse geocoding)
 - Chart.js (charts)
 - PostHog (analytics with autocapture)
 - SCSS for styling
 - Express.js (backend)
 - Prisma 7 with @prisma/adapter-pg (ORM)
 - Replit Auth (authentication via OpenID Connect)
+- Vercel AI SDK with @ai-sdk/anthropic (Claude Vision for receipt extraction)
 
 ## Backend API
 The Express backend runs on port 3000 and provides:
@@ -44,9 +45,10 @@ The Express backend runs on port 3000 and provides:
 - `/api/organizations` - CRUD for organizations (filtered by user permissions)
 - `/api/venues` - CRUD for venues (filtered by user permissions)
 - `/api/contacts` - CRUD for contacts (filtered by user permissions)
-- `/api/accommodations` - CRUD for accommodations (filtered by user permissions)
+- `/api/accommodations` - CRUD for accommodations with waze_link field (filtered by user permissions)
 - `/api/payments` - CRUD for payments with verification workflow (filtered by user permissions)
 - `/api/payments/:id/verify` - Verify/unverify a payment (protected)
+- `/api/payments/extract-receipt` - AI-powered receipt data extraction using Claude Vision
 - `/api/countries` - List countries
 - `/api/states` - List states (filter by country)
 - `/api/users` - List users (protected)
@@ -67,6 +69,24 @@ Receipt images for payments can be uploaded via:
 
 Files are stored in Replit Object Storage and served via `/objects/:type/:id`.
 Restrictions: Images only (JPEG, PNG, GIF, WebP), max 10MB.
+
+## AI Features
+
+### Receipt Data Extraction
+When a payment receipt image is uploaded, users can click "Leer con IA" to automatically extract:
+- Payment amount
+- Reference/transaction number
+- Payment date
+
+Uses Vercel AI SDK with Anthropic Claude Vision. Requires `ANTHROPIC_API_KEY` secret.
+
+### Message Suggestions for Accommodations
+When viewing an accommodation detail, the system shows pre-written WhatsApp message templates:
+- **Recordatorio previo al evento** - Reminder with date, time, attendees, Waze link, and venue contact
+- **Confirmación de reserva** - Booking confirmation message
+- **Instrucciones de llegada** - Arrival instructions with maps links
+
+Messages include dynamic data from the accommodation and open WhatsApp with pre-filled text.
 
 ## Database
 A PostgreSQL database is available with the following tables:
