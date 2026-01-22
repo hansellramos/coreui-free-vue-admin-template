@@ -113,6 +113,14 @@ npm run make-admin <secret> <user-email>
 - Create custom profiles with specific permission combinations
 - System profiles (organization:view, organization:admin) cannot be modified
 
+### God Mode (Super Admin Settings)
+Super admins can access the "God Mode" section in Settings to:
+- View all current super admins
+- Grant super admin permission to any user
+- Revoke super admin permission from others (cannot revoke from yourself)
+
+This section is only visible to users with `is_super_admin = true`.
+
 ## Authentication
 Replit Auth is integrated using OpenID Connect:
 - Users authenticate via `/api/login`

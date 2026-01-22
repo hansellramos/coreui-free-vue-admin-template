@@ -830,6 +830,51 @@ async function startServer() {
     }
   });
 
+  // Super Admin Management (only accessible to super admins)
+  app.get('/api/users/super-admins', isAuthenticated, async (req, res) => {
+    try {
+      if (!req.user.is_super_admin) {
+        return res.status(403).json({ error: 'Solo super admins pueden acceder' });
+      }
+      const superAdmins = await prisma.users.findMany({
+        where: { is_super_admin: true },
+        orderBy: { email: 'asc' },
+        select: { id: true, email: true, display_name: true, avatar_url: true }
+      });
+      res.json(superAdmins);
+    } catch (error) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.put('/api/users/:id/super-admin', isAuthenticated, async (req, res) => {
+    try {
+      if (!req.user.is_super_admin) {
+        return res.status(403).json({ error: 'Solo super admins pueden modificar este permiso' });
+      }
+      
+      // Validate input - is_super_admin must be explicitly provided as boolean
+      if (typeof req.body.is_super_admin !== 'boolean') {
+        return res.status(400).json({ error: 'Valor de is_super_admin inválido' });
+      }
+      
+      const newValue = req.body.is_super_admin;
+      
+      // Cannot remove super admin from yourself (any value that results in false)
+      if (req.params.id === req.user.id && !newValue) {
+        return res.status(400).json({ error: 'No puedes quitarte el permiso de super admin a ti mismo' });
+      }
+      
+      const user = await prisma.users.update({
+        where: { id: req.params.id },
+        data: { is_super_admin: newValue }
+      });
+      res.json(user);
+    } catch (error) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
   app.get('/api/organizations/:id/contacts', async (req, res) => {
     try {
       const relations = await prisma.contact_organization.findMany({
