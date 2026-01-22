@@ -39,6 +39,18 @@
             </CCol>
           </CRow>
 
+          <CRow v-if="searched && venues.length > 0" class="mb-3">
+            <CCol :md="4">
+              <CFormLabel class="small text-muted">Ordenar por</CFormLabel>
+              <CFormSelect v-model="sortBy" size="sm">
+                <option value="name">Nombre</option>
+                <option value="price_asc">Precio (menor a mayor)</option>
+                <option value="price_desc">Precio (mayor a menor)</option>
+                <option value="availability">Disponibilidad primero</option>
+              </CFormSelect>
+            </CCol>
+          </CRow>
+
           <CAlert v-if="errorMessage" color="danger" dismissible @close="errorMessage = ''">
             {{ errorMessage }}
           </CAlert>
@@ -48,7 +60,7 @@
               No se encontraron cabañas con planes activos
             </div>
             <CRow v-else>
-              <CCol v-for="venue in venues" :key="venue.id" :md="6" :lg="4" class="mb-4">
+              <CCol v-for="venue in sortedVenues" :key="venue.id" :md="6" :lg="4" class="mb-4">
                 <CCard class="h-100" :class="{ 'border-success': venue.is_available, 'border-danger': !venue.is_available }">
                   <CCardBody>
                     <div class="d-flex justify-content-between align-items-start mb-2">
@@ -59,6 +71,10 @@
                     </div>
                     <div v-if="venue.organization_name" class="small text-muted mb-2">
                       {{ venue.organization_name }}
+                    </div>
+                    <div v-if="venue.lowest_price !== null" class="mb-2">
+                      <span class="h5 text-primary mb-0">{{ formatCurrency(venue.lowest_price) }}</span>
+                      <span class="small text-muted"> aprox. total</span>
                     </div>
                     <div class="mb-3">
                       <div class="small">
@@ -82,9 +98,12 @@
                             </CBadge>
                           </div>
                         </div>
-                        <div class="small text-muted">
-                          Adulto: {{ formatCurrency(plan.adult_price) }} | 
-                          Niño: {{ formatCurrency(plan.child_price) }}
+                        <div class="d-flex justify-content-between align-items-center">
+                          <div class="small text-muted">
+                            Adulto: {{ formatCurrency(plan.adult_price) }} | 
+                            Niño: {{ formatCurrency(plan.child_price) }}
+                          </div>
+                          <span class="fw-semibold text-success">{{ formatCurrency(plan.estimated_total) }}</span>
                         </div>
                         <div v-if="plan.min_guests || plan.max_capacity" class="small text-muted">
                           <span v-if="plan.min_guests">Min: {{ plan.min_guests }}</span>
@@ -121,6 +140,7 @@ const loading = ref(false)
 const searched = ref(false)
 const venues = ref([])
 const errorMessage = ref('')
+const sortBy = ref('price_asc')
 
 const today = computed(() => {
   const d = new Date()
@@ -128,6 +148,37 @@ const today = computed(() => {
 })
 
 const totalGuests = computed(() => (adults.value || 0) + (children.value || 0))
+
+const venuesWithPrices = computed(() => {
+  return venues.value.map(venue => {
+    const plansWithPrices = venue.plans.map(plan => {
+      const adultPrice = parseFloat(plan.adult_price) || 0
+      const childPrice = parseFloat(plan.child_price) || 0
+      const estimatedTotal = (adults.value * adultPrice) + (children.value * childPrice)
+      return { ...plan, estimated_total: estimatedTotal }
+    })
+    const lowestPrice = plansWithPrices.length > 0 
+      ? Math.min(...plansWithPrices.map(p => p.estimated_total))
+      : null
+    return { ...venue, plans: plansWithPrices, lowest_price: lowestPrice }
+  })
+})
+
+const sortedVenues = computed(() => {
+  const list = [...venuesWithPrices.value]
+  switch (sortBy.value) {
+    case 'name':
+      return list.sort((a, b) => (a.name || '').localeCompare(b.name || ''))
+    case 'price_asc':
+      return list.sort((a, b) => (a.lowest_price ?? Infinity) - (b.lowest_price ?? Infinity))
+    case 'price_desc':
+      return list.sort((a, b) => (b.lowest_price ?? 0) - (a.lowest_price ?? 0))
+    case 'availability':
+      return list.sort((a, b) => (b.is_available ? 1 : 0) - (a.is_available ? 1 : 0))
+    default:
+      return list
+  }
+})
 
 const dateError = computed(() => {
   if (stayType.value === 'hospedaje' && checkIn.value && checkOut.value) {
