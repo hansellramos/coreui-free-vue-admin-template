@@ -469,6 +469,14 @@ async function startServer() {
       const contact = await prisma.contacts.findUnique({
         where: { id: req.params.id }
       });
+      
+      if (contact) {
+        const contactOrg = await prisma.contact_organization.findFirst({
+          where: { contact: contact.id }
+        });
+        contact.organizationId = contactOrg?.organization || null;
+      }
+      
       res.json(contact);
     } catch (error) {
       res.status(500).json({ error: error.message });

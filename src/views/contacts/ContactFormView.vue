@@ -3,7 +3,7 @@
     <CCol :xs="12">
       <CCard class="mb-4">
         <CCardHeader>
-          <strong>{{ isEdit ? 'Edit' : 'Create' }} Contact</strong>
+          <strong>{{ isEdit ? 'Editar' : 'Crear' }} Contacto</strong>
         </CCardHeader>
         <CCardBody>
           <ContactForm
@@ -26,7 +26,7 @@ import { getContactById, createContact, updateContact } from '@/services/contact
 
 const route = useRoute()
 const router = useRouter()
-let form = ref({ fullname: '', whatsapp: '', city: '', state: '', country: '' })
+let form = ref({ fullname: '', whatsapp: '', city: '', state: '', country: '', organizationId: '' })
 const isEdit = computed(() => !!route.params.id)
 
 onMounted(async () => {
@@ -37,12 +37,15 @@ onMounted(async () => {
 })
 
 async function handleSubmit(data) {
-  // Eliminar campos que no son columnas en la tabla 'contacts'
   const contactData = { ...data }
   delete contactData.users
   
-  if (isEdit.value) await updateContact(route.params.id, contactData)
-  else await createContact(contactData)
+  if (isEdit.value) {
+    delete contactData.organizationId
+    await updateContact(route.params.id, contactData)
+  } else {
+    await createContact(contactData)
+  }
   router.push('/business/contacts')
 }
 
