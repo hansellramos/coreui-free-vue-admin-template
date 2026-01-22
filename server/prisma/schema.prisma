@@ -160,22 +160,23 @@ model venue_packages {
 }
 
 model venues {
-  id                String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  name              String?  @db.VarChar
-  created_at        DateTime @default(now()) @db.Timestamptz(6)
-  whatsapp          Decimal? @db.Decimal
-  address           String?  @db.VarChar
-  zip_code          String?  @db.VarChar
+  id                String        @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  name              String?       @db.VarChar
+  created_at        DateTime      @default(now()) @db.Timestamptz(6)
+  whatsapp          Decimal?      @db.Decimal
+  address           String?       @db.VarChar
+  zip_code          String?       @db.VarChar
   latitude          Float?
   longitude         Float?
-  city              String?  @db.VarChar
-  country           String?  @db.VarChar
-  department        String?  @db.VarChar
-  suburb            String?  @db.VarChar
+  city              String?       @db.VarChar
+  country           String?       @db.VarChar
+  department        String?       @db.VarChar
+  suburb            String?       @db.VarChar
   address_reference String?
-  instagram         String?  @db.VarChar
-  organization      String?  @db.Uuid
-  is_public         Boolean  @default(false)
+  instagram         String?       @db.VarChar
+  organization      String?       @db.Uuid
+  is_public         Boolean       @default(false)
+  venue_plans       venue_plans[]
 }
 
 model sessions {
@@ -208,31 +209,32 @@ model amenities {
 }
 
 model venue_plans {
-  id                    String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  venue_id              String    @db.Uuid
-  name                  String    @db.VarChar(255)
-  plan_type             String    @db.VarChar(50)
-  description           String?   @db.Text
-  adult_price           Decimal   @db.Decimal
-  child_price           Decimal   @db.Decimal
-  infant_max_age        Int       @default(2)
-  child_max_age         Int       @default(12)
-  free_children_qty     Int?      @default(0)
-  free_children_max_age Int?
-  free_children_condition String? @db.Text
-  child_food_price      Decimal?  @db.Decimal
-  min_guests            Int       @default(1)
-  max_capacity          Int?
-  check_in_time         String?   @db.VarChar(10)
-  check_out_time        String?   @db.VarChar(10)
-  includes_overnight    Boolean   @default(false)
-  includes_rooms        Boolean   @default(false)
-  includes_food         Boolean   @default(false)
-  food_description      String?   @db.Text
-  includes_beverages    Boolean   @default(false)
-  terms_conditions      String?   @db.Text
-  is_active             Boolean   @default(true)
-  created_at            DateTime  @default(now()) @db.Timestamptz(6)
+  id                      String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  venue_id                String    @db.Uuid
+  name                    String    @db.VarChar(255)
+  plan_type               String    @db.VarChar(50)
+  description             String?   @db.Text
+  adult_price             Decimal   @db.Decimal
+  child_price             Decimal   @db.Decimal
+  infant_max_age          Int       @default(2)
+  child_max_age           Int       @default(12)
+  free_children_qty       Int?      @default(0)
+  free_children_max_age   Int?
+  free_children_condition String?   @db.Text
+  child_food_price        Decimal?  @db.Decimal
+  min_guests              Int       @default(1)
+  max_capacity            Int?
+  check_in_time           String?   @db.VarChar(10)
+  check_out_time          String?   @db.VarChar(10)
+  includes_overnight      Boolean   @default(false)
+  includes_rooms          Boolean   @default(false)
+  includes_food           Boolean   @default(false)
+  food_description        String?   @db.Text
+  includes_beverages      Boolean   @default(false)
+  terms_conditions        String?   @db.Text
+  is_active               Boolean   @default(true)
+  created_at              DateTime  @default(now()) @db.Timestamptz(6)
+  venue                   venues    @relation(fields: [venue_id], references: [id], onDelete: Cascade)
 }
 
 model plan_amenities {
