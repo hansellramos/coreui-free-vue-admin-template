@@ -168,13 +168,28 @@
     </CCol>
   </CRow>
 
-  <CModal :visible="showReceiptModal" @close="showReceiptModal = false" size="xl">
-    <CModalHeader>
+  <CModal 
+    :visible="showReceiptModal" 
+    @close="showReceiptModal = false" 
+    size="xl"
+    :keyboard="true"
+    backdrop="true"
+  >
+    <CModalHeader close-button>
       <CModalTitle>Comprobante</CModalTitle>
     </CModalHeader>
-    <CModalBody class="text-center">
-      <img :src="form.receipt_url" class="img-fluid" style="max-height: 80vh;" />
+    <CModalBody class="text-center p-4">
+      <img :src="form.receipt_url" class="img-fluid rounded" style="max-height: 70vh;" />
     </CModalBody>
+    <CModalFooter class="justify-content-center">
+      <CButton color="danger" @click="deleteReceipt">
+        <CIcon name="cil-trash" class="me-2" />
+        Eliminar comprobante
+      </CButton>
+      <CButton color="secondary" variant="outline" @click="showReceiptModal = false">
+        Cerrar
+      </CButton>
+    </CModalFooter>
   </CModal>
 </template>
 
@@ -270,6 +285,11 @@ const formatDateTime = (date) => {
 
 const handleImageError = (e) => {
   e.target.style.display = 'none'
+}
+
+const deleteReceipt = () => {
+  form.value.receipt_url = ''
+  showReceiptModal.value = false
 }
 
 const triggerFileInput = () => {
