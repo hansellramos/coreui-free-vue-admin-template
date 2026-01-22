@@ -54,15 +54,42 @@ async function upsertUser(claims) {
     avatar_url: claims.profile_image_url || null,
   };
 
-  await prisma.users.upsert({
-    where: { id: claims.sub },
-    update: {
-      email: userData.email,
-      display_name: userData.display_name,
-      avatar_url: userData.avatar_url,
-    },
-    create: userData,
+  // Check if user already exists
+  const existingUser = await prisma.users.findUnique({
+    where: { id: claims.sub }
   });
+
+  if (existingUser) {
+    // Update existing user (don't change profile_id)
+    await prisma.users.update({
+      where: { id: claims.sub },
+      data: {
+        email: userData.email,
+        display_name: userData.display_name,
+        avatar_url: userData.avatar_url,
+      }
+    });
+  } else {
+    // Create new user with default profile
+    let defaultProfileId = null;
+    const defaultProfileCode = process.env.DEFAULT_PROFILE_CODE;
+    
+    if (defaultProfileCode) {
+      const defaultProfile = await prisma.profiles.findUnique({
+        where: { code: defaultProfileCode }
+      });
+      if (defaultProfile) {
+        defaultProfileId = defaultProfile.id;
+      }
+    }
+
+    await prisma.users.create({
+      data: {
+        ...userData,
+        profile_id: defaultProfileId
+      }
+    });
+  }
 }
 
 async function setupAuth(app) {
