@@ -132,18 +132,28 @@ async function startServer() {
       const viewAll = req.query.viewAll === 'true';
       let whereClause = {};
       
-      if (viewAll && req.user) {
+      if (req.user) {
         const userId = String(req.user.claims?.sub);
         const currentUser = await prisma.users.findUnique({ where: { id: userId } });
-        if (currentUser?.is_super_admin) {
+        
+        if (viewAll && currentUser?.is_super_admin) {
+          // Super admin with viewAll=true: show all organizations
           whereClause = {};
+        } else if (currentUser?.is_super_admin) {
+          // Super admin with viewAll=false: show only assigned organizations
+          const userOrgs = await prisma.user_organizations.findMany({
+            where: { user_id: userId }
+          });
+          const orgIds = userOrgs.map(uo => uo.organization_id);
+          whereClause = orgIds.length > 0 ? { id: { in: orgIds } } : { id: { in: ['none'] } };
         } else {
+          // Non-super admin: use permission-based access
           const accessibleOrgIds = await getAccessibleOrganizationIds(req.userPermissions);
           whereClause = accessibleOrgIds !== null ? { id: { in: accessibleOrgIds } } : {};
         }
       } else {
-        const accessibleOrgIds = await getAccessibleOrganizationIds(req.userPermissions);
-        whereClause = accessibleOrgIds !== null ? { id: { in: accessibleOrgIds } } : {};
+        // No user: show nothing
+        whereClause = { id: { in: ['none'] } };
       }
       
       const organizations = await prisma.organizations.findMany({
