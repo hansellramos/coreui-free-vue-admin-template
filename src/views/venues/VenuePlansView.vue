@@ -68,15 +68,15 @@
     <CModalBody>
       <CTabs :activeItemKey="activeTab">
         <CTabList variant="tabs">
-          <CTab :itemKey="1">Información Básica</CTab>
-          <CTab :itemKey="2">Precios y Cortesías</CTab>
-          <CTab :itemKey="3">Horarios y Capacidad</CTab>
-          <CTab :itemKey="4">Comida</CTab>
-          <CTab :itemKey="5">Amenidades</CTab>
-          <CTab :itemKey="6">Fotos</CTab>
+          <CTab itemKey="basico">Información Básica</CTab>
+          <CTab itemKey="precios">Precios y Cortesías</CTab>
+          <CTab itemKey="horarios">Horarios y Capacidad</CTab>
+          <CTab itemKey="comida">Comida</CTab>
+          <CTab itemKey="amenidades">Amenidades</CTab>
+          <CTab itemKey="fotos">Fotos</CTab>
         </CTabList>
         <CTabContent>
-          <CTabPane class="pt-3" :itemKey="1">
+          <CTabPanel class="p-3" itemKey="basico">
             <CRow class="mb-3">
               <CCol :md="6">
                 <CFormLabel>Nombre del Plan *</CFormLabel>
@@ -109,9 +109,9 @@
                 <CFormCheck v-model="form.is_active" label="Plan Activo" />
               </CCol>
             </CRow>
-          </CTabPane>
+          </CTabPanel>
 
-          <CTabPane class="pt-3" :itemKey="2">
+          <CTabPanel class="p-3" itemKey="precios">
             <CRow class="mb-3">
               <CCol :md="6">
                 <CFormLabel>Precio Adulto *</CFormLabel>
@@ -164,9 +164,9 @@
                 <CFormInput v-model="form.free_children_condition" placeholder="Ej: 4 niños menores de 9 años sólo pagan la comida" />
               </CCol>
             </CRow>
-          </CTabPane>
+          </CTabPanel>
 
-          <CTabPane class="pt-3" :itemKey="3">
+          <CTabPanel class="p-3" itemKey="horarios">
             <CRow class="mb-3">
               <CCol :md="6">
                 <CFormLabel>Hora de Entrada (Check-in)</CFormLabel>
@@ -195,9 +195,9 @@
                 <CFormCheck v-model="form.includes_rooms" label="Incluye Habitaciones" />
               </CCol>
             </CRow>
-          </CTabPane>
+          </CTabPanel>
 
-          <CTabPane class="pt-3" :itemKey="4">
+          <CTabPanel class="p-3" itemKey="comida">
             <CRow class="mb-3">
               <CCol :md="6">
                 <CFormCheck v-model="form.includes_food" label="Incluye Comida" />
@@ -215,9 +215,9 @@ Cena: Asado de Dos Proteínas (Res-Pollo, Pollo-Cerdo o Cerdo-Res)
 No incluye bebidas" />
               </CCol>
             </CRow>
-          </CTabPane>
+          </CTabPanel>
 
-          <CTabPane class="pt-3" :itemKey="5">
+          <CTabPanel class="p-3" itemKey="amenidades">
             <p class="text-muted mb-3">Selecciona las amenidades incluidas en este plan:</p>
             <div v-if="allAmenities.length === 0" class="text-muted">
               No hay amenidades disponibles. <RouterLink to="/admin/amenities">Crear amenidades</RouterLink>
@@ -232,9 +232,9 @@ No incluye bebidas" />
                 />
               </div>
             </div>
-          </CTabPane>
+          </CTabPanel>
 
-          <CTabPane class="pt-3" :itemKey="6">
+          <CTabPanel class="p-3" itemKey="fotos">
             <ImageUploader
               :images="planImages"
               uploadType="plan"
@@ -242,7 +242,7 @@ No incluye bebidas" />
               @delete="handleImageDelete"
               @set-cover="handleSetCover"
             />
-          </CTabPane>
+          </CTabPanel>
         </CTabContent>
       </CTabs>
     </CModalBody>
@@ -281,7 +281,7 @@ import {
   CRow, CCol, CCard, CCardHeader, CCardBody, CCardFooter, CButton, CSpinner,
   CBadge, CModal, CModalHeader, CModalTitle, CModalBody, CModalFooter,
   CForm, CFormLabel, CFormInput, CFormTextarea, CFormSelect, CFormCheck,
-  CInputGroup, CInputGroupText, CTabs, CTabList, CTab, CTabContent, CTabPane
+  CInputGroup, CInputGroupText, CTabs, CTabList, CTab, CTabContent, CTabPanel
 } from '@coreui/vue'
 import { CIcon } from '@coreui/icons-vue'
 import ImageUploader from '@/components/ImageUploader.vue'
@@ -300,7 +300,7 @@ const showFormModal = ref(false)
 const showDeleteModal = ref(false)
 const editingPlan = ref(null)
 const deletingPlan = ref(null)
-const activeTab = ref(1)
+const activeTab = ref('basico')
 
 const selectedAmenityIds = ref([])
 const planImages = ref([])
@@ -404,7 +404,7 @@ const resetForm = () => {
   selectedAmenityIds.value = []
   planImages.value = []
   editingPlan.value = null
-  activeTab.value = 1
+  activeTab.value = 'basico'
 }
 
 const showCreateModal = () => {
