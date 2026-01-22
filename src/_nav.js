@@ -20,7 +20,7 @@ export default [
   {
     component: 'CNavItem',
     name: 'Disponibilidad',
-    to: '/disponibilidad',
+    to: '/availability',
     icon: 'cil-check-circle',
   },
   {

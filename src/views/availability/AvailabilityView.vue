@@ -39,6 +39,67 @@
             </CCol>
           </CRow>
 
+          <CRow class="mb-3">
+            <CCol :md="12">
+              <div 
+                class="amenity-filter-header d-flex justify-content-between align-items-center p-2 bg-light rounded"
+                style="cursor: pointer;"
+                @click="showAmenityFilters = !showAmenityFilters"
+              >
+                <div>
+                  <CIcon name="cil-filter" class="me-2" />
+                  <strong>Filtrar por amenidades</strong>
+                  <CBadge v-if="selectedAmenityIds.length > 0" color="primary" class="ms-2">
+                    {{ selectedAmenityIds.length }} seleccionadas
+                  </CBadge>
+                </div>
+                <CIcon :name="showAmenityFilters ? 'cil-chevron-top' : 'cil-chevron-bottom'" />
+              </div>
+              <CCollapse :visible="showAmenityFilters">
+                <div class="mt-2 p-3 border rounded">
+                  <div v-if="allAmenities.length === 0" class="text-muted">
+                    Cargando amenidades...
+                  </div>
+                  <div v-else>
+                    <div v-for="(items, category) in groupedAmenities" :key="category" class="mb-2">
+                      <div 
+                        class="category-header d-flex justify-content-between align-items-center p-1"
+                        style="cursor: pointer;"
+                        @click="toggleCategory(category)"
+                      >
+                        <div>
+                          <small class="fw-bold text-muted">{{ category }}</small>
+                          <CBadge v-if="getSelectedCountInCategory(category)" color="primary" size="sm" class="ms-1">
+                            {{ getSelectedCountInCategory(category) }}
+                          </CBadge>
+                        </div>
+                        <CIcon :name="expandedCategories[category] ? 'cil-chevron-top' : 'cil-chevron-bottom'" size="sm" />
+                      </div>
+                      <CCollapse :visible="expandedCategories[category] !== false">
+                        <div class="amenities-grid mt-1 ps-2">
+                          <div v-for="amenity in items" :key="amenity.id" class="amenity-item">
+                            <CFormCheck
+                              :id="`filter-amenity-${amenity.id}`"
+                              :checked="selectedAmenityIds.includes(amenity.id)"
+                              @change="toggleAmenity(amenity.id)"
+                              :label="amenity.name"
+                              size="sm"
+                            />
+                          </div>
+                        </div>
+                      </CCollapse>
+                    </div>
+                    <div class="mt-2">
+                      <CButton v-if="selectedAmenityIds.length > 0" color="secondary" size="sm" variant="outline" @click="clearAmenityFilters">
+                        Limpiar filtros
+                      </CButton>
+                    </div>
+                  </div>
+                </div>
+              </CCollapse>
+            </CCol>
+          </CRow>
+
           <CRow v-if="searched && venues.length > 0" class="mb-3">
             <CCol :md="4">
               <CFormLabel class="small text-muted">Ordenar por</CFormLabel>
@@ -86,6 +147,24 @@
                         No hay plan compatible para {{ totalGuests }} personas
                       </div>
                     </div>
+                    <div v-if="venue.amenities && venue.amenities.length > 0" class="mb-3">
+                      <div class="d-flex flex-wrap gap-1">
+                        <CBadge 
+                          v-for="amenity in venue.amenities.slice(0, 6)" 
+                          :key="amenity.id" 
+                          color="info" 
+                          class="amenity-badge"
+                        >
+                          {{ amenity.name }}
+                        </CBadge>
+                        <CBadge 
+                          v-if="venue.amenities.length > 6" 
+                          color="secondary"
+                        >
+                          +{{ venue.amenities.length - 6 }} más
+                        </CBadge>
+                      </div>
+                    </div>
                     <div class="plans-list">
                       <div class="small text-muted mb-1">{{ venue.plans_count }} plan(es) disponibles:</div>
                       <div v-for="plan in venue.plans" :key="plan.id" class="plan-item p-2 mb-1 rounded" :class="plan.is_suitable ? 'bg-light' : 'bg-light opacity-50'">
@@ -124,10 +203,11 @@
 </template>
 
 <script setup>
-import { ref, computed, watch } from 'vue'
+import { ref, computed, watch, onMounted } from 'vue'
 import {
   CRow, CCol, CCard, CCardHeader, CCardBody, CButton,
-  CFormLabel, CFormInput, CFormSelect, CBadge, CSpinner, CAlert
+  CFormLabel, CFormInput, CFormSelect, CBadge, CSpinner, CAlert,
+  CFormCheck, CCollapse
 } from '@coreui/vue'
 import { CIcon } from '@coreui/icons-vue'
 
@@ -141,6 +221,64 @@ const searched = ref(false)
 const venues = ref([])
 const errorMessage = ref('')
 const sortBy = ref('price_asc')
+
+const allAmenities = ref([])
+const selectedAmenityIds = ref([])
+const showAmenityFilters = ref(false)
+const expandedCategories = ref({})
+
+const groupedAmenities = computed(() => {
+  const groups = {}
+  allAmenities.value.forEach(amenity => {
+    const cat = amenity.category || 'Sin categoría'
+    if (!groups[cat]) {
+      groups[cat] = []
+    }
+    groups[cat].push(amenity)
+  })
+  const sortedGroups = {}
+  Object.keys(groups).sort().forEach(key => {
+    sortedGroups[key] = groups[key]
+  })
+  return sortedGroups
+})
+
+const toggleCategory = (category) => {
+  expandedCategories.value[category] = !expandedCategories.value[category]
+}
+
+const getSelectedCountInCategory = (category) => {
+  const items = groupedAmenities.value[category] || []
+  return items.filter(a => selectedAmenityIds.value.includes(a.id)).length
+}
+
+const toggleAmenity = (amenityId) => {
+  const idx = selectedAmenityIds.value.indexOf(amenityId)
+  if (idx >= 0) {
+    selectedAmenityIds.value.splice(idx, 1)
+  } else {
+    selectedAmenityIds.value.push(amenityId)
+  }
+}
+
+const clearAmenityFilters = () => {
+  selectedAmenityIds.value = []
+}
+
+const loadAmenities = async () => {
+  try {
+    const response = await fetch('/api/amenities')
+    if (response.ok) {
+      allAmenities.value = await response.json()
+    }
+  } catch (error) {
+    console.error('Error loading amenities:', error)
+  }
+}
+
+onMounted(() => {
+  loadAmenities()
+})
 
 const today = computed(() => {
   const d = new Date()
@@ -226,6 +364,10 @@ const searchAvailability = async () => {
       params.append('check_out', checkOut.value)
     }
     
+    if (selectedAmenityIds.value.length > 0) {
+      params.append('amenities', selectedAmenityIds.value.join(','))
+    }
+    
     const response = await fetch(`/api/availability?${params}`)
     if (response.ok) {
       venues.value = await response.json()
@@ -270,5 +412,17 @@ const formatCurrency = (value) => {
 <style scoped>
 .plan-item {
   border: 1px solid #dee2e6;
+}
+.amenities-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  gap: 0.25rem;
+}
+.amenity-filter-header:hover,
+.category-header:hover {
+  background-color: #e9ecef !important;
+}
+.amenity-badge {
+  font-size: 0.7rem;
 }
 </style>

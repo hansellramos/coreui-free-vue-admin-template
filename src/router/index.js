@@ -61,7 +61,7 @@ const routes = [
         component: () => import('@/views/pages/Next.vue'),
       },
       {
-        path: '/disponibilidad',
+        path: '/availability',
         name: 'Availability',
         component: () => import('@/views/availability/AvailabilityView.vue'),
       },

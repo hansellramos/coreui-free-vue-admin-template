@@ -23,12 +23,22 @@
             <p><strong>Department:</strong> <span class="text-body-secondary">{{ venue.department }}</span></p>
             <p><strong>Suburb:</strong> <span class="text-body-secondary">{{ venue.suburb }}</span></p>
             <p><strong>Address Reference:</strong> <span class="text-body-secondary">{{ venue.address_reference }}</span></p>
+            
+            <div v-if="venueAmenities.length > 0" class="mb-4">
+              <strong>Amenidades:</strong>
+              <div class="d-flex flex-wrap gap-1 mt-2">
+                <CBadge v-for="amenity in venueAmenities" :key="amenity.id" color="info" class="me-1">
+                  {{ amenity.name }}
+                </CBadge>
+              </div>
+            </div>
+            
             <div class="mt-4">
               <RouterLink :to="`/business/venues/${venue.id}/edit`">
-                <CButton color="primary" size="sm">Edit</CButton>
+                <CButton color="primary" size="sm">Editar</CButton>
               </RouterLink>
               <RouterLink to="/business/venues">
-                <CButton color="secondary" size="sm" variant="outline" class="ms-2">Back to List</CButton>
+                <CButton color="secondary" size="sm" variant="outline" class="ms-2">Volver a la Lista</CButton>
               </RouterLink>
             </div>
           </template>
@@ -44,12 +54,15 @@
 <script setup>
 import { ref, onMounted, watch, nextTick, computed } from 'vue'
 import { useRoute } from 'vue-router'
+import { CRow, CCol, CCard, CCardHeader, CCardBody, CButton, CSpinner, CBadge } from '@coreui/vue'
+import { CIcon } from '@coreui/icons-vue'
 import { getVenueById } from '@/services/venueService'
 import mapboxgl from 'mapbox-gl'
 import 'mapbox-gl/dist/mapbox-gl.css'
 
 const route = useRoute()
 const venue = ref(null)
+const venueAmenities = ref([])
 const mapContainer = ref(null)
 const token = import.meta.env.VITE_MAPBOX_ACCESS_TOKEN
 
@@ -63,8 +76,20 @@ const instagramDisplay = computed(() => {
   return ig.startsWith('@') ? ig.slice(1) : ig
 })
 
+const loadVenueAmenities = async () => {
+  try {
+    const response = await fetch(`/api/venues/${route.params.id}/amenities`, { credentials: 'include' })
+    if (response.ok) {
+      venueAmenities.value = await response.json()
+    }
+  } catch (error) {
+    console.error('Error loading venue amenities:', error)
+  }
+}
+
 onMounted(async () => {
   venue.value = await getVenueById(route.params.id)
+  await loadVenueAmenities()
 })
 
 watch(venue, async (val) => {
