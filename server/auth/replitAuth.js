@@ -189,9 +189,28 @@ async function setupAuth(app) {
         permissionDetails = permissions;
       }
       
+      // Get user's subscription
+      const subscriptionUser = await prisma.subscription_users.findFirst({
+        where: { user_id: userId },
+        include: {
+          subscription: true
+        }
+      });
+      
+      const subscription = subscriptionUser ? {
+        id: subscriptionUser.subscription.id,
+        name: subscriptionUser.subscription.name,
+        plan_type: subscriptionUser.subscription.plan_type,
+        is_active: subscriptionUser.subscription.is_active,
+        is_owner: subscriptionUser.is_owner,
+        role: subscriptionUser.role,
+        expires_at: subscriptionUser.subscription.expires_at
+      } : null;
+      
       res.json({
         ...user,
-        permissionDetails
+        permissionDetails,
+        subscription
       });
     } catch (error) {
       console.error('Error fetching user:', error);

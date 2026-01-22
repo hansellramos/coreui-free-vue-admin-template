@@ -2344,6 +2344,183 @@ async function startServer() {
     }
   });
 
+  // =====================
+  // SUBSCRIPTIONS CRUD
+  // =====================
+  
+  // List all subscriptions (admin only)
+  app.get('/api/subscriptions', isAuthenticated, async (req, res) => {
+    try {
+      const userId = String(req.user.claims?.sub);
+      const currentUser = await prisma.users.findUnique({ where: { id: userId } });
+      
+      if (!currentUser?.is_super_admin && !hasPermission(req.userPermissions, 'subscription:manage')) {
+        return res.status(403).json({ error: 'No tiene permiso para ver suscripciones' });
+      }
+      
+      const subscriptions = await prisma.subscriptions.findMany({
+        include: {
+          subscription_users: {
+            include: {
+              // Can't include users directly, will fetch separately
+            }
+          }
+        },
+        orderBy: { created_at: 'desc' }
+      });
+      
+      res.json(subscriptions);
+    } catch (error) {
+      console.error('Subscriptions error:', error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+  
+  // Get single subscription
+  app.get('/api/subscriptions/:id', isAuthenticated, async (req, res) => {
+    try {
+      const userId = String(req.user.claims?.sub);
+      const currentUser = await prisma.users.findUnique({ where: { id: userId } });
+      
+      // Check if user is admin or member of subscription
+      const isMember = await prisma.subscription_users.findFirst({
+        where: { subscription_id: req.params.id, user_id: userId }
+      });
+      
+      if (!currentUser?.is_super_admin && !hasPermission(req.userPermissions, 'subscription:manage') && !isMember) {
+        return res.status(403).json({ error: 'No tiene acceso a esta suscripción' });
+      }
+      
+      const subscription = await prisma.subscriptions.findUnique({
+        where: { id: req.params.id },
+        include: {
+          subscription_users: true
+        }
+      });
+      
+      if (!subscription) {
+        return res.status(404).json({ error: 'Suscripción no encontrada' });
+      }
+      
+      // Get user details for each subscription user
+      const userIds = subscription.subscription_users.map(su => su.user_id);
+      const users = await prisma.users.findMany({
+        where: { id: { in: userIds } },
+        select: { id: true, email: true, display_name: true, avatar_url: true }
+      });
+      
+      const usersMap = Object.fromEntries(users.map(u => [u.id, u]));
+      const subscriptionWithUsers = {
+        ...subscription,
+        subscription_users: subscription.subscription_users.map(su => ({
+          ...su,
+          user: usersMap[su.user_id] || null
+        }))
+      };
+      
+      res.json(subscriptionWithUsers);
+    } catch (error) {
+      console.error('Subscription error:', error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+  
+  // Add user to subscription
+  app.post('/api/subscriptions/:id/users', isAuthenticated, async (req, res) => {
+    try {
+      const userId = String(req.user.claims?.sub);
+      const currentUser = await prisma.users.findUnique({ where: { id: userId } });
+      
+      // Check if user is owner of subscription or has permission
+      const isOwner = await prisma.subscription_users.findFirst({
+        where: { subscription_id: req.params.id, user_id: userId, is_owner: true }
+      });
+      
+      if (!currentUser?.is_super_admin && !hasPermission(req.userPermissions, 'subscription:manage') && !isOwner) {
+        return res.status(403).json({ error: 'No tiene permiso para agregar usuarios a esta suscripción' });
+      }
+      
+      const { user_id, role = 'member' } = req.body;
+      
+      // Check if user exists
+      const targetUser = await prisma.users.findUnique({ where: { id: user_id } });
+      if (!targetUser) {
+        return res.status(404).json({ error: 'Usuario no encontrado' });
+      }
+      
+      // Check subscription limits
+      const subscription = await prisma.subscriptions.findUnique({
+        where: { id: req.params.id },
+        include: { subscription_users: true }
+      });
+      
+      if (!subscription) {
+        return res.status(404).json({ error: 'Suscripción no encontrada' });
+      }
+      
+      if (subscription.subscription_users.length >= subscription.max_users) {
+        return res.status(400).json({ error: `La suscripción ya tiene el máximo de usuarios permitidos (${subscription.max_users})` });
+      }
+      
+      const subscriptionUser = await prisma.subscription_users.create({
+        data: {
+          subscription_id: req.params.id,
+          user_id,
+          role,
+          is_owner: false,
+          added_by: userId
+        }
+      });
+      
+      res.json(subscriptionUser);
+    } catch (error) {
+      if (error.code === 'P2002') {
+        return res.status(400).json({ error: 'El usuario ya está en esta suscripción' });
+      }
+      console.error('Add subscription user error:', error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+  
+  // Remove user from subscription
+  app.delete('/api/subscriptions/:id/users/:userId', isAuthenticated, async (req, res) => {
+    try {
+      const currentUserId = String(req.user.claims?.sub);
+      const currentUser = await prisma.users.findUnique({ where: { id: currentUserId } });
+      
+      // Check if user is owner of subscription or has permission
+      const isOwner = await prisma.subscription_users.findFirst({
+        where: { subscription_id: req.params.id, user_id: currentUserId, is_owner: true }
+      });
+      
+      if (!currentUser?.is_super_admin && !hasPermission(req.userPermissions, 'subscription:manage') && !isOwner) {
+        return res.status(403).json({ error: 'No tiene permiso para remover usuarios de esta suscripción' });
+      }
+      
+      // Cannot remove owner
+      const targetMembership = await prisma.subscription_users.findFirst({
+        where: { subscription_id: req.params.id, user_id: req.params.userId }
+      });
+      
+      if (!targetMembership) {
+        return res.status(404).json({ error: 'Usuario no encontrado en esta suscripción' });
+      }
+      
+      if (targetMembership.is_owner) {
+        return res.status(400).json({ error: 'No se puede remover al propietario de la suscripción' });
+      }
+      
+      await prisma.subscription_users.delete({
+        where: { id: targetMembership.id }
+      });
+      
+      res.json({ success: true });
+    } catch (error) {
+      console.error('Remove subscription user error:', error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
   app.listen(PORT, '0.0.0.0', () => {
     console.log(`Server running on port ${PORT}`);
   });

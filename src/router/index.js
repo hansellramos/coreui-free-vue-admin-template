@@ -8,6 +8,8 @@ import profilesRoutes from './routes/profiles'
 
 let authChecked = false
 let isAuthenticated = false
+let hasSubscription = false
+let cachedUser = null
 
 const routes = [
   {
@@ -67,6 +69,11 @@ const routes = [
         path: '/availability',
         name: 'Availability',
         component: () => import('@/views/availability/AvailabilityView.vue'),
+      },
+      {
+        path: '/no-subscription',
+        name: 'NoSubscription',
+        component: () => import('@/views/subscription/NoSubscriptionView.vue'),
       },
       {
         path: '/theme',
@@ -471,24 +478,43 @@ const router = createRouter({
 // Public routes that don't require authentication
 const publicRoutes = ['/availability', '/pages/login', '/pages/register', '/pages/404', '/pages/500']
 
+// Routes that don't require subscription
+const noSubscriptionRoutes = ['/no-subscription', '/profile']
+
 // Check if route is public
 const isPublicRoute = (path) => {
   return publicRoutes.some(route => path.startsWith(route))
 }
 
-// Check authentication status
+// Check if route allows no subscription
+const allowsNoSubscription = (path) => {
+  return noSubscriptionRoutes.some(route => path.startsWith(route))
+}
+
+// Check authentication and subscription status
 async function checkAuth() {
-  if (authChecked) return isAuthenticated
+  if (authChecked) return { authenticated: isAuthenticated, hasSubscription, user: cachedUser }
   
   try {
     const response = await fetch('/api/auth/user', { credentials: 'include' })
-    isAuthenticated = response.ok
+    if (response.ok) {
+      const userData = await response.json()
+      isAuthenticated = true
+      hasSubscription = !!(userData.subscription && userData.subscription.is_active)
+      cachedUser = userData
+    } else {
+      isAuthenticated = false
+      hasSubscription = false
+      cachedUser = null
+    }
     authChecked = true
-    return isAuthenticated
+    return { authenticated: isAuthenticated, hasSubscription, user: cachedUser }
   } catch (error) {
     isAuthenticated = false
+    hasSubscription = false
+    cachedUser = null
     authChecked = true
-    return false
+    return { authenticated: false, hasSubscription: false, user: null }
   }
 }
 
@@ -496,6 +522,8 @@ async function checkAuth() {
 export function resetAuthState() {
   authChecked = false
   isAuthenticated = false
+  hasSubscription = false
+  cachedUser = null
 }
 
 // Navigation guard to protect routes
@@ -505,13 +533,23 @@ router.beforeEach(async (to, from) => {
     return true
   }
   
-  // Check authentication
-  const authenticated = await checkAuth()
+  // Check authentication and subscription
+  const authStatus = await checkAuth()
   
-  if (!authenticated) {
+  if (!authStatus.authenticated) {
     // Redirect to login
     window.location.href = '/api/login'
     return false
+  }
+  
+  // Super admins bypass subscription check
+  if (authStatus.user?.is_super_admin) {
+    return true
+  }
+  
+  // Check subscription for protected routes
+  if (!authStatus.hasSubscription && !allowsNoSubscription(to.path)) {
+    return { path: '/no-subscription' }
   }
   
   return true
