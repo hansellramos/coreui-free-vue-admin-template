@@ -38,13 +38,28 @@
       </thead>
       <tbody>
         <tr v-for="item in filteredAccommodations" :key="item.id">
-          <td>{{ item.venue_data?.name || '—' }}</td>
-          <td>{{ item.venue_data?.organization_data?.name || '—' }}</td>
+          <td>
+            <router-link v-if="item.venue_data?.id" :to="`/business/venues/${item.venue_data.id}/read`" class="text-decoration-none">
+              {{ item.venue_data.name }}
+            </router-link>
+            <span v-else>—</span>
+          </td>
+          <td>
+            <router-link v-if="item.venue_data?.organization_data?.id" :to="`/business/organizations/${item.venue_data.organization_data.id}/read`" class="text-decoration-none">
+              {{ item.venue_data.organization_data.name }}
+            </router-link>
+            <span v-else>—</span>
+          </td>
           <td>{{ formatDate(item.date) }}</td>
           <td>{{ formatDuration(item.duration) }}</td>
           <td>{{ formatTime(item.time) }}</td>
           <td>{{ calcCheckout(item.time, item.duration, item.date) }}</td>
-          <td>{{ item.customer_data?.fullname || item.customer_data?.user_data?.email || '—' }}</td>
+          <td>
+            <router-link v-if="item.customer_data?.id" :to="`/business/contacts/${item.customer_data.id}/read`" class="text-decoration-none">
+              {{ item.customer_data.fullname || item.customer_data.user_data?.email }}
+            </router-link>
+            <span v-else>—</span>
+          </td>
           <td>
             <template v-if="getAgreedPrice(item) > 0">
               <span class="fw-bold">${{ formatCurrency(getAgreedPrice(item)) }}</span>
