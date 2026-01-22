@@ -141,10 +141,15 @@ async function loadSuperAdmins() {
     ])
     
     if (adminsRes.ok) {
-      superAdmins.value = await adminsRes.json()
+      const adminsData = await adminsRes.json()
+      superAdmins.value = Array.isArray(adminsData) ? adminsData : []
+      console.log('Loaded super admins:', superAdmins.value)
+    } else {
+      console.error('Error loading super admins:', adminsRes.status, await adminsRes.text())
     }
     if (usersRes.ok) {
-      allUsers.value = await usersRes.json()
+      const usersData = await usersRes.json()
+      allUsers.value = Array.isArray(usersData) ? usersData : []
     }
   } catch (error) {
     console.error('Error loading super admins:', error)
@@ -154,7 +159,9 @@ async function loadSuperAdmins() {
 }
 
 watch(() => user.value?.is_super_admin, (isSuperAdmin) => {
+  console.log('Watch triggered - is_super_admin:', isSuperAdmin, 'user:', user.value)
   if (isSuperAdmin && (!superAdmins.value || superAdmins.value.length === 0)) {
+    console.log('Calling loadSuperAdmins()')
     loadSuperAdmins()
   }
 }, { immediate: true })

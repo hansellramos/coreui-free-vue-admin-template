@@ -834,7 +834,10 @@ async function startServer() {
   app.get('/api/users/super-admins', isAuthenticated, async (req, res) => {
     try {
       const userId = req.user.claims?.sub;
-      const currentUser = await prisma.users.findUnique({ where: { id: userId } });
+      console.log('super-admins endpoint - userId:', userId, 'type:', typeof userId);
+      
+      const currentUser = await prisma.users.findUnique({ where: { id: String(userId) } });
+      console.log('super-admins endpoint - currentUser:', currentUser);
       
       if (!currentUser?.is_super_admin) {
         return res.status(403).json({ error: 'Solo super admins pueden acceder' });
@@ -844,15 +847,17 @@ async function startServer() {
         orderBy: { email: 'asc' },
         select: { id: true, email: true, display_name: true, avatar_url: true }
       });
+      console.log('super-admins endpoint - superAdmins:', superAdmins);
       res.json(superAdmins);
     } catch (error) {
+      console.error('super-admins endpoint error:', error);
       res.status(500).json({ error: error.message });
     }
   });
 
   app.put('/api/users/:id/super-admin', isAuthenticated, async (req, res) => {
     try {
-      const userId = req.user.claims?.sub;
+      const userId = String(req.user.claims?.sub);
       const currentUser = await prisma.users.findUnique({ where: { id: userId } });
       
       if (!currentUser?.is_super_admin) {
