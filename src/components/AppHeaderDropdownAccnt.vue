@@ -38,7 +38,7 @@ const userInitials = computed(() => {
         <CDropdownItem :href="'#/profile'">
           <CIcon icon="cil-user" /> Perfil
         </CDropdownItem>
-        <CDropdownItem>
+        <CDropdownItem :href="'#/settings'">
           <CIcon icon="cil-settings" /> Configuración
         </CDropdownItem>
         <CDropdownDivider />
