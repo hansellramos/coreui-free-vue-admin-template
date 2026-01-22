@@ -14,11 +14,12 @@
           :key="index"
           class="message-suggestion p-3 border rounded"
         >
-          <div class="d-flex justify-content-between align-items-start mb-2">
+          <div class="d-flex flex-column flex-sm-row justify-content-between align-items-start gap-2 mb-2">
             <strong>{{ message.title }}</strong>
             <CButton 
               color="success" 
               size="sm"
+              class="flex-shrink-0"
               @click="openWhatsApp(message.text)"
             >
               <CIcon name="cib-whatsapp" class="me-1" />

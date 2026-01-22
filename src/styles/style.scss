@@ -65,3 +65,101 @@ body {
     --cui-footer-bg: var(--cui-body-bg);
   }
 }
+
+// ============================================
+// RESPONSIVE STYLES
+// ============================================
+
+// Card headers with buttons - wrap on mobile
+.card-header {
+  &.d-flex {
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    
+    @media (max-width: 575.98px) {
+      flex-direction: column;
+      align-items: flex-start !important;
+      
+      > div, > .btn-group, > .d-flex {
+        width: 100%;
+        justify-content: flex-start;
+      }
+    }
+  }
+}
+
+// Modal footers - stack on mobile
+.modal-footer {
+  @media (max-width: 575.98px) {
+    flex-direction: column;
+    gap: 0.5rem;
+    
+    > div, > .btn, > button {
+      width: 100%;
+    }
+    
+    .btn {
+      width: 100%;
+    }
+  }
+}
+
+// Hide secondary columns on mobile
+@media (max-width: 767.98px) {
+  .d-mobile-none {
+    display: none !important;
+  }
+  
+  // Better spacing for stacked columns
+  .row [class*="col-md-"] {
+    margin-bottom: 0.75rem;
+  }
+  
+  // Financial cards spacing
+  .row.g-3 [class*="col-md-"] {
+    margin-bottom: 1rem;
+  }
+}
+
+// Form filter rows on mobile
+@media (max-width: 575.98px) {
+  .row.g-3 > [class*="col-md-6"] {
+    margin-bottom: 1rem;
+  }
+}
+
+// Action buttons in tables - stack vertically on mobile
+@media (max-width: 575.98px) {
+  td .d-flex.gap-1 {
+    flex-direction: column;
+    gap: 0.25rem !important;
+  }
+  
+  // Make badges more readable
+  .badge {
+    font-size: 0.7rem;
+  }
+}
+
+// Tabs on mobile - scroll horizontally
+.nav-tabs {
+  @media (max-width: 767.98px) {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    
+    .nav-link {
+      white-space: nowrap;
+      padding: 0.5rem 0.75rem;
+      font-size: 0.875rem;
+    }
+  }
+}
+
+// Map containers on mobile
+.map-container {
+  @media (max-width: 575.98px) {
+    height: 200px !important;
+    min-height: 200px !important;
+  }
+}

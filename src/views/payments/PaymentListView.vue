@@ -21,11 +21,11 @@
               <CTableRow>
                 <CTableHeaderCell>Fecha</CTableHeaderCell>
                 <CTableHeaderCell>Monto</CTableHeaderCell>
-                <CTableHeaderCell>Método</CTableHeaderCell>
-                <CTableHeaderCell>Referencia</CTableHeaderCell>
-                <CTableHeaderCell>Reserva</CTableHeaderCell>
+                <CTableHeaderCell class="d-mobile-none">Método</CTableHeaderCell>
+                <CTableHeaderCell class="d-mobile-none">Referencia</CTableHeaderCell>
+                <CTableHeaderCell class="d-mobile-none">Reserva</CTableHeaderCell>
                 <CTableHeaderCell>Estado</CTableHeaderCell>
-                <CTableHeaderCell>Comprobante</CTableHeaderCell>
+                <CTableHeaderCell class="d-mobile-none">Comprobante</CTableHeaderCell>
                 <CTableHeaderCell>Acciones</CTableHeaderCell>
               </CTableRow>
             </CTableHead>
@@ -33,9 +33,9 @@
               <CTableRow v-for="payment in filteredPayments" :key="payment.id">
                 <CTableDataCell>{{ formatDate(payment.payment_date) }}</CTableDataCell>
                 <CTableDataCell>{{ formatCurrency(payment.amount) }}</CTableDataCell>
-                <CTableDataCell>{{ payment.payment_method || '—' }}</CTableDataCell>
-                <CTableDataCell>{{ payment.reference || '—' }}</CTableDataCell>
-                <CTableDataCell>
+                <CTableDataCell class="d-mobile-none">{{ payment.payment_method || '—' }}</CTableDataCell>
+                <CTableDataCell class="d-mobile-none">{{ payment.reference || '—' }}</CTableDataCell>
+                <CTableDataCell class="d-mobile-none">
                   <template v-if="payment.accommodation_data">
                     <RouterLink :to="`/business/accommodations/${payment.accommodation}`" class="text-decoration-none">
                       {{ formatAccommodation(payment.accommodation_data) }}
@@ -47,12 +47,12 @@
                   <CBadge :color="payment.verified ? 'success' : 'warning'">
                     {{ payment.verified ? 'Verificado' : 'Pendiente' }}
                   </CBadge>
-                  <div v-if="payment.verified && payment.verified_by_user" class="small text-muted mt-1">
+                  <div v-if="payment.verified && payment.verified_by_user" class="small text-muted mt-1 d-mobile-none">
                     por {{ payment.verified_by_user.name || payment.verified_by_user.email }}
                     <br />{{ formatDateTime(payment.verified_at) }}
                   </div>
                 </CTableDataCell>
-                <CTableDataCell>
+                <CTableDataCell class="d-mobile-none">
                   <a v-if="payment.receipt_url" :href="payment.receipt_url" target="_blank" class="btn btn-sm btn-outline-info">
                     <CIcon :icon="cilImage" /> Ver
                   </a>

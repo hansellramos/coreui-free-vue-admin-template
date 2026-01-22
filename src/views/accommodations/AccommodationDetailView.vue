@@ -3,9 +3,9 @@
     <CCol :xs="12">
       <CCard class="mb-4">
         <CCardHeader class="d-flex justify-content-between align-items-center">
-          <strong>Detalle de Accommodation</strong>
-          <div>
-            <CButton color="warning" size="sm" class="me-2" @click="$router.push(`/business/accommodations/${route.params.id}/edit`)">
+          <strong>Detalle del Hospedaje</strong>
+          <div class="d-flex gap-2 flex-wrap">
+            <CButton color="warning" size="sm" @click="$router.push(`/business/accommodations/${route.params.id}/edit`)">
               Editar
             </CButton>
             <CButton color="secondary" size="sm" variant="outline" @click="$router.push('/business/accommodations')">
@@ -131,8 +131,8 @@
                   <CTableRow>
                     <CTableHeaderCell>Fecha</CTableHeaderCell>
                     <CTableHeaderCell>Monto</CTableHeaderCell>
-                    <CTableHeaderCell>Método</CTableHeaderCell>
-                    <CTableHeaderCell>Referencia</CTableHeaderCell>
+                    <CTableHeaderCell class="d-mobile-none">Método</CTableHeaderCell>
+                    <CTableHeaderCell class="d-mobile-none">Referencia</CTableHeaderCell>
                     <CTableHeaderCell>Estado</CTableHeaderCell>
                     <CTableHeaderCell>Comprobante</CTableHeaderCell>
                   </CTableRow>
@@ -141,8 +141,8 @@
                   <CTableRow v-for="payment in payments" :key="payment.id">
                     <CTableDataCell>{{ formatPaymentDate(payment.payment_date) }}</CTableDataCell>
                     <CTableDataCell>{{ formatCurrency(payment.amount) }}</CTableDataCell>
-                    <CTableDataCell>{{ payment.payment_method || '—' }}</CTableDataCell>
-                    <CTableDataCell>{{ payment.reference || '—' }}</CTableDataCell>
+                    <CTableDataCell class="d-mobile-none">{{ payment.payment_method || '—' }}</CTableDataCell>
+                    <CTableDataCell class="d-mobile-none">{{ payment.reference || '—' }}</CTableDataCell>
                     <CTableDataCell>
                       <CBadge :color="payment.verified ? 'success' : 'warning'">
                         {{ payment.verified ? 'Verificado' : 'Pendiente' }}

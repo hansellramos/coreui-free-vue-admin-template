@@ -3,7 +3,7 @@
     <CCol :xs="12">
       <CCard class="mb-4">
         <CCardHeader class="d-flex justify-content-between align-items-center">
-          <strong>Accommodations</strong>
+          <strong>Hospedajes</strong>
           <CButtonGroup>
             <CButton 
               :color="viewMode === 'table' ? 'primary' : 'secondary'" 

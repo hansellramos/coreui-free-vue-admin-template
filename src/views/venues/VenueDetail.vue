@@ -3,26 +3,26 @@
     <CCol :xs="12" md="8" lg="6" class="mx-auto">
       <CCard class="mb-4">
         <CCardHeader>
-          <strong>Venue Details</strong>
+          <strong>Detalle de la Cabaña</strong>
         </CCardHeader>
         <CCardBody>
           <template v-if="venue">
             <p class="d-none"><strong>ID:</strong> <span class="text-body-secondary">{{ venue.id }}</span></p>
-            <p><strong>Name:</strong> <span class="text-body-secondary">{{ venue.name }}</span></p>
+            <p><strong>Nombre:</strong> <span class="text-body-secondary">{{ venue.name }}</span></p>
             <p><strong>WhatsApp:</strong> <span class="text-body-secondary">{{ venue.whatsapp }}</span></p>
             <p><strong>Instagram:</strong> <span class="text-body-secondary"><a :href="instagramUrl" target="_blank" rel="noopener noreferrer">{{ instagramDisplay }} <CIcon icon="cil-external-link" size="sm" class="ms-1" /></a></span></p>
-            <p><strong>Address:</strong> <span class="text-body-secondary">{{ venue.address }}</span></p>
-            <p><strong>ZIP Code:</strong> <span class="text-body-secondary">{{ venue.zip_code }}</span></p>
-            <p><strong>Latitude:</strong> <span class="text-body-secondary">{{ venue.latitude }}</span></p>
-            <p><strong>Longitude:</strong> <span class="text-body-secondary">{{ venue.longitude }}</span></p>
+            <p><strong>Dirección:</strong> <span class="text-body-secondary">{{ venue.address }}</span></p>
+            <p><strong>Código Postal:</strong> <span class="text-body-secondary">{{ venue.zip_code }}</span></p>
+            <p><strong>Latitud:</strong> <span class="text-body-secondary">{{ venue.latitude }}</span></p>
+            <p><strong>Longitud:</strong> <span class="text-body-secondary">{{ venue.longitude }}</span></p>
             <div class="mb-3">
               <div ref="mapContainer" class="map-container"></div>
             </div>
-            <p><strong>City:</strong> <span class="text-body-secondary">{{ venue.city }}</span></p>
-            <p><strong>Country:</strong> <span class="text-body-secondary">{{ venue.country }}</span></p>
-            <p><strong>Department:</strong> <span class="text-body-secondary">{{ venue.department }}</span></p>
-            <p><strong>Suburb:</strong> <span class="text-body-secondary">{{ venue.suburb }}</span></p>
-            <p><strong>Address Reference:</strong> <span class="text-body-secondary">{{ venue.address_reference }}</span></p>
+            <p><strong>Ciudad:</strong> <span class="text-body-secondary">{{ venue.city }}</span></p>
+            <p><strong>País:</strong> <span class="text-body-secondary">{{ venue.country }}</span></p>
+            <p><strong>Departamento:</strong> <span class="text-body-secondary">{{ venue.department }}</span></p>
+            <p><strong>Barrio:</strong> <span class="text-body-secondary">{{ venue.suburb }}</span></p>
+            <p><strong>Referencia:</strong> <span class="text-body-secondary">{{ venue.address_reference }}</span></p>
             
             <div v-if="venueAmenities.length > 0" class="mb-4">
               <strong>Amenidades:</strong>
@@ -33,17 +33,17 @@
               </div>
             </div>
             
-            <div class="mt-4">
+            <div class="mt-4 d-flex flex-wrap gap-2">
               <RouterLink :to="`/business/venues/${venue.id}/edit`">
                 <CButton color="primary" size="sm">Editar</CButton>
               </RouterLink>
               <RouterLink to="/business/venues">
-                <CButton color="secondary" size="sm" variant="outline" class="ms-2">Volver a la Lista</CButton>
+                <CButton color="secondary" size="sm" variant="outline">Volver a la Lista</CButton>
               </RouterLink>
             </div>
           </template>
           <template v-else>
-            <CSpinner color="primary" /> Loading...
+            <CSpinner color="primary" /> Cargando...
           </template>
         </CCardBody>
       </CCard>

@@ -2,8 +2,8 @@
   <div>
     <div class="mb-3">
       <div class="row g-3">
-        <div class="col-md-6">
-          <label for="dateFilter" class="form-label">Filter by Date:</label>
+        <div class="col-12 col-md-6">
+          <label for="dateFilter" class="form-label">Filtrar por Fecha:</label>
           <input id="dateFilter" type="date" v-model="dateInput" class="form-control" @change="addDate" />
           <div v-if="selectedDates.length" class="d-flex align-items-center flex-wrap mt-2">
             <div v-for="date in selectedDates" :key="date" class="filter-chip me-2 mb-2">
@@ -11,27 +11,27 @@
               <span class="filter-chip-close" @click="removeDate(date)">&times;</span>
             </div>
           </div>
-          <CButton v-if="selectedDates.length" size="sm" color="secondary" class="mt-2" @click="clearAllDates">Clear All</CButton>
+          <CButton v-if="selectedDates.length" size="sm" color="secondary" class="mt-2" @click="clearAllDates">Limpiar</CButton>
         </div>
-        <div class="col-md-6">
-          <label for="searchFilter" class="form-label">Search (customer:, organization:, venue:):</label>
-          <input id="searchFilter" type="text" v-model="searchQuery" class="form-control" placeholder="e.g. customer:hansel, organization:baluna, venue:casa" />
+        <div class="col-12 col-md-6">
+          <label for="searchFilter" class="form-label">Buscar (cliente:, organización:, cabaña:):</label>
+          <input id="searchFilter" type="text" v-model="searchQuery" class="form-control" placeholder="ej: cliente:juan, cabaña:casa" />
         </div>
       </div>
     </div>
-    <CButton color="primary" class="mb-3" @click="$router.push('/business/accommodations/create')">New Accommodation</CButton>
-    <CTable>
+    <CButton color="primary" class="mb-3" @click="$router.push('/business/accommodations/create')">Nuevo Hospedaje</CButton>
+    <CTable responsive hover>
       <thead>
         <tr>
           <th>Cabaña</th>
-          <th>Organización</th>
+          <th class="d-mobile-none">Organización</th>
           <th>Fecha</th>
-          <th>Duración</th>
-          <th>Check In</th>
-          <th>Check Out</th>
+          <th class="d-mobile-none">Duración</th>
+          <th class="d-mobile-none">Check In</th>
+          <th class="d-mobile-none">Check Out</th>
           <th>Cliente</th>
-          <th>Valor</th>
-          <th>Abonado</th>
+          <th class="d-mobile-none">Valor</th>
+          <th class="d-mobile-none">Abonado</th>
           <th>Saldo</th>
           <th>Acciones</th>
         </tr>
@@ -44,23 +44,23 @@
             </router-link>
             <span v-else>—</span>
           </td>
-          <td>
+          <td class="d-mobile-none">
             <router-link v-if="item.venue_data?.organization_data?.id" :to="`/business/organizations/${item.venue_data.organization_data.id}/read`" class="text-decoration-none">
               {{ item.venue_data.organization_data.name }}
             </router-link>
             <span v-else>—</span>
           </td>
           <td>{{ formatDate(item.date) }}</td>
-          <td>{{ formatDuration(item.duration) }}</td>
-          <td>{{ formatTime(item.time) }}</td>
-          <td>{{ calcCheckout(item.time, item.duration, item.date) }}</td>
+          <td class="d-mobile-none">{{ formatDuration(item.duration) }}</td>
+          <td class="d-mobile-none">{{ formatTime(item.time) }}</td>
+          <td class="d-mobile-none">{{ calcCheckout(item.time, item.duration, item.date) }}</td>
           <td>
             <router-link v-if="item.customer_data?.id" :to="`/business/contacts/${item.customer_data.id}/read`" class="text-decoration-none">
               {{ item.customer_data.fullname || item.customer_data.user_data?.email }}
             </router-link>
             <span v-else>—</span>
           </td>
-          <td>
+          <td class="d-mobile-none">
             <template v-if="getAgreedPrice(item) > 0">
               <span class="fw-bold">${{ formatCurrency(getAgreedPrice(item)) }}</span>
               <template v-if="pricesDiffer(item)">
@@ -73,7 +73,7 @@
             </template>
             <span v-else>—</span>
           </td>
-          <td>
+          <td class="d-mobile-none">
             <span v-if="item.total_paid > 0" class="text-success fw-bold">${{ formatCurrency(item.total_paid) }}</span>
             <span v-else class="text-muted">$0</span>
           </td>
@@ -86,9 +86,17 @@
             <span v-else>—</span>
           </td>
           <td>
-            <CButton size="sm" color="info" @click="$router.push(`/business/accommodations/${item.id}`)">Ver</CButton>
-            <CButton size="sm" color="warning" class="ms-2" @click="$router.push(`/business/accommodations/${item.id}/edit`)">Editar</CButton>
-            <CButton size="sm" color="danger" class="ms-2" @click="onDelete(item)">Eliminar</CButton>
+            <div class="d-flex gap-1 flex-nowrap">
+              <CButton size="sm" color="info" variant="ghost" @click="$router.push(`/business/accommodations/${item.id}`)" title="Ver">
+                <CIcon icon="cil-zoom-in" />
+              </CButton>
+              <CButton size="sm" color="warning" variant="ghost" @click="$router.push(`/business/accommodations/${item.id}/edit`)" title="Editar">
+                <CIcon icon="cil-pencil" />
+              </CButton>
+              <CButton size="sm" color="danger" variant="ghost" @click="onDelete(item)" title="Eliminar">
+                <CIcon icon="cil-trash" />
+              </CButton>
+            </div>
           </td>
         </tr>
       </tbody>
@@ -101,6 +109,7 @@ import { ref, computed, onMounted, watch } from 'vue'
 import { fetchAccommodations, deleteAccommodation } from '@/services/accommodationService'
 import { useSettingsStore } from '@/stores/settings'
 import { useAuth } from '@/composables/useAuth'
+import { CIcon } from '@coreui/icons-vue'
 
 const accommodations = ref([])
 const dateInput = ref('')
