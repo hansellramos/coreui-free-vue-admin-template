@@ -982,7 +982,9 @@ async function startServer() {
 
   app.post('/api/profiles', isAuthenticated, async (req, res) => {
     try {
-      if (!hasPermission(req.userPermissions, 'profiles:create')) {
+      const userId = String(req.user.claims?.sub);
+      const currentUser = await prisma.users.findUnique({ where: { id: userId } });
+      if (!currentUser?.is_super_admin && !hasPermission(req.userPermissions, 'profiles:create')) {
         return res.status(403).json({ error: 'No tiene permiso para crear perfiles' });
       }
       const { code, name, description, permissions } = req.body;
@@ -1003,7 +1005,9 @@ async function startServer() {
 
   app.put('/api/profiles/:id', isAuthenticated, async (req, res) => {
     try {
-      if (!hasPermission(req.userPermissions, 'profiles:edit')) {
+      const userId = String(req.user.claims?.sub);
+      const currentUser = await prisma.users.findUnique({ where: { id: userId } });
+      if (!currentUser?.is_super_admin && !hasPermission(req.userPermissions, 'profiles:edit')) {
         return res.status(403).json({ error: 'No tiene permiso para editar perfiles' });
       }
       
@@ -1028,7 +1032,9 @@ async function startServer() {
 
   app.delete('/api/profiles/:id', isAuthenticated, async (req, res) => {
     try {
-      if (!hasPermission(req.userPermissions, 'profiles:delete')) {
+      const userId = String(req.user.claims?.sub);
+      const currentUser = await prisma.users.findUnique({ where: { id: userId } });
+      if (!currentUser?.is_super_admin && !hasPermission(req.userPermissions, 'profiles:delete')) {
         return res.status(403).json({ error: 'No tiene permiso para eliminar perfiles' });
       }
       
@@ -1077,7 +1083,9 @@ async function startServer() {
 
   app.put('/api/users/:id/organizations', isAuthenticated, async (req, res) => {
     try {
-      if (!hasPermission(req.userPermissions, 'users:edit')) {
+      const userId = String(req.user.claims?.sub);
+      const currentUser = await prisma.users.findUnique({ where: { id: userId } });
+      if (!currentUser?.is_super_admin && !hasPermission(req.userPermissions, 'users:edit')) {
         return res.status(403).json({ error: 'No tiene permiso para editar usuarios' });
       }
       
@@ -1105,7 +1113,9 @@ async function startServer() {
   // Update user profile
   app.put('/api/users/:id/profile', isAuthenticated, async (req, res) => {
     try {
-      if (!hasPermission(req.userPermissions, 'users:edit')) {
+      const userId = String(req.user.claims?.sub);
+      const currentUser = await prisma.users.findUnique({ where: { id: userId } });
+      if (!currentUser?.is_super_admin && !hasPermission(req.userPermissions, 'users:edit')) {
         return res.status(403).json({ error: 'No tiene permiso para editar usuarios' });
       }
       

@@ -34,7 +34,8 @@
           <div class="mb-4 p-3 bg-light rounded">
             <CFormCheck 
               id="godModeViewAll"
-              v-model="settingsStore.godModeViewAll"
+              :model-value="settingsStore.godModeViewAll"
+              @update:model-value="(val) => settingsStore.godModeViewAll = val"
               label="Ver todas las organizaciones"
             />
             <div class="form-text text-muted">
