@@ -278,11 +278,12 @@ No incluye bebidas" />
 import { ref, onMounted, computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import {
-  CRow, CCol, CCard, CCardHeader, CCardBody, CCardFooter, CButton, CIcon, CSpinner,
+  CRow, CCol, CCard, CCardHeader, CCardBody, CCardFooter, CButton, CSpinner,
   CBadge, CModal, CModalHeader, CModalTitle, CModalBody, CModalFooter,
   CForm, CFormLabel, CFormInput, CFormTextarea, CFormSelect, CFormCheck,
   CInputGroup, CInputGroupText, CTabs, CTabList, CTab, CTabContent, CTabPane
 } from '@coreui/vue'
+import { CIcon } from '@coreui/icons-vue'
 import ImageUploader from '@/components/ImageUploader.vue'
 
 const route = useRoute()

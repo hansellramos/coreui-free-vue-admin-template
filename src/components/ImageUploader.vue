@@ -76,7 +76,8 @@
 
 <script setup>
 import { ref } from 'vue'
-import { CButton, CSpinner, CIcon, CBadge } from '@coreui/vue'
+import { CButton, CSpinner, CBadge } from '@coreui/vue'
+import { CIcon } from '@coreui/icons-vue'
 
 const props = defineProps({
   images: {
