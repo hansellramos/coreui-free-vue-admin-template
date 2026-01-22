@@ -141,10 +141,11 @@ const selectedPlan = computed(() => {
 })
 
 const discountPercentage = computed(() => {
-  if (!form.value.calculated_price || !form.value.agreed_price) return 0
-  if (form.value.calculated_price === form.value.agreed_price) return 0
-  const diff = form.value.calculated_price - form.value.agreed_price
-  return Math.round((diff / form.value.calculated_price) * 100)
+  if (form.value.calculated_price === null || form.value.calculated_price === undefined) return 0
+  if (form.value.agreed_price === null || form.value.agreed_price === undefined) return 0
+  if (Number(form.value.calculated_price) === Number(form.value.agreed_price)) return 0
+  const diff = Number(form.value.calculated_price) - Number(form.value.agreed_price)
+  return Math.round((diff / Number(form.value.calculated_price)) * 100)
 })
 
 watch(() => props.modelValue, val => {
@@ -254,7 +255,7 @@ function formatCurrency(value) {
 
 function handleSubmit() {
   const data = { ...form.value }
-  if (!data.agreed_price && data.calculated_price) {
+  if (data.agreed_price === null || data.agreed_price === undefined || data.agreed_price === '') {
     data.agreed_price = data.calculated_price
   }
   emit('submit', data)
@@ -291,9 +292,12 @@ function removeDay() {
   }
 }
 
-watch(() => form.value.venue, (newVenueId) => {
+watch(() => form.value.venue, async (newVenueId) => {
   if (newVenueId && !selectedVenue.value) {
-    fetchPlansForVenue(newVenueId)
+    await fetchPlansForVenue(newVenueId)
+    if (form.value.plan_id && availablePlans.value.length > 0) {
+      calculatePrice()
+    }
   }
 }, { immediate: true })
 </script>

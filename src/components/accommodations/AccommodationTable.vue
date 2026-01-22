@@ -44,13 +44,20 @@
           <td>{{ calcCheckout(item.time, item.duration, item.date) }}</td>
           <td>{{ item.customer_data?.fullname || item.customer_data?.user_data?.email || '—' }}</td>
           <td>
-            <template v-if="item.agreed_price || item.calculated_price">
-              <span v-if="hasDiscount(item)" class="text-success">
-                <s class="text-muted small">${{ formatCurrency(item.calculated_price) }}</s>
-                <strong>${{ formatCurrency(item.agreed_price) }}</strong>
-                <span class="badge bg-success ms-1">-{{ getDiscountPercent(item) }}%</span>
-              </span>
-              <span v-else class="fw-bold">${{ formatCurrency(item.agreed_price || item.calculated_price) }}</span>
+            <template v-if="item.agreed_price !== null || item.calculated_price !== null">
+              <template v-if="pricesDiffer(item)">
+                <span v-if="hasDiscount(item)" class="text-success">
+                  <s class="text-muted small">${{ formatCurrency(item.calculated_price) }}</s>
+                  <strong>${{ formatCurrency(item.agreed_price) }}</strong>
+                  <span class="badge bg-success ms-1">-{{ getDiscountPercent(item) }}%</span>
+                </span>
+                <span v-else class="text-warning">
+                  <s class="text-muted small">${{ formatCurrency(item.calculated_price) }}</s>
+                  <strong>${{ formatCurrency(item.agreed_price) }}</strong>
+                  <span class="badge bg-warning text-dark ms-1">+{{ Math.abs(getDiscountPercent(item)) }}%</span>
+                </span>
+              </template>
+              <span v-else class="fw-bold">${{ formatCurrency(item.agreed_price ?? item.calculated_price) }}</span>
             </template>
             <span v-else>—</span>
           </td>
@@ -227,13 +234,18 @@ function formatCurrency(value) {
   return Number(value).toLocaleString('es-CO', { minimumFractionDigits: 0, maximumFractionDigits: 0 })
 }
 
+function pricesDiffer(item) {
+  if (item.calculated_price === null || item.agreed_price === null) return false
+  return Number(item.calculated_price) !== Number(item.agreed_price)
+}
+
 function hasDiscount(item) {
-  if (!item.calculated_price || !item.agreed_price) return false
+  if (item.calculated_price === null || item.agreed_price === null) return false
   return Number(item.agreed_price) < Number(item.calculated_price)
 }
 
 function getDiscountPercent(item) {
-  if (!item.calculated_price || !item.agreed_price) return 0
+  if (item.calculated_price === null || item.agreed_price === null) return 0
   const diff = Number(item.calculated_price) - Number(item.agreed_price)
   return Math.round((diff / Number(item.calculated_price)) * 100)
 }
