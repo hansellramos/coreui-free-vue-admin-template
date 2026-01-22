@@ -1,5 +1,9 @@
 export async function fetchUsersByOrganization(orgId) {
-  return [];
+  const response = await fetch(`/api/organizations/${orgId}/users`);
+  if (!response.ok) {
+    throw new Error('Error fetching users');
+  }
+  return response.json();
 }
 
 export async function addUserToOrganization(orgId, userId) {

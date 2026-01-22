@@ -232,6 +232,58 @@ async function startServer() {
     }
   });
 
+  app.get('/api/organizations/:id/users', isAuthenticated, async (req, res) => {
+    try {
+      const userId = String(req.user.claims?.sub);
+      const currentUser = await prisma.users.findUnique({ where: { id: userId } });
+      const orgId = req.params.id;
+      
+      // Use same access control logic as /api/organizations
+      let hasAccess = false;
+      
+      if (currentUser?.is_super_admin) {
+        hasAccess = true;
+      } else {
+        // Get accessible organizations via permissions (same as org list endpoint)
+        const accessibleOrgIds = await getAccessibleOrganizationIds(req.userPermissions || []);
+        if (accessibleOrgIds === null) {
+          // null means access to all
+          hasAccess = true;
+        } else if (accessibleOrgIds.includes(orgId)) {
+          hasAccess = true;
+        }
+      }
+      
+      if (!hasAccess) {
+        return res.status(403).json({ error: 'No tiene acceso a esta organización' });
+      }
+      
+      const userOrgs = await prisma.user_organizations.findMany({
+        where: { organization_id: orgId }
+      });
+      
+      const userIds = userOrgs.map(uo => uo.user_id);
+      
+      if (userIds.length === 0) {
+        return res.json([]);
+      }
+      
+      const users = await prisma.users.findMany({
+        where: { id: { in: userIds } },
+        select: {
+          id: true,
+          email: true,
+          display_name: true,
+          avatar_url: true
+        }
+      });
+      
+      res.json(users);
+    } catch (error) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
   app.get('/api/venues', async (req, res) => {
     try {
       const viewAll = req.query.viewAll === 'true';
