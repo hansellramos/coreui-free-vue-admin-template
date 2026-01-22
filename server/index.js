@@ -823,6 +823,17 @@ async function startServer() {
   app.put('/api/payments/:id/verify', isAuthenticated, async (req, res) => {
     try {
       const { verified } = req.body;
+      const paymentId = req.params.id;
+      
+      // Get current payment to access accommodation info
+      const currentPayment = await prisma.payments.findUnique({
+        where: { id: paymentId }
+      });
+      
+      if (!currentPayment) {
+        return res.status(404).json({ error: 'Payment not found' });
+      }
+      
       const data = {
         verified: verified === true,
         verified_at: verified === true ? new Date() : null,
@@ -832,9 +843,46 @@ async function startServer() {
       };
       
       const payment = await prisma.payments.update({
-        where: { id: req.params.id },
+        where: { id: paymentId },
         data
       });
+      
+      // Handle income creation/deletion based on verification status
+      if (verified === true && currentPayment.accommodation) {
+        // Get accommodation to find venue
+        const accommodation = await prisma.accommodations.findUnique({
+          where: { id: currentPayment.accommodation }
+        });
+        
+        // Get venue (if exists) to find organization
+        let venue = null;
+        if (accommodation?.venue) {
+          venue = await prisma.venues.findUnique({
+            where: { id: accommodation.venue }
+          });
+        }
+        
+        // Create or update income record (upsert to prevent duplicates)
+        const incomeData = {
+          organization_id: venue?.organization || null,
+          venue_id: accommodation?.venue || null,
+          amount: currentPayment.amount,
+          type: 'accommodation',
+          date: currentPayment.payment_date || accommodation?.date || new Date()
+        };
+        
+        await prisma.incomes.upsert({
+          where: { payment_id: paymentId },
+          update: incomeData,
+          create: { payment_id: paymentId, ...incomeData }
+        });
+      } else if (verified === false) {
+        // Remove income record when payment is unverified
+        await prisma.incomes.deleteMany({
+          where: { payment_id: paymentId }
+        });
+      }
+      
       res.json(payment);
     } catch (error) {
       res.status(500).json({ error: error.message });
@@ -847,6 +895,298 @@ async function startServer() {
         where: { id: req.params.id }
       });
       res.json({ success: true });
+    } catch (error) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // Analytics endpoints
+  
+  // Helper function to get accessible organization IDs for analytics
+  async function getAnalyticsOrgIds(req) {
+    const { viewAll, organizations } = req.query;
+    const viewAllFlag = viewAll === 'true';
+    const selectedOrgIds = organizations ? organizations.split(',') : [];
+    
+    let accessibleOrgIds = null;
+    
+    if (req.user) {
+      const userId = String(req.user.claims?.sub);
+      const currentUser = await prisma.users.findUnique({ where: { id: userId } });
+      
+      if (viewAllFlag && currentUser?.is_super_admin) {
+        // Super admin with viewAll=true: access all organizations
+        accessibleOrgIds = null;
+      } else if (currentUser?.is_super_admin) {
+        // Super admin with viewAll=false: only assigned organizations
+        const userOrgs = await prisma.user_organizations.findMany({
+          where: { user_id: userId }
+        });
+        accessibleOrgIds = userOrgs.map(uo => uo.organization_id);
+      } else {
+        // Non-super admin: use permission-based access
+        accessibleOrgIds = await getAccessibleOrganizationIds(req.userPermissions);
+      }
+    } else {
+      accessibleOrgIds = [];
+    }
+    
+    // Filter by selected organizations if provided
+    if (selectedOrgIds.length > 0) {
+      if (accessibleOrgIds === null) {
+        // User has access to all, filter by selection
+        accessibleOrgIds = selectedOrgIds;
+      } else {
+        // User has limited access, intersect with selection
+        accessibleOrgIds = accessibleOrgIds.filter(id => selectedOrgIds.includes(id));
+      }
+    }
+    
+    return accessibleOrgIds;
+  }
+  
+  // Income summary for current month with comparison to previous month
+  app.get('/api/analytics/income-summary', isAuthenticated, async (req, res) => {
+    try {
+      const orgIds = await getAnalyticsOrgIds(req);
+      
+      if (orgIds !== null && orgIds.length === 0) {
+        return res.json({
+          currentMonth: { total: 0, count: 0 },
+          previousMonth: { total: 0, count: 0 },
+          percentChange: 0
+        });
+      }
+      
+      const now = new Date();
+      const currentMonthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+      const previousMonthStart = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+      const previousMonthEnd = new Date(now.getFullYear(), now.getMonth(), 0);
+      
+      const whereClause = orgIds !== null ? { organization_id: { in: orgIds } } : {};
+      
+      // Current month incomes
+      const currentMonthIncomes = await prisma.incomes.findMany({
+        where: {
+          ...whereClause,
+          date: { gte: currentMonthStart }
+        }
+      });
+      
+      // Previous month incomes
+      const previousMonthIncomes = await prisma.incomes.findMany({
+        where: {
+          ...whereClause,
+          date: { gte: previousMonthStart, lte: previousMonthEnd }
+        }
+      });
+      
+      const currentTotal = currentMonthIncomes.reduce((sum, i) => sum + Number(i.amount || 0), 0);
+      const previousTotal = previousMonthIncomes.reduce((sum, i) => sum + Number(i.amount || 0), 0);
+      
+      const percentChange = previousTotal > 0 
+        ? ((currentTotal - previousTotal) / previousTotal * 100).toFixed(1)
+        : currentTotal > 0 ? 100 : 0;
+      
+      res.json({
+        currentMonth: { total: currentTotal, count: currentMonthIncomes.length },
+        previousMonth: { total: previousTotal, count: previousMonthIncomes.length },
+        percentChange: Number(percentChange)
+      });
+    } catch (error) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+  
+  // Income breakdown by venue for pie chart
+  app.get('/api/analytics/income-by-venue', isAuthenticated, async (req, res) => {
+    try {
+      const orgIds = await getAnalyticsOrgIds(req);
+      
+      if (orgIds !== null && orgIds.length === 0) {
+        return res.json([]);
+      }
+      
+      const whereClause = orgIds !== null ? { organization_id: { in: orgIds } } : {};
+      
+      // Get all incomes grouped by venue
+      const incomes = await prisma.incomes.findMany({
+        where: whereClause
+      });
+      
+      // Group by venue
+      const venueIncomes = {};
+      incomes.forEach(income => {
+        if (!income.venue_id) return;
+        if (!venueIncomes[income.venue_id]) {
+          venueIncomes[income.venue_id] = { total: 0, count: 0 };
+        }
+        venueIncomes[income.venue_id].total += Number(income.amount || 0);
+        venueIncomes[income.venue_id].count += 1;
+      });
+      
+      // Get venue names
+      const venueIds = Object.keys(venueIncomes);
+      const venues = venueIds.length > 0 ? await prisma.venues.findMany({
+        where: { id: { in: venueIds } }
+      }) : [];
+      
+      const venueMap = {};
+      venues.forEach(v => { venueMap[v.id] = v.name; });
+      
+      const result = venueIds.map(venueId => ({
+        venue_id: venueId,
+        venue_name: venueMap[venueId] || 'Unknown',
+        total: venueIncomes[venueId].total,
+        count: venueIncomes[venueId].count
+      })).sort((a, b) => b.total - a.total);
+      
+      res.json(result);
+    } catch (error) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+  
+  // Accommodations history - last 12 months by venue
+  app.get('/api/analytics/accommodations-history', isAuthenticated, async (req, res) => {
+    try {
+      const orgIds = await getAnalyticsOrgIds(req);
+      
+      if (orgIds !== null && orgIds.length === 0) {
+        return res.json({ months: [], venues: [] });
+      }
+      
+      // Get venue IDs for accessible organizations
+      let venueIds = null;
+      if (orgIds !== null) {
+        const venues = await prisma.venues.findMany({
+          where: { organization: { in: orgIds } },
+          select: { id: true }
+        });
+        venueIds = venues.map(v => v.id);
+        if (venueIds.length === 0) {
+          return res.json({ months: [], venues: [] });
+        }
+      }
+      
+      // Calculate date range for last 12 months
+      const now = new Date();
+      const startDate = new Date(now.getFullYear(), now.getMonth() - 11, 1);
+      
+      const whereClause = {
+        date: { gte: startDate, lt: new Date(now.getFullYear(), now.getMonth() + 1, 1) }
+      };
+      if (venueIds !== null) {
+        whereClause.venue = { in: venueIds };
+      }
+      
+      const accommodations = await prisma.accommodations.findMany({
+        where: whereClause
+      });
+      
+      // Get all venues for the chart
+      const allVenueIds = [...new Set(accommodations.filter(a => a.venue).map(a => a.venue))];
+      const venues = allVenueIds.length > 0 ? await prisma.venues.findMany({
+        where: { id: { in: allVenueIds } }
+      }) : [];
+      
+      // Generate months array
+      const months = [];
+      for (let i = 11; i >= 0; i--) {
+        const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+        months.push({
+          key: `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`,
+          label: d.toLocaleDateString('es-CO', { month: 'short', year: '2-digit' })
+        });
+      }
+      
+      // Group accommodations by venue and month
+      const venueData = venues.map(venue => {
+        const counts = months.map(month => {
+          return accommodations.filter(a => {
+            if (a.venue !== venue.id || !a.date) return false;
+            const d = new Date(a.date);
+            const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+            return key === month.key;
+          }).length;
+        });
+        return { venue_id: venue.id, venue_name: venue.name, counts };
+      });
+      
+      res.json({ months: months.map(m => m.label), venues: venueData });
+    } catch (error) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+  
+  // Accommodations forecast - next 12 months by venue
+  app.get('/api/analytics/accommodations-forecast', isAuthenticated, async (req, res) => {
+    try {
+      const orgIds = await getAnalyticsOrgIds(req);
+      
+      if (orgIds !== null && orgIds.length === 0) {
+        return res.json({ months: [], venues: [] });
+      }
+      
+      // Get venue IDs for accessible organizations
+      let venueIds = null;
+      if (orgIds !== null) {
+        const venues = await prisma.venues.findMany({
+          where: { organization: { in: orgIds } },
+          select: { id: true }
+        });
+        venueIds = venues.map(v => v.id);
+        if (venueIds.length === 0) {
+          return res.json({ months: [], venues: [] });
+        }
+      }
+      
+      // Calculate date range for next 12 months
+      const now = new Date();
+      const startDate = new Date(now.getFullYear(), now.getMonth(), 1);
+      const endDate = new Date(now.getFullYear(), now.getMonth() + 12, 0);
+      
+      const whereClause = {
+        date: { gte: startDate, lte: endDate }
+      };
+      if (venueIds !== null) {
+        whereClause.venue = { in: venueIds };
+      }
+      
+      const accommodations = await prisma.accommodations.findMany({
+        where: whereClause
+      });
+      
+      // Get all venues for the chart
+      const allVenueIds = [...new Set(accommodations.filter(a => a.venue).map(a => a.venue))];
+      const venues = allVenueIds.length > 0 ? await prisma.venues.findMany({
+        where: { id: { in: allVenueIds } }
+      }) : [];
+      
+      // Generate months array
+      const months = [];
+      for (let i = 0; i < 12; i++) {
+        const d = new Date(now.getFullYear(), now.getMonth() + i, 1);
+        months.push({
+          key: `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`,
+          label: d.toLocaleDateString('es-CO', { month: 'short', year: '2-digit' })
+        });
+      }
+      
+      // Group accommodations by venue and month
+      const venueData = venues.map(venue => {
+        const counts = months.map(month => {
+          return accommodations.filter(a => {
+            if (a.venue !== venue.id || !a.date) return false;
+            const d = new Date(a.date);
+            const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+            return key === month.key;
+          }).length;
+        });
+        return { venue_id: venue.id, venue_name: venue.name, counts };
+      });
+      
+      res.json({ months: months.map(m => m.label), venues: venueData });
     } catch (error) {
       res.status(500).json({ error: error.message });
     }

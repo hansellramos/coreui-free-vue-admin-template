@@ -1,337 +1,414 @@
-<script setup>
-import avatar1 from '@/assets/images/avatars/1.jpg'
-import avatar2 from '@/assets/images/avatars/2.jpg'
-import avatar3 from '@/assets/images/avatars/3.jpg'
-import avatar4 from '@/assets/images/avatars/4.jpg'
-import avatar5 from '@/assets/images/avatars/5.jpg'
-import avatar6 from '@/assets/images/avatars/6.jpg'
-import MainChart from './MainChart.vue'
-import WidgetsStatsA from './../widgets/WidgetsStatsTypeA.vue'
-import WidgetsStatsD from './../widgets/WidgetsStatsTypeD.vue'
-
-const progressGroupExample1 = [
-  { title: 'Monday', value1: 34, value2: 78 },
-  { title: 'Tuesday', value1: 56, value2: 94 },
-  { title: 'Wednesday', value1: 12, value2: 67 },
-  { title: 'Thursday', value1: 43, value2: 91 },
-  { title: 'Friday', value1: 22, value2: 73 },
-  { title: 'Saturday', value1: 53, value2: 82 },
-  { title: 'Sunday', value1: 9, value2: 69 },
-]
-const progressGroupExample2 = [
-  { title: 'Male', icon: 'cil-user', value: 53 },
-  { title: 'Female', icon: 'cil-user-female', value: 43 },
-]
-const progressGroupExample3 = [
-  {
-    title: 'Organic Search',
-    icon: 'cib-google',
-    percent: 56,
-    value: '191,235',
-  },
-  { title: 'Facebook', icon: 'cib-facebook', percent: 15, value: '51,223' },
-  { title: 'Twitter', icon: 'cib-twitter', percent: 11, value: '37,564' },
-  { title: 'LinkedIn', icon: 'cib-linkedin', percent: 8, value: '27,319' },
-]
-const tableExample = [
-  {
-    avatar: { src: avatar1, status: 'success' },
-    user: {
-      name: 'Yiorgos Avraamu',
-      new: true,
-      registered: 'Jan 1, 2023',
-    },
-    country: { name: 'USA', flag: 'cif-us' },
-    usage: {
-      value: 50,
-      period: 'Jun 11, 2023 - Jul 10, 2023',
-      color: 'success',
-    },
-    payment: { name: 'Mastercard', icon: 'cib-cc-mastercard' },
-    activity: '10 sec ago',
-  },
-  {
-    avatar: { src: avatar2, status: 'danger' },
-    user: {
-      name: 'Avram Tarasios',
-      new: false,
-      registered: 'Jan 1, 2023',
-    },
-    country: { name: 'Brazil', flag: 'cif-br' },
-    usage: {
-      value: 22,
-      period: 'Jun 11, 2023 - Jul 10, 2023',
-      color: 'info',
-    },
-    payment: { name: 'Visa', icon: 'cib-cc-visa' },
-    activity: '5 minutes ago',
-  },
-  {
-    avatar: { src: avatar3, status: 'warning' },
-    user: { name: 'Quintin Ed', new: true, registered: 'Jan 1, 2023' },
-    country: { name: 'India', flag: 'cif-in' },
-    usage: {
-      value: 74,
-      period: 'Jun 11, 2023 - Jul 10, 2023',
-      color: 'warning',
-    },
-    payment: { name: 'Stripe', icon: 'cib-cc-stripe' },
-    activity: '1 hour ago',
-  },
-  {
-    avatar: { src: avatar4, status: 'secondary' },
-    user: { name: 'Enéas Kwadwo', new: true, registered: 'Jan 1, 2023' },
-    country: { name: 'France', flag: 'cif-fr' },
-    usage: {
-      value: 98,
-      period: 'Jun 11, 2023 - Jul 10, 2023',
-      color: 'danger',
-    },
-    payment: { name: 'PayPal', icon: 'cib-cc-paypal' },
-    activity: 'Last month',
-  },
-  {
-    avatar: { src: avatar5, status: 'success' },
-    user: {
-      name: 'Agapetus Tadeáš',
-      new: true,
-      registered: 'Jan 1, 2023',
-    },
-    country: { name: 'Spain', flag: 'cif-es' },
-    usage: {
-      value: 22,
-      period: 'Jun 11, 2023 - Jul 10, 2023',
-      color: 'primary',
-    },
-    payment: { name: 'Google Wallet', icon: 'cib-cc-apple-pay' },
-    activity: 'Last week',
-  },
-  {
-    avatar: { src: avatar6, status: 'danger' },
-    user: {
-      name: 'Friderik Dávid',
-      new: true,
-      registered: 'Jan 1, 2023',
-    },
-    country: { name: 'Poland', flag: 'cif-pl' },
-    usage: {
-      value: 43,
-      period: 'Jun 11, 2023 - Jul 10, 2023',
-      color: 'success',
-    },
-    payment: { name: 'Amex', icon: 'cib-cc-amex' },
-    activity: 'Last week',
-  },
-]
-</script>
-
 <template>
   <div>
-    <WidgetsStatsA class="mb-4" />
-    <CRow>
-      <CCol :md="12">
-        <CCard class="mb-4">
+    <CRow class="mb-4">
+      <CCol :xs="12">
+        <CCard>
           <CCardBody>
-            <CRow>
-              <CCol :sm="5">
-                <h4 id="traffic" class="card-title mb-0">Traffic</h4>
-                <div class="small text-body-secondary">January - July 2023</div>
-              </CCol>
-              <CCol :sm="7" class="d-none d-md-block">
-                <CButton color="primary" class="float-end">
-                  <CIcon icon="cil-cloud-download" />
-                </CButton>
-                <CButtonGroup
-                  class="float-end me-3"
-                  role="group"
-                  aria-label="Basic outlined example"
-                >
-                  <CButton color="secondary" variant="outline">Day</CButton>
-                  <CButton color="secondary" variant="outline" active>Month</CButton>
-                  <CButton color="secondary" variant="outline">Year</CButton>
-                </CButtonGroup>
-              </CCol>
-            </CRow>
-            <CRow>
-              <MainChart style="height: 300px; max-height: 300px; margin-top: 40px" />
-            </CRow>
+            <div class="d-flex align-items-center justify-content-between">
+              <h4 class="mb-0">Analytics de Ingresos</h4>
+              <div class="organization-filter d-flex align-items-center gap-2">
+                <div class="position-relative" style="min-width: 300px;">
+                  <CFormInput
+                    v-model="orgSearch"
+                    placeholder="Filtrar por organizaciones..."
+                    @input="onOrgSearchInput"
+                    @focus="showOrgDropdown = true"
+                    @blur="hideOrgDropdownWithDelay"
+                    autocomplete="off"
+                  />
+                  <div v-if="showOrgDropdown && filteredOrganizations.length > 0" class="dropdown-menu show position-absolute w-100" style="max-height: 200px; overflow-y: auto; z-index: 1000;">
+                    <button
+                      v-for="org in filteredOrganizations"
+                      :key="org.id"
+                      class="dropdown-item"
+                      @mousedown.prevent="selectOrganization(org)"
+                    >
+                      {{ org.name }}
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div v-if="selectedOrganizations.length > 0" class="mt-2 d-flex flex-wrap gap-2">
+              <CBadge
+                v-for="org in selectedOrganizations"
+                :key="org.id"
+                color="primary"
+                class="d-flex align-items-center gap-1 px-2 py-1"
+                style="cursor: pointer;"
+                @click="removeOrganization(org)"
+              >
+                {{ org.name }}
+                <span class="ms-1">&times;</span>
+              </CBadge>
+              <CButton
+                v-if="selectedOrganizations.length > 1"
+                color="secondary"
+                size="sm"
+                variant="ghost"
+                @click="clearAllOrganizations"
+              >
+                Limpiar todos
+              </CButton>
+            </div>
           </CCardBody>
-          <CCardFooter>
-            <CRow
-              :xs="{ cols: 1, gutter: 4 }"
-              :sm="{ cols: 2 }"
-              :lg="{ cols: 4 }"
-              :xl="{ cols: 5 }"
-              class="mb-2 text-center"
-            >
-              <CCol>
-                <div class="text-body-secondary">Visits</div>
-                <div class="fw-semibold text-truncate">29.703 Users (40%)</div>
-                <CProgress class="mt-2" color="success" thin :precision="1" :value="40" />
-              </CCol>
-              <CCol>
-                <div class="text-body-secondary">Unique</div>
-                <div class="fw-semibold text-truncate">24.093 Users (20%)</div>
-                <CProgress class="mt-2" color="info" thin :precision="1" :value="20" />
-              </CCol>
-              <CCol>
-                <div class="text-body-secondary">Pageviews</div>
-                <div class="fw-semibold text-truncate">78.706 Views (60%)</div>
-                <CProgress class="mt-2" color="warning" thin :precision="1" :value="60" />
-              </CCol>
-              <CCol>
-                <div class="text-body-secondary">New Users</div>
-                <div class="fw-semibold text-truncate">22.123 Users (80%)</div>
-                <CProgress class="mt-2" color="danger" thin :precision="1" :value="80" />
-              </CCol>
-              <CCol class="d-none d-xl-block">
-                <div class="text-body-secondary">Bounce Rate</div>
-                <div class="fw-semibold text-truncate">Average Rate (40.15%)</div>
-                <CProgress class="mt-2" :value="40" thin :precision="1" />
-              </CCol>
-            </CRow>
-          </CCardFooter>
         </CCard>
       </CCol>
     </CRow>
-    <WidgetsStatsD class="mb-4" />
+
+    <CRow class="mb-4">
+      <CCol :sm="6" :lg="3">
+        <CWidgetStatsA color="primary">
+          <template #value>
+            <span class="fs-4 fw-semibold">
+              {{ formatCurrency(incomeSummary.currentMonth.total) }}
+            </span>
+            <span v-if="incomeSummary.percentChange !== 0" class="fs-6 fw-normal ms-2" :class="incomeSummary.percentChange >= 0 ? 'text-success' : 'text-danger'">
+              {{ incomeSummary.percentChange >= 0 ? '+' : '' }}{{ incomeSummary.percentChange }}%
+            </span>
+          </template>
+          <template #title>Ingresos Este Mes</template>
+          <template #action>
+            <span class="text-white-50 small">{{ incomeSummary.currentMonth.count }} pagos verificados</span>
+          </template>
+        </CWidgetStatsA>
+      </CCol>
+      <CCol :sm="6" :lg="3">
+        <CWidgetStatsA color="info">
+          <template #value>
+            <span class="fs-4 fw-semibold">
+              {{ formatCurrency(incomeSummary.previousMonth.total) }}
+            </span>
+          </template>
+          <template #title>Ingresos Mes Anterior</template>
+          <template #action>
+            <span class="text-white-50 small">{{ incomeSummary.previousMonth.count }} pagos verificados</span>
+          </template>
+        </CWidgetStatsA>
+      </CCol>
+      <CCol :sm="6" :lg="3">
+        <CWidgetStatsA color="success">
+          <template #value>
+            <span class="fs-4 fw-semibold">
+              {{ totalIncomeByVenue }}
+            </span>
+          </template>
+          <template #title>Ingresos Totales</template>
+          <template #action>
+            <span class="text-white-50 small">{{ incomeByVenue.length }} venues con ingresos</span>
+          </template>
+        </CWidgetStatsA>
+      </CCol>
+      <CCol :sm="6" :lg="3">
+        <CWidgetStatsA color="warning">
+          <template #value>
+            <span class="fs-4 fw-semibold">
+              {{ totalAccommodationsNext12 }}
+            </span>
+          </template>
+          <template #title>Reservas Proximos 12M</template>
+          <template #action>
+            <span class="text-white-50 small">{{ accommodationsForecast.venues?.length || 0 }} venues</span>
+          </template>
+        </CWidgetStatsA>
+      </CCol>
+    </CRow>
+
     <CRow>
-      <CCol :md="12">
+      <CCol :md="6">
         <CCard class="mb-4">
-          <CCardHeader> Traffic &amp; Sales </CCardHeader>
+          <CCardHeader>Ingresos por Venue</CCardHeader>
           <CCardBody>
-            <CRow>
-              <CCol :sm="12" :lg="6">
-                <CRow>
-                  <CCol :xs="6">
-                    <div class="border-start border-start-4 border-start-info py-1 px-3 mb-3">
-                      <div class="text-body-secondary small">New Clients</div>
-                      <div class="fs-5 fw-semibold">9,123</div>
-                    </div>
-                  </CCol>
-                  <CCol :xs="6">
-                    <div class="border-start border-start-4 border-start-danger py-1 px-3 mb-3">
-                      <div class="text-body-secondary small">Recurring Clients</div>
-                      <div class="fs-5 fw-semibold">22,643</div>
-                    </div>
-                  </CCol>
-                </CRow>
-                <hr class="mt-0" />
-                <div
-                  v-for="item in progressGroupExample1"
-                  :key="item.title"
-                  class="progress-group mb-4"
-                >
-                  <div class="progress-group-prepend">
-                    <span class="text-body-secondary small">{{ item.title }}</span>
-                  </div>
-                  <div class="progress-group-bars">
-                    <CProgress thin color="info" :value="item.value1" />
-                    <CProgress thin color="danger" :value="item.value2" />
-                  </div>
-                </div>
-              </CCol>
-              <CCol :sm="12" :lg="6">
-                <CRow>
-                  <CCol :xs="6">
-                    <div class="border-start border-start-4 border-start-warning py-1 px-3 mb-3">
-                      <div class="text-body-secondary small">Pageviews</div>
-                      <div class="fs-5 fw-semibold">78,623</div>
-                    </div>
-                  </CCol>
-                  <CCol :xs="6">
-                    <div class="border-start border-start-4 border-start-success py-1 px-3 mb-3">
-                      <div class="text-body-secondary small">Organic</div>
-                      <div class="fs-5 fw-semibold">49,123</div>
-                    </div>
-                  </CCol>
-                </CRow>
-                <hr class="mt-0" />
-                <div v-for="item in progressGroupExample2" :key="item.title" class="progress-group">
-                  <div class="progress-group-header">
-                    <CIcon :icon="item.icon" class="me-2" size="lg" />
-                    <span class="title">{{ item.title }}</span>
-                    <span class="ms-auto fw-semibold">{{ item.value }}%</span>
-                  </div>
-                  <div class="progress-group-bars">
-                    <CProgress thin :value="item.value" color="warning" />
-                  </div>
-                </div>
-
-                <div class="mb-5"></div>
-
-                <div v-for="item in progressGroupExample3" :key="item.title" class="progress-group">
-                  <div class="progress-group-header">
-                    <CIcon :icon="item.icon" class="me-2" size="lg" />
-                    <span class="title">{{ item.title }}</span>
-                    <span class="ms-auto fw-semibold">
-                      {{ item.value }}
-                      <span class="text-body-secondary small">({{ item.percent }}%)</span>
-                    </span>
-                  </div>
-                  <div class="progress-group-bars">
-                    <CProgress thin :value="item.percent" color="success" />
-                  </div>
-                </div>
-              </CCol>
-            </CRow>
-            <br />
-            <CTable align="middle" class="mb-0 border" hover responsive>
-              <CTableHead class="text-nowrap">
+            <div v-if="incomeByVenue.length > 0" style="height: 300px;">
+              <Pie :data="pieChartData" :options="pieChartOptions" />
+            </div>
+            <div v-else class="text-center text-body-secondary py-5">
+              No hay datos de ingresos disponibles
+            </div>
+          </CCardBody>
+        </CCard>
+      </CCol>
+      <CCol :md="6">
+        <CCard class="mb-4">
+          <CCardHeader>Ingresos por Venue (Lista)</CCardHeader>
+          <CCardBody>
+            <CTable v-if="incomeByVenue.length > 0" small hover>
+              <CTableHead>
                 <CTableRow>
-                  <CTableHeaderCell class="bg-body-secondary text-center">
-                    <CIcon name="cil-people" />
-                  </CTableHeaderCell>
-                  <CTableHeaderCell class="bg-body-secondary"> User </CTableHeaderCell>
-                  <CTableHeaderCell class="bg-body-secondary text-center">
-                    Country
-                  </CTableHeaderCell>
-                  <CTableHeaderCell class="bg-body-secondary"> Usage </CTableHeaderCell>
-                  <CTableHeaderCell class="bg-body-secondary text-center">
-                    Payment Method
-                  </CTableHeaderCell>
-                  <CTableHeaderCell class="bg-body-secondary"> Activity </CTableHeaderCell>
+                  <CTableHeaderCell>Venue</CTableHeaderCell>
+                  <CTableHeaderCell class="text-end">Total</CTableHeaderCell>
+                  <CTableHeaderCell class="text-end">Pagos</CTableHeaderCell>
                 </CTableRow>
               </CTableHead>
               <CTableBody>
-                <CTableRow v-for="item in tableExample" :key="item.name">
-                  <CTableDataCell class="text-center">
-                    <CAvatar size="md" :src="item.avatar.src" :status="item.avatar.status" />
-                  </CTableDataCell>
-                  <CTableDataCell>
-                    <div>{{ item.user.name }}</div>
-                    <div class="small text-body-secondary text-nowrap">
-                      <span>{{ item.user.new ? 'New' : 'Recurring' }}</span> |
-                      {{ item.user.registered }}
-                    </div>
-                  </CTableDataCell>
-                  <CTableDataCell class="text-center">
-                    <CIcon size="xl" :name="item.country.flag" :title="item.country.name" />
-                  </CTableDataCell>
-                  <CTableDataCell>
-                    <div class="d-flex justify-content-between align-items-baseline">
-                      <div class="fw-semibold">{{ item.usage.value }}%</div>
-                      <div class="text-nowrap text-body-secondary small ms-3">
-                        {{ item.usage.period }}
-                      </div>
-                    </div>
-                    <CProgress thin :color="item.usage.color" :value="item.usage.value" />
-                  </CTableDataCell>
-                  <CTableDataCell class="text-center">
-                    <CIcon size="xl" :name="item.payment.icon" />
-                  </CTableDataCell>
-                  <CTableDataCell>
-                    <div class="small text-body-secondary">Last login</div>
-                    <div class="fw-semibold text-nowrap">
-                      {{ item.activity }}
-                    </div>
-                  </CTableDataCell>
+                <CTableRow v-for="item in incomeByVenue" :key="item.venue_id">
+                  <CTableDataCell>{{ item.venue_name }}</CTableDataCell>
+                  <CTableDataCell class="text-end">{{ formatCurrency(item.total) }}</CTableDataCell>
+                  <CTableDataCell class="text-end">{{ item.count }}</CTableDataCell>
                 </CTableRow>
               </CTableBody>
             </CTable>
+            <div v-else class="text-center text-body-secondary py-5">
+              No hay datos de ingresos disponibles
+            </div>
+          </CCardBody>
+        </CCard>
+      </CCol>
+    </CRow>
+
+    <CRow>
+      <CCol :md="6">
+        <CCard class="mb-4">
+          <CCardHeader>Acomodaciones - Últimos 12 Meses</CCardHeader>
+          <CCardBody>
+            <div v-if="accommodationsHistory.venues?.length > 0" style="height: 300px;">
+              <Bar :data="historyChartData" :options="barChartOptions" />
+            </div>
+            <div v-else class="text-center text-body-secondary py-5">
+              No hay datos de acomodaciones históricas
+            </div>
+          </CCardBody>
+        </CCard>
+      </CCol>
+      <CCol :md="6">
+        <CCard class="mb-4">
+          <CCardHeader>Acomodaciones - Próximos 12 Meses</CCardHeader>
+          <CCardBody>
+            <div v-if="accommodationsForecast.venues?.length > 0" style="height: 300px;">
+              <Bar :data="forecastChartData" :options="barChartOptions" />
+            </div>
+            <div v-else class="text-center text-body-secondary py-5">
+              No hay datos de acomodaciones futuras
+            </div>
           </CCardBody>
         </CCard>
       </CCol>
     </CRow>
   </div>
 </template>
+
+<script setup>
+import { ref, computed, onMounted, watch } from 'vue'
+import { Pie, Bar } from 'vue-chartjs'
+import {
+  Chart as ChartJS,
+  ArcElement,
+  CategoryScale,
+  LinearScale,
+  BarElement,
+  Title,
+  Tooltip,
+  Legend
+} from 'chart.js'
+import { useSettingsStore } from '@/stores/settings'
+import { useAuth } from '@/composables/useAuth'
+
+ChartJS.register(ArcElement, CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend)
+
+const settingsStore = useSettingsStore()
+const { user } = useAuth()
+
+const organizations = ref([])
+const selectedOrganizations = ref([])
+const orgSearch = ref('')
+const showOrgDropdown = ref(false)
+
+const incomeSummary = ref({
+  currentMonth: { total: 0, count: 0 },
+  previousMonth: { total: 0, count: 0 },
+  percentChange: 0
+})
+const incomeByVenue = ref([])
+const accommodationsHistory = ref({ months: [], venues: [] })
+const accommodationsForecast = ref({ months: [], venues: [] })
+
+const filteredOrganizations = computed(() => {
+  if (!orgSearch.value) {
+    return organizations.value.filter(o => !selectedOrganizations.value.find(s => s.id === o.id))
+  }
+  const q = orgSearch.value.toLowerCase()
+  return organizations.value.filter(o => 
+    o.name?.toLowerCase().includes(q) && 
+    !selectedOrganizations.value.find(s => s.id === o.id)
+  )
+})
+
+const totalIncomeByVenue = computed(() => {
+  const total = incomeByVenue.value.reduce((sum, item) => sum + Number(item.total || 0), 0)
+  return formatCurrency(total)
+})
+
+const totalAccommodationsNext12 = computed(() => {
+  if (!accommodationsForecast.value.venues) return 0
+  return accommodationsForecast.value.venues.reduce((sum, venue) => 
+    sum + venue.counts.reduce((s, c) => s + c, 0), 0)
+})
+
+const chartColors = [
+  '#36A2EB', '#FF6384', '#FFCE56', '#4BC0C0', '#9966FF',
+  '#FF9F40', '#C9CBCF', '#7BC225', '#E83E8C', '#17A2B8'
+]
+
+const pieChartData = computed(() => ({
+  labels: incomeByVenue.value.map(item => item.venue_name),
+  datasets: [{
+    data: incomeByVenue.value.map(item => item.total),
+    backgroundColor: chartColors.slice(0, incomeByVenue.value.length),
+    borderWidth: 1
+  }]
+}))
+
+const pieChartOptions = {
+  responsive: true,
+  maintainAspectRatio: false,
+  plugins: {
+    legend: { position: 'right' }
+  }
+}
+
+const historyChartData = computed(() => ({
+  labels: accommodationsHistory.value.months || [],
+  datasets: (accommodationsHistory.value.venues || []).map((venue, index) => ({
+    label: venue.venue_name,
+    data: venue.counts,
+    backgroundColor: chartColors[index % chartColors.length],
+    borderWidth: 1
+  }))
+}))
+
+const forecastChartData = computed(() => ({
+  labels: accommodationsForecast.value.months || [],
+  datasets: (accommodationsForecast.value.venues || []).map((venue, index) => ({
+    label: venue.venue_name,
+    data: venue.counts,
+    backgroundColor: chartColors[index % chartColors.length],
+    borderWidth: 1
+  }))
+}))
+
+const barChartOptions = {
+  responsive: true,
+  maintainAspectRatio: false,
+  scales: {
+    x: { stacked: true },
+    y: { stacked: true, beginAtZero: true }
+  },
+  plugins: {
+    legend: { position: 'top' }
+  }
+}
+
+function formatCurrency(amount) {
+  return new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', minimumFractionDigits: 0 }).format(amount || 0)
+}
+
+function onOrgSearchInput() {
+  showOrgDropdown.value = true
+}
+
+function hideOrgDropdownWithDelay() {
+  setTimeout(() => { showOrgDropdown.value = false }, 150)
+}
+
+function selectOrganization(org) {
+  selectedOrganizations.value.push(org)
+  orgSearch.value = ''
+  showOrgDropdown.value = false
+  loadAllAnalytics()
+}
+
+function removeOrganization(org) {
+  selectedOrganizations.value = selectedOrganizations.value.filter(o => o.id !== org.id)
+  loadAllAnalytics()
+}
+
+function clearAllOrganizations() {
+  selectedOrganizations.value = []
+  loadAllAnalytics()
+}
+
+function getAnalyticsParams() {
+  const viewAll = user.value?.is_super_admin ? settingsStore.godModeViewAll : false
+  const params = new URLSearchParams()
+  params.append('viewAll', viewAll.toString())
+  if (selectedOrganizations.value.length > 0) {
+    params.append('organizations', selectedOrganizations.value.map(o => o.id).join(','))
+  }
+  return params.toString()
+}
+
+async function loadOrganizations() {
+  try {
+    const viewAll = user.value?.is_super_admin ? settingsStore.godModeViewAll : false
+    const response = await fetch(`/api/organizations?viewAll=${viewAll}`, { credentials: 'include' })
+    if (response.ok) {
+      organizations.value = await response.json()
+    }
+  } catch (error) {
+    console.error('Error loading organizations:', error)
+  }
+}
+
+async function loadIncomeSummary() {
+  try {
+    const response = await fetch(`/api/analytics/income-summary?${getAnalyticsParams()}`, { credentials: 'include' })
+    if (response.ok) {
+      incomeSummary.value = await response.json()
+    }
+  } catch (error) {
+    console.error('Error loading income summary:', error)
+  }
+}
+
+async function loadIncomeByVenue() {
+  try {
+    const response = await fetch(`/api/analytics/income-by-venue?${getAnalyticsParams()}`, { credentials: 'include' })
+    if (response.ok) {
+      incomeByVenue.value = await response.json()
+    }
+  } catch (error) {
+    console.error('Error loading income by venue:', error)
+  }
+}
+
+async function loadAccommodationsHistory() {
+  try {
+    const response = await fetch(`/api/analytics/accommodations-history?${getAnalyticsParams()}`, { credentials: 'include' })
+    if (response.ok) {
+      accommodationsHistory.value = await response.json()
+    }
+  } catch (error) {
+    console.error('Error loading accommodations history:', error)
+  }
+}
+
+async function loadAccommodationsForecast() {
+  try {
+    const response = await fetch(`/api/analytics/accommodations-forecast?${getAnalyticsParams()}`, { credentials: 'include' })
+    if (response.ok) {
+      accommodationsForecast.value = await response.json()
+    }
+  } catch (error) {
+    console.error('Error loading accommodations forecast:', error)
+  }
+}
+
+async function loadAllAnalytics() {
+  await Promise.all([
+    loadIncomeSummary(),
+    loadIncomeByVenue(),
+    loadAccommodationsHistory(),
+    loadAccommodationsForecast()
+  ])
+}
+
+watch(() => settingsStore.godModeViewAll, () => {
+  loadOrganizations()
+  loadAllAnalytics()
+})
+
+onMounted(async () => {
+  await loadOrganizations()
+  await loadAllAnalytics()
+})
+</script>

@@ -184,7 +184,7 @@ model sessions {
 
 model incomes {
   id              String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  payment_id      String?  @db.Uuid
+  payment_id      String?  @unique @db.Uuid
   organization_id String?  @db.Uuid
   venue_id        String?  @db.Uuid
   amount          Decimal? @db.Decimal
