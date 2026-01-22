@@ -1,15 +1,22 @@
 <script setup>
 import { onMounted, ref } from 'vue'
-import { RouterLink } from 'vue-router'
+import { RouterLink, useRouter } from 'vue-router'
 import { useColorModes } from '@coreui/vue'
 
 import AppBreadcrumb from '@/components/AppBreadcrumb.vue'
 import AppHeaderDropdownAccnt from '@/components/AppHeaderDropdownAccnt.vue'
 import { useSidebarStore } from '@/stores/sidebar.js'
+import { useSettingsStore } from '@/stores/settings.js'
 
 const headerClassNames = ref('mb-4 p-0')
 const { colorMode, setColorMode } = useColorModes('coreui-free-vue-admin-template-theme')
 const sidebar = useSidebarStore()
+const settings = useSettingsStore()
+const router = useRouter()
+
+function createNewAccommodation() {
+  router.push('/business/accommodations/new')
+}
 
 onMounted(() => {
   document.addEventListener('scroll', () => {
@@ -40,6 +47,14 @@ onMounted(() => {
         </CNavItem>
       </CHeaderNav>
       <CHeaderNav class="ms-auto">
+        <CNavItem>
+          <CButton color="success" size="sm" class="d-flex align-items-center gap-1" @click="createNewAccommodation">
+            <CIcon icon="cil-plus" />
+            <span class="d-none d-lg-inline">Nueva Reserva</span>
+          </CButton>
+        </CNavItem>
+      </CHeaderNav>
+      <CHeaderNav v-if="settings.developmentMode">
         <CNavItem>
           <CNavLink href="#">
             <CIcon icon="cil-bell" size="lg" />
