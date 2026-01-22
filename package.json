@@ -20,6 +20,7 @@
     "make-admin": "node server/scripts/make-admin.js"
   },
   "dependencies": {
+    "@ai-sdk/anthropic": "^3.0.23",
     "@coreui/chartjs": "^4.1.0",
     "@coreui/coreui": "^5.3.1",
     "@coreui/icons": "^3.0.1",
@@ -45,6 +46,7 @@
     "@uppy/core": "^5.2.0",
     "@uppy/dashboard": "^5.1.0",
     "@uppy/react": "^5.1.1",
+    "ai": "^6.0.48",
     "chart.js": "^4.5.1",
     "connect-pg-simple": "^10.0.0",
     "cors": "^2.8.5",

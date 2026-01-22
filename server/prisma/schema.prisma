@@ -19,6 +19,7 @@ model accommodations {
   plan_id          String?   @db.Uuid
   calculated_price Decimal?  @db.Decimal
   agreed_price     Decimal?  @db.Decimal
+  waze_link        String?   @db.Text
 }
 
 model payments {

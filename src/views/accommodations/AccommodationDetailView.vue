@@ -170,6 +170,8 @@
           <p class="text-muted">Cargando...</p>
         </CCardBody>
       </CCard>
+      
+      <MessageSuggestions v-if="accommodation" :accommodation="accommodation" />
     </CCol>
   </CRow>
 
@@ -269,6 +271,7 @@
 import { ref, computed, onMounted } from 'vue'
 import { useRoute } from 'vue-router'
 import { CIcon } from '@coreui/icons-vue'
+import MessageSuggestions from '@/components/accommodations/MessageSuggestions.vue'
 
 import { useRouter } from 'vue-router'
 

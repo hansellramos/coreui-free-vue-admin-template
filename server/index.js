@@ -724,7 +724,7 @@ async function startServer() {
 
   app.post('/api/accommodations', isAuthenticated, async (req, res) => {
     try {
-      const { venue, date, time, duration, customer, adults, children, plan_id, calculated_price, agreed_price } = req.body;
+      const { venue, date, time, duration, customer, adults, children, plan_id, calculated_price, agreed_price, waze_link } = req.body;
       const parseFloatOrNull = (val) => val === '' || val === null || val === undefined ? null : parseFloat(val);
       
       const data = {
@@ -734,7 +734,8 @@ async function startServer() {
         children: parseInt(children, 10) || 0,
         plan_id: plan_id || null,
         calculated_price: parseFloatOrNull(calculated_price),
-        agreed_price: parseFloatOrNull(agreed_price)
+        agreed_price: parseFloatOrNull(agreed_price),
+        waze_link: waze_link || null
       };
       
       if (date && typeof date === 'string' && !date.includes('T')) {
@@ -758,7 +759,7 @@ async function startServer() {
 
   app.put('/api/accommodations/:id', isAuthenticated, async (req, res) => {
     try {
-      const { venue, date, time, duration, customer, adults, children, plan_id, calculated_price, agreed_price } = req.body;
+      const { venue, date, time, duration, customer, adults, children, plan_id, calculated_price, agreed_price, waze_link } = req.body;
       const parseFloatOrNull = (val) => val === '' || val === null || val === undefined ? null : parseFloat(val);
       
       const data = {
@@ -768,7 +769,8 @@ async function startServer() {
         children: parseInt(children, 10) || 0,
         plan_id: plan_id || null,
         calculated_price: parseFloatOrNull(calculated_price),
-        agreed_price: parseFloatOrNull(agreed_price)
+        agreed_price: parseFloatOrNull(agreed_price),
+        waze_link: waze_link || null
       };
       
       if (date && typeof date === 'string' && !date.includes('T')) {
@@ -2702,6 +2704,128 @@ async function startServer() {
     } catch (error) {
       console.error('Remove subscription user error:', error);
       res.status(500).json({ error: error.message });
+    }
+  });
+
+  // AI-powered receipt data extraction
+  app.post('/api/payments/extract-receipt', isAuthenticated, async (req, res) => {
+    try {
+      const { imageUrl } = req.body;
+      
+      if (!imageUrl) {
+        return res.status(400).json({ error: 'Se requiere la URL de la imagen' });
+      }
+      
+      const apiKey = process.env.ANTHROPIC_API_KEY;
+      if (!apiKey) {
+        return res.status(500).json({ error: 'ANTHROPIC_API_KEY no está configurada' });
+      }
+      
+      // Fetch the image from object storage
+      let imageBuffer;
+      let contentType = 'image/jpeg';
+      
+      if (imageUrl.startsWith('/objects/')) {
+        // Internal object storage path - fetch from sidecar
+        const objectPath = imageUrl.replace('/objects/', '');
+        const pathParts = objectPath.split('/');
+        const objectType = pathParts[0];
+        const objectId = pathParts[1];
+        
+        const privateObjectDir = process.env.PRIVATE_OBJECT_DIR || '';
+        const fullPath = `${privateObjectDir}/${objectType}/${objectId}`;
+        const pathSegments = fullPath.startsWith('/') ? fullPath.slice(1).split('/') : fullPath.split('/');
+        const bucketName = pathSegments[0];
+        const objectName = pathSegments.slice(1).join('/');
+        
+        const signedUrlResponse = await fetch(`${REPLIT_SIDECAR_ENDPOINT}/object-storage/signed-object-url`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            bucket_name: bucketName,
+            object_name: objectName,
+            method: 'GET',
+            expires_at: new Date(Date.now() + 300 * 1000).toISOString(),
+          }),
+        });
+        
+        if (!signedUrlResponse.ok) {
+          throw new Error('No se pudo obtener la imagen del almacenamiento');
+        }
+        
+        const { signed_url } = await signedUrlResponse.json();
+        const imageResponse = await fetch(signed_url);
+        if (!imageResponse.ok) {
+          throw new Error('No se pudo descargar la imagen');
+        }
+        
+        imageBuffer = Buffer.from(await imageResponse.arrayBuffer());
+        contentType = imageResponse.headers.get('content-type') || 'image/jpeg';
+      } else {
+        // External URL
+        const imageResponse = await fetch(imageUrl);
+        if (!imageResponse.ok) {
+          throw new Error('No se pudo descargar la imagen');
+        }
+        imageBuffer = Buffer.from(await imageResponse.arrayBuffer());
+        contentType = imageResponse.headers.get('content-type') || 'image/jpeg';
+      }
+      
+      // Convert to base64
+      const base64Image = imageBuffer.toString('base64');
+      
+      // Map content type to Anthropic's accepted media types
+      let mediaType = 'image/jpeg';
+      if (contentType.includes('png')) mediaType = 'image/png';
+      else if (contentType.includes('gif')) mediaType = 'image/gif';
+      else if (contentType.includes('webp')) mediaType = 'image/webp';
+      
+      // Use Vercel AI SDK with Anthropic
+      const { generateObject } = await import('ai');
+      const { anthropic } = await import('@ai-sdk/anthropic');
+      const { z } = await import('zod');
+      
+      const result = await generateObject({
+        model: anthropic('claude-sonnet-4-20250514'),
+        messages: [
+          {
+            role: 'user',
+            content: [
+              {
+                type: 'image',
+                image: `data:${mediaType};base64,${base64Image}`,
+              },
+              {
+                type: 'text',
+                text: `Analiza esta imagen de un comprobante de pago o transferencia bancaria y extrae la siguiente información:
+                
+1. Monto/valor de la transferencia (solo el número, sin símbolos de moneda)
+2. Número de referencia o transacción (puede estar etiquetado como "Referencia", "No. Transacción", "ID", "Comprobante", etc.)
+3. Fecha de la transferencia (en formato YYYY-MM-DD si es posible)
+
+Si algún dato no está visible o no se puede determinar, devuelve null para ese campo.
+Presta especial atención a comprobantes de Nequi, Daviplata, Bancolombia, y otras entidades colombianas.`
+              }
+            ]
+          }
+        ],
+        schema: z.object({
+          amount: z.number().nullable().describe('Monto de la transferencia sin símbolos de moneda'),
+          reference: z.string().nullable().describe('Número de referencia o transacción'),
+          payment_date: z.string().nullable().describe('Fecha de la transferencia en formato YYYY-MM-DD')
+        })
+      });
+      
+      res.json({
+        success: true,
+        data: result.object
+      });
+    } catch (error) {
+      console.error('Error extracting receipt data:', error);
+      res.status(500).json({ 
+        error: 'Error al procesar el comprobante',
+        details: error.message 
+      });
     }
   });
 

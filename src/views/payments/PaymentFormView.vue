@@ -141,6 +141,20 @@
                     <CIcon name="cil-x" />
                   </CButton>
                 </div>
+                <div v-if="form.receipt_url" class="mt-2">
+                  <CButton 
+                    color="info" 
+                    size="sm"
+                    :disabled="extractingData"
+                    @click="extractReceiptData"
+                  >
+                    <CSpinner v-if="extractingData" size="sm" class="me-2" />
+                    <CIcon v-else name="cil-lightbulb" class="me-2" />
+                    {{ extractingData ? 'Leyendo comprobante...' : 'Leer con IA' }}
+                  </CButton>
+                  <span v-if="extractionError" class="text-danger small ms-2">{{ extractionError }}</span>
+                  <span v-if="extractionSuccess" class="text-success small ms-2">Datos extraídos correctamente</span>
+                </div>
               </CCol>
             </CRow>
             <CRow v-if="isEditing && existingPayment" class="mb-3">
@@ -225,6 +239,9 @@ const isDragging = ref(false)
 const uploading = ref(false)
 const uploadError = ref('')
 const imageLoadError = ref(false)
+const extractingData = ref(false)
+const extractionError = ref('')
+const extractionSuccess = ref(false)
 
 const form = ref({
   type: '',
@@ -388,6 +405,50 @@ const uploadFile = async (file) => {
     uploadError.value = error.message || 'Error al subir imagen'
   } finally {
     uploading.value = false
+  }
+}
+
+const extractReceiptData = async () => {
+  if (!form.value.receipt_url) return
+  
+  extractingData.value = true
+  extractionError.value = ''
+  extractionSuccess.value = false
+  
+  try {
+    const response = await fetch('/api/payments/extract-receipt', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ imageUrl: form.value.receipt_url })
+    })
+    
+    const result = await response.json()
+    
+    if (!response.ok) {
+      throw new Error(result.error || 'Error al procesar comprobante')
+    }
+    
+    if (result.success && result.data) {
+      const { amount, reference, payment_date } = result.data
+      
+      if (amount !== null) {
+        form.value.amount = amount
+      }
+      if (reference) {
+        form.value.reference = reference
+      }
+      if (payment_date) {
+        form.value.payment_date = payment_date
+      }
+      
+      extractionSuccess.value = true
+      setTimeout(() => { extractionSuccess.value = false }, 3000)
+    }
+  } catch (error) {
+    console.error('Extraction error:', error)
+    extractionError.value = error.message || 'Error al leer el comprobante'
+  } finally {
+    extractingData.value = false
   }
 }
 
