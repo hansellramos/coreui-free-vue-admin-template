@@ -49,9 +49,14 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, watch } from 'vue'
 import { RouterLink, useRouter } from 'vue-router'
 import { fetchVenues, deleteVenue } from '@/services/venueService'
+import { useSettingsStore } from '@/stores/settings'
+import { useAuth } from '@/composables/useAuth'
+
+const settingsStore = useSettingsStore()
+const { user } = useAuth()
 
 const venues = ref([])
 const allVenues = ref([])
@@ -60,13 +65,22 @@ const filteredNames = ref([])
 const selectedNames = ref([])
 const router = useRouter()
 
-async function loadVenues(names = []) {
-  venues.value = await fetchVenues(names)
+async function loadVenues() {
+  const viewAll = user.value?.is_super_admin && settingsStore.godModeViewAll
+  const allData = await fetchVenues({ viewAll })
+  allVenues.value = allData
+  if (selectedNames.value.length > 0) {
+    venues.value = allData.filter(v => selectedNames.value.includes(v.name))
+  } else {
+    venues.value = allData
+  }
 }
 
-async function loadAllVenues() {
-  allVenues.value = await fetchVenues()
-}
+watch(() => settingsStore.godModeViewAll, () => {
+  if (user.value?.is_super_admin) {
+    loadVenues()
+  }
+})
 
 function onNameInput() {
   if (!nameInput.value) { filteredNames.value = []; return }
@@ -80,21 +94,25 @@ function selectName(name) {
   selectedNames.value.push(name)
   nameInput.value = ''
   filteredNames.value = []
-  loadVenues(selectedNames.value)
+  // Filter is done client-side from allVenues
+  venues.value = allVenues.value.filter(v => selectedNames.value.includes(v.name))
 }
 
 function removeName(name) {
   selectedNames.value = selectedNames.value.filter(n => n !== name)
-  loadVenues(selectedNames.value)
+  if (selectedNames.value.length > 0) {
+    venues.value = allVenues.value.filter(v => selectedNames.value.includes(v.name))
+  } else {
+    venues.value = allVenues.value
+  }
 }
 
 function clearAllNames() {
   selectedNames.value = []
-  loadVenues()
+  venues.value = allVenues.value
 }
 
 onMounted(async () => {
-  await loadAllVenues()
   await loadVenues()
 })
 
@@ -113,7 +131,7 @@ function viewUpcoming(venue) {
 async function onDelete(venue) {
   if (confirm(`Are you sure you want to delete the venue "${venue.name}"?`)) {
     await deleteVenue(venue.id)
-    await loadVenues(selectedNames.value)
+    await loadVenues()
   }
 }
 </script>

@@ -19,6 +19,11 @@
 <script setup>
 import { ref, computed, onMounted, watch } from 'vue'
 import { fetchVenues } from '@/services/venueService'
+import { useSettingsStore } from '@/stores/settings'
+import { useAuth } from '@/composables/useAuth'
+
+const settingsStore = useSettingsStore()
+const { user } = useAuth()
 
 const props = defineProps({
   modelValue: String,
@@ -50,8 +55,13 @@ function hideDropdownWithDelay() {
   setTimeout(() => { showDropdown.value = false }, 150)
 }
 
+async function loadVenues() {
+  const viewAll = user.value?.is_super_admin && settingsStore.godModeViewAll
+  venues.value = await fetchVenues({ viewAll })
+}
+
 onMounted(async () => {
-  venues.value = await fetchVenues()
+  await loadVenues()
   if (props.modelValue) {
     const v = venues.value.find(v => v.id === props.modelValue)
     if (v) {

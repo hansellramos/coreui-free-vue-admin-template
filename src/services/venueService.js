@@ -1,7 +1,12 @@
 const API_BASE = '/api';
 
-export async function fetchVenues() {
-  const response = await fetch(`${API_BASE}/venues`, {
+export async function fetchVenues(options = {}) {
+  const params = new URLSearchParams();
+  if (options.viewAll) {
+    params.append('viewAll', 'true');
+  }
+  const url = params.toString() ? `${API_BASE}/venues?${params}` : `${API_BASE}/venues`;
+  const response = await fetch(url, {
     credentials: 'include'
   });
   if (!response.ok) {

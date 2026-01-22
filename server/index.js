@@ -213,11 +213,31 @@ async function startServer() {
 
   app.get('/api/venues', async (req, res) => {
     try {
-      const accessibleOrgIds = await getAccessibleOrganizationIds(req.userPermissions);
+      const viewAll = req.query.viewAll === 'true';
+      let whereClause = {};
       
-      const whereClause = accessibleOrgIds !== null
-        ? { organization: { in: accessibleOrgIds } }
-        : {};
+      if (req.user) {
+        const userId = String(req.user.claims?.sub);
+        const currentUser = await prisma.users.findUnique({ where: { id: userId } });
+        
+        if (viewAll && currentUser?.is_super_admin) {
+          // Super admin with viewAll=true: show all venues
+          whereClause = {};
+        } else if (currentUser?.is_super_admin) {
+          // Super admin with viewAll=false: show venues from assigned organizations only
+          const userOrgs = await prisma.user_organizations.findMany({
+            where: { user_id: userId }
+          });
+          const orgIds = userOrgs.map(uo => uo.organization_id);
+          whereClause = orgIds.length > 0 ? { organization: { in: orgIds } } : { organization: { in: ['none'] } };
+        } else {
+          // Non-super admin: use permission-based access
+          const accessibleOrgIds = await getAccessibleOrganizationIds(req.userPermissions);
+          whereClause = accessibleOrgIds !== null ? { organization: { in: accessibleOrgIds } } : {};
+        }
+      } else {
+        whereClause = { organization: { in: ['none'] } };
+      }
       
       const venues = await prisma.venues.findMany({
         where: whereClause,
