@@ -49,7 +49,8 @@ onMounted(() => {
       <CHeaderNav class="ms-auto">
         <CNavItem>
           <CButton 
-              :color="colorMode === 'dark' ? 'light' : 'success'" 
+              color="success" 
+              :variant="colorMode === 'dark' ? 'outline' : undefined"
               size="sm" 
               class="d-flex align-items-center gap-1" 
               @click="createNewAccommodation"
