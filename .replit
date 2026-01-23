@@ -59,9 +59,8 @@ localPort = 5001
 externalPort = 3001
 
 [deployment]
-deploymentTarget = "autoscale"
+deploymentTarget = "gce"
 build = ["npm", "run", "build"]
-publicDir = "dist"
 run = ["node", "server/index.js"]
 
 [userenv]
