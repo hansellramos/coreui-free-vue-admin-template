@@ -82,23 +82,21 @@
                     </div>
                     <div v-else class="text-muted small">Sin precio definido</div>
                   </div>
-                  <div class="col-12 col-md-2">
+                  <div class="col-12 col-md-2 mt-2 mt-md-0">
                     <div class="d-flex flex-wrap gap-1 justify-content-start justify-content-md-end">
                       <a 
                         v-if="item.customer_data?.whatsapp" 
                         :href="'https://wa.me/57' + item.customer_data.whatsapp" 
                         target="_blank" 
-                        class="btn btn-sm btn-success"
-                        title="WhatsApp"
+                        :class="['btn', 'btn-sm', colorMode === 'dark' ? 'btn-outline-success' : 'btn-success', colorMode !== 'dark' ? 'text-white' : '']"
                       >
-                        <i class="cib-whatsapp"></i>
+                        <i class="cib-whatsapp me-1"></i>WhatsApp
                       </a>
                       <router-link 
                         :to="'/business/accommodations/' + item.id" 
-                        class="btn btn-sm btn-secondary"
-                        title="Ver detalles"
+                        :class="['btn', 'btn-sm', colorMode === 'dark' ? 'btn-outline-secondary' : 'btn-secondary']"
                       >
-                        <i class="cil-zoom"></i>
+                        <i class="cil-zoom me-1"></i>Detalles
                       </router-link>
                     </div>
                   </div>
@@ -115,9 +113,11 @@
 <script setup>
 import { ref, onMounted, computed, watch } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
-import { CCard, CCardBody, CInputGroup, CFormInput, CButton } from '@coreui/vue'
+import { CCard, CCardBody, CInputGroup, CFormInput, CButton, useColorModes } from '@coreui/vue'
 import { useSettingsStore } from '@/stores/settings'
 import { useAuth } from '@/composables/useAuth'
+
+const { colorMode } = useColorModes('coreui-free-vue-admin-template-theme')
 
 const router = useRouter()
 const route = useRoute()
@@ -406,9 +406,10 @@ watch(
 }
 
 .event-card {
-  border-left: 4px solid #4285f4;
+  border-left: 4px solid var(--cui-primary);
   box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
   transition: transform 0.2s;
+  background-color: var(--cui-card-bg);
 }
 
 .event-card:hover {
@@ -419,7 +420,7 @@ watch(
 .event-time {
   font-weight: 600;
   font-size: 1.1rem;
-  color: #4285f4;
+  color: var(--cui-primary);
 }
 
 .event-customer {
@@ -428,7 +429,7 @@ watch(
 }
 
 .financial-summary {
-  background-color: #f8f9fa;
+  background-color: var(--cui-tertiary-bg);
   padding: 8px 12px;
   border-radius: 8px;
   font-size: 0.9rem;
@@ -445,7 +446,7 @@ watch(
 }
 
 .financial-label {
-  color: #6c757d;
+  color: var(--cui-secondary-color);
 }
 
 .financial-value {

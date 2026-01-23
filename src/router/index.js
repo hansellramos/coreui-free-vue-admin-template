@@ -63,7 +63,7 @@ const routes = [
       },
       {
         path: '/next',
-        name: 'Next',
+        name: 'Próximos',
         component: () => import('@/views/pages/Next.vue'),
       },
       {
