@@ -1409,6 +1409,109 @@ async function startServer() {
     }
   });
 
+  // Weather cache to avoid excessive API calls (cache for 1 hour)
+  const weatherCache = new Map();
+  const WEATHER_CACHE_TTL = 60 * 60 * 1000; // 1 hour
+
+  // Weather code to icon mapping for Open-Meteo
+  const weatherCodeToIcon = {
+    0: { icon: 'cil-sun', description: 'Despejado' },
+    1: { icon: 'cil-sun', description: 'Mayormente despejado' },
+    2: { icon: 'cil-cloudy', description: 'Parcialmente nublado' },
+    3: { icon: 'cil-cloudy', description: 'Nublado' },
+    45: { icon: 'cil-fog', description: 'Niebla' },
+    48: { icon: 'cil-fog', description: 'Niebla con escarcha' },
+    51: { icon: 'cil-rain', description: 'Llovizna ligera' },
+    53: { icon: 'cil-rain', description: 'Llovizna moderada' },
+    55: { icon: 'cil-rain', description: 'Llovizna intensa' },
+    61: { icon: 'cil-rain', description: 'Lluvia ligera' },
+    63: { icon: 'cil-rain', description: 'Lluvia moderada' },
+    65: { icon: 'cil-rain', description: 'Lluvia intensa' },
+    71: { icon: 'cil-snow', description: 'Nieve ligera' },
+    73: { icon: 'cil-snow', description: 'Nieve moderada' },
+    75: { icon: 'cil-snow', description: 'Nieve intensa' },
+    80: { icon: 'cil-rain', description: 'Chubascos ligeros' },
+    81: { icon: 'cil-rain', description: 'Chubascos moderados' },
+    82: { icon: 'cil-rain', description: 'Chubascos intensos' },
+    95: { icon: 'cil-bolt', description: 'Tormenta' },
+    96: { icon: 'cil-bolt', description: 'Tormenta con granizo' },
+    99: { icon: 'cil-bolt', description: 'Tormenta fuerte con granizo' }
+  };
+
+  app.get('/api/weather', async (req, res) => {
+    try {
+      const { lat, lon, date } = req.query;
+      
+      if (!lat || !lon) {
+        return res.status(400).json({ error: 'Latitude and longitude are required' });
+      }
+
+      const latitude = parseFloat(lat);
+      const longitude = parseFloat(lon);
+      
+      if (isNaN(latitude) || isNaN(longitude)) {
+        return res.status(400).json({ error: 'Invalid coordinates' });
+      }
+
+      // Create cache key based on coordinates (rounded to 2 decimals) and date
+      const cacheKey = `${latitude.toFixed(2)}_${longitude.toFixed(2)}_${date || 'current'}`;
+      const cached = weatherCache.get(cacheKey);
+      
+      if (cached && (Date.now() - cached.timestamp) < WEATHER_CACHE_TTL) {
+        return res.json(cached.data);
+      }
+
+      // Call Open-Meteo API
+      const forecastDays = date ? 16 : 7;
+      const url = `https://api.open-meteo.com/v1/forecast?latitude=${latitude}&longitude=${longitude}&daily=temperature_2m_max,temperature_2m_min,weather_code&timezone=auto&forecast_days=${forecastDays}`;
+      
+      const response = await fetch(url);
+      if (!response.ok) {
+        throw new Error('Failed to fetch weather data');
+      }
+      
+      const data = await response.json();
+      
+      // Process weather data
+      const forecasts = [];
+      if (data.daily && data.daily.time) {
+        for (let i = 0; i < data.daily.time.length; i++) {
+          const weatherCode = data.daily.weather_code[i];
+          const weatherInfo = weatherCodeToIcon[weatherCode] || { icon: 'cil-cloudy', description: 'Desconocido' };
+          
+          forecasts.push({
+            date: data.daily.time[i],
+            temp_max: Math.round(data.daily.temperature_2m_max[i]),
+            temp_min: Math.round(data.daily.temperature_2m_min[i]),
+            icon: weatherInfo.icon,
+            description: weatherInfo.description
+          });
+        }
+      }
+
+      // If specific date requested, find that date's forecast
+      let result;
+      if (date) {
+        const targetDate = date.split('T')[0];
+        const dayForecast = forecasts.find(f => f.date === targetDate);
+        result = dayForecast || null;
+      } else {
+        result = { forecasts };
+      }
+
+      // Cache the result
+      weatherCache.set(cacheKey, {
+        data: result,
+        timestamp: Date.now()
+      });
+
+      res.json(result);
+    } catch (error) {
+      console.error('Weather API error:', error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
   app.get('/api/users', isAuthenticated, async (req, res) => {
     try {
       const users = await prisma.users.findMany({

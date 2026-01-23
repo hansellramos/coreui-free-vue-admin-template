@@ -39,7 +39,6 @@
     <div v-for="(groupedItems, date) in groupedAccommodations" :key="date" class="mb-4">
       <div class="day-header d-flex align-items-center mb-2">
         <div class="day-title">{{ formatDate(date) }}</div>
-        <div class="weather ms-auto"><i class="cil-sun"></i> 25°</div>
       </div>
       
       <div class="event-column">
@@ -53,8 +52,16 @@
                     <div class="event-duration badge bg-info">{{ formatDurationHuman(item.duration) }}</div>
                   </div>
                   <div class="col-12 col-md-5">
-                    <div class="venue-name">
-                      <h5 class="mb-1">{{ item.venue_data?.name || 'Sin cabaña' }}</h5>
+                    <div class="venue-name d-flex align-items-center gap-2">
+                      <h5 class="mb-0">{{ item.venue_data?.name || 'Sin cabaña' }}</h5>
+                      <span 
+                        v-if="getWeatherForAccommodation(item)" 
+                        class="weather-badge"
+                        :title="getWeatherForAccommodation(item)?.description"
+                      >
+                        <i :class="getWeatherForAccommodation(item)?.icon"></i>
+                        {{ getWeatherForAccommodation(item)?.temp_max }}°
+                      </span>
                     </div>
                     <div class="event-customer text-muted">
                       Cliente: {{ item.customer_data?.fullname || 'N/A' }}
@@ -129,6 +136,7 @@ const allVenues = ref([])
 const venueSearch = ref('')
 const selectedVenues = ref([])
 const filteredVenues = ref([])
+const weatherData = ref({})
 
 const fetchVenues = async () => {
   try {
@@ -165,6 +173,51 @@ const fetchAccommodations = async () => {
   } catch (error) {
     console.error('Error fetching accommodations:', error)
   }
+}
+
+const fetchWeatherForAccommodations = async () => {
+  const uniqueRequests = new Map()
+  
+  for (const acc of accommodations.value) {
+    const venue = acc.venue_data
+    if (venue?.latitude && venue?.longitude && acc.date) {
+      const key = `${venue.id}_${acc.date}`
+      if (!uniqueRequests.has(key)) {
+        uniqueRequests.set(key, {
+          venueId: venue.id,
+          lat: venue.latitude,
+          lon: venue.longitude,
+          date: acc.date
+        })
+      }
+    }
+  }
+  
+  for (const [key, req] of uniqueRequests) {
+    if (weatherData.value[key]) continue
+    
+    try {
+      const response = await fetch(`/api/weather?lat=${req.lat}&lon=${req.lon}&date=${req.date}`, { 
+        credentials: 'include' 
+      })
+      if (response.ok) {
+        const data = await response.json()
+        if (data) {
+          weatherData.value[key] = data
+        }
+      }
+    } catch (error) {
+      console.error('Error fetching weather:', error)
+    }
+  }
+}
+
+const getWeatherForAccommodation = (item) => {
+  if (!item.venue_data?.latitude || !item.venue_data?.longitude || !item.date) {
+    return null
+  }
+  const key = `${item.venue_data.id}_${item.date}`
+  return weatherData.value[key] || null
 }
 
 const onVenueSearchInput = () => {
@@ -308,6 +361,7 @@ onMounted(async () => {
   await loadVenuesFromUrl()
   if (selectedVenues.value.length === 0) {
     await fetchAccommodations()
+    await fetchWeatherForAccommodations()
   }
 })
 
@@ -317,9 +371,14 @@ watch(
     if (!newVenues && selectedVenues.value.length > 0) {
       selectedVenues.value = []
       await fetchAccommodations()
+      await fetchWeatherForAccommodations()
     }
   }
 )
+
+watch(accommodations, async () => {
+  await fetchWeatherForAccommodations()
+})
 </script>
 
 <style scoped>
@@ -451,5 +510,22 @@ watch(
 
 .financial-value {
   font-weight: 500;
+}
+
+.weather-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 8px;
+  border-radius: 12px;
+  background-color: var(--cui-tertiary-bg);
+  color: var(--cui-body-color);
+  font-size: 0.85rem;
+  font-weight: 500;
+  cursor: default;
+}
+
+.weather-badge i {
+  font-size: 1rem;
 }
 </style>
