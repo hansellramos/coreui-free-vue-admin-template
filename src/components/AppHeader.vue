@@ -52,7 +52,7 @@ onMounted(() => {
               color="success" 
               :variant="colorMode === 'dark' ? 'outline' : undefined"
               size="sm" 
-              class="d-flex align-items-center gap-1" 
+              :class="['d-flex', 'align-items-center', 'gap-1', colorMode !== 'dark' ? 'text-white' : '']" 
               @click="createNewAccommodation"
             >
               <CIcon icon="cil-plus" />
