@@ -120,7 +120,8 @@
 <script setup>
 import { ref, onMounted, computed, watch } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
-import { CCard, CCardBody, CInputGroup, CFormInput, CButton, useColorModes, CIcon } from '@coreui/vue'
+import { CCard, CCardBody, CInputGroup, CFormInput, CButton, useColorModes } from '@coreui/vue'
+import { CIcon } from '@coreui/icons-vue'
 import { useSettingsStore } from '@/stores/settings'
 import { useAuth } from '@/composables/useAuth'
 
