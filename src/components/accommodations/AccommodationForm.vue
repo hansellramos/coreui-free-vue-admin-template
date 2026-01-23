@@ -30,18 +30,18 @@
         <CFormLabel for="time">Hora</CFormLabel>
         <CFormInput id="time" v-model="form.time" type="time" required @focus="showTimeOptions = true" @blur="hideTimeOptionsWithDelay" />
         <div v-if="showTimeOptions" class="d-flex gap-2 flex-wrap mt-2">
-          <CButton v-for="t in timeOptions" :key="t" size="sm" color="secondary" variant="outline" @mousedown.prevent="selectTime(t)">{{ t }}</CButton>
+          <CButton v-for="t in timeOptions" :key="t" size="sm" color="secondary" variant="outline" @mousedown.prevent="selectTime(t)" @touchstart.prevent="selectTime(t)">{{ t }}</CButton>
         </div>
       </div>
       <div class="mb-3 position-relative">
         <CFormLabel for="duration">Duración</CFormLabel>
         <div class="d-flex align-items-center gap-2">
           <CFormInput id="duration" v-model.number="durationHuman" type="text" required @focus="showDurationOptions = true" @blur="hideDurationOptionsWithDelay" readonly />
-          <CButton size="sm" color="secondary" variant="outline" @mousedown.prevent="addDay">+1D</CButton>
-          <CButton size="sm" color="secondary" variant="outline" @mousedown.prevent="removeDay">-1D</CButton>
+          <CButton size="sm" color="secondary" variant="outline" @mousedown.prevent="addDay" @touchstart.prevent="addDay">+1D</CButton>
+          <CButton size="sm" color="secondary" variant="outline" @mousedown.prevent="removeDay" @touchstart.prevent="removeDay">-1D</CButton>
         </div>
         <div v-if="showDurationOptions" class="d-flex gap-2 flex-wrap mt-2">
-          <CButton v-for="d in durationOptions" :key="d.label" size="sm" color="secondary" variant="outline" @mousedown.prevent="selectDuration(d.seconds)">{{ d.label }}</CButton>
+          <CButton v-for="d in durationOptions" :key="d.label" size="sm" color="secondary" variant="outline" @mousedown.prevent="selectDuration(d.seconds)" @touchstart.prevent="selectDuration(d.seconds)">{{ d.label }}</CButton>
         </div>
       </div>
       <div class="mb-3">
