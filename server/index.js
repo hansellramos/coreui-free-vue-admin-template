@@ -1413,29 +1413,29 @@ async function startServer() {
   const weatherCache = new Map();
   const WEATHER_CACHE_TTL = 60 * 60 * 1000; // 1 hour
 
-  // Weather code to icon mapping for Open-Meteo
+  // Weather code to icon mapping for Open-Meteo (using CoreUI icon names)
   const weatherCodeToIcon = {
-    0: { icon: 'cil-sun', description: 'Despejado' },
-    1: { icon: 'cil-sun', description: 'Mayormente despejado' },
-    2: { icon: 'cil-cloudy', description: 'Parcialmente nublado' },
-    3: { icon: 'cil-cloudy', description: 'Nublado' },
-    45: { icon: 'cil-fog', description: 'Niebla' },
-    48: { icon: 'cil-fog', description: 'Niebla con escarcha' },
-    51: { icon: 'cil-rain', description: 'Llovizna ligera' },
-    53: { icon: 'cil-rain', description: 'Llovizna moderada' },
-    55: { icon: 'cil-rain', description: 'Llovizna intensa' },
-    61: { icon: 'cil-rain', description: 'Lluvia ligera' },
-    63: { icon: 'cil-rain', description: 'Lluvia moderada' },
-    65: { icon: 'cil-rain', description: 'Lluvia intensa' },
-    71: { icon: 'cil-snow', description: 'Nieve ligera' },
-    73: { icon: 'cil-snow', description: 'Nieve moderada' },
-    75: { icon: 'cil-snow', description: 'Nieve intensa' },
-    80: { icon: 'cil-rain', description: 'Chubascos ligeros' },
-    81: { icon: 'cil-rain', description: 'Chubascos moderados' },
-    82: { icon: 'cil-rain', description: 'Chubascos intensos' },
-    95: { icon: 'cil-bolt', description: 'Tormenta' },
-    96: { icon: 'cil-bolt', description: 'Tormenta con granizo' },
-    99: { icon: 'cil-bolt', description: 'Tormenta fuerte con granizo' }
+    0: { icon: 'cilSun', description: 'Despejado' },
+    1: { icon: 'cilSun', description: 'Mayormente despejado' },
+    2: { icon: 'cilCloud', description: 'Parcialmente nublado' },
+    3: { icon: 'cilCloud', description: 'Nublado' },
+    45: { icon: 'cilCloud', description: 'Niebla' },
+    48: { icon: 'cilCloud', description: 'Niebla con escarcha' },
+    51: { icon: 'cilDrop', description: 'Llovizna ligera' },
+    53: { icon: 'cilDrop', description: 'Llovizna moderada' },
+    55: { icon: 'cilDrop', description: 'Llovizna intensa' },
+    61: { icon: 'cilDrop', description: 'Lluvia ligera' },
+    63: { icon: 'cilDrop', description: 'Lluvia moderada' },
+    65: { icon: 'cilDrop', description: 'Lluvia intensa' },
+    71: { icon: 'cilCloudDownload', description: 'Nieve ligera' },
+    73: { icon: 'cilCloudDownload', description: 'Nieve moderada' },
+    75: { icon: 'cilCloudDownload', description: 'Nieve intensa' },
+    80: { icon: 'cilDrop', description: 'Chubascos ligeros' },
+    81: { icon: 'cilDrop', description: 'Chubascos moderados' },
+    82: { icon: 'cilDrop', description: 'Chubascos intensos' },
+    95: { icon: 'cilBolt', description: 'Tormenta' },
+    96: { icon: 'cilBolt', description: 'Tormenta con granizo' },
+    99: { icon: 'cilBolt', description: 'Tormenta fuerte con granizo' }
   };
 
   app.get('/api/weather', async (req, res) => {

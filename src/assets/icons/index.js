@@ -35,6 +35,7 @@ import {
   cilCalculator,
   cilCalendar,
   cilCloudDownload,
+  cilCloud,
   cilChartPie,
   cilCheck,
   cilChevronBottom,
@@ -82,6 +83,7 @@ import {
   cilUserFollow,
   cilXCircle,
   cilBriefcase,
+  cilBolt,
 } from '@coreui/icons'
 
 export const iconsSet = Object.assign(
@@ -96,6 +98,8 @@ export const iconsSet = Object.assign(
     cilCalculator,
     cilCalendar,
     cilCloudDownload,
+    cilCloud,
+    cilBolt,
     cilChartPie,
     cilCheck,
     cilChevronBottom,

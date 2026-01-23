@@ -59,7 +59,7 @@
                         class="weather-badge"
                         :title="getWeatherForAccommodation(item)?.description"
                       >
-                        <i :class="getWeatherForAccommodation(item)?.icon"></i>
+                        <CIcon :icon="getWeatherForAccommodation(item)?.icon" size="sm" />
                         {{ getWeatherForAccommodation(item)?.temp_max }}°
                       </span>
                     </div>
@@ -120,7 +120,7 @@
 <script setup>
 import { ref, onMounted, computed, watch } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
-import { CCard, CCardBody, CInputGroup, CFormInput, CButton, useColorModes } from '@coreui/vue'
+import { CCard, CCardBody, CInputGroup, CFormInput, CButton, useColorModes, CIcon } from '@coreui/vue'
 import { useSettingsStore } from '@/stores/settings'
 import { useAuth } from '@/composables/useAuth'
 
