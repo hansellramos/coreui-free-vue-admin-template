@@ -26,7 +26,7 @@
     
     <div v-if="selectedVenues.length > 0" class="d-flex align-items-center justify-content-end mb-4">
       <CButton color="secondary" size="sm" class="clear-all-btn me-2" @click="clearAllVenueFilters">
-        <span class="me-1">Limpiar</span><i class="cil-x-circle"></i>
+        <span class="me-1">Limpiar</span><CIcon icon="cilXCircle" size="sm" />
       </CButton>
       <div class="selected-venues">
         <div v-for="venue in selectedVenues" :key="venue.id" class="venue-chip">
@@ -48,12 +48,8 @@
               <CCardBody class="p-3">
                 <div class="row g-2">
                   <div class="col-12 col-md-2 d-flex flex-row flex-md-column align-items-center align-items-md-start gap-2 mb-2 mb-md-0">
-                    <div class="event-time fw-bold">{{ formatTime(item.time) }}</div>
-                    <div class="event-duration badge bg-info">{{ formatDurationHuman(item.duration) }}</div>
-                  </div>
-                  <div class="col-12 col-md-5">
-                    <div class="venue-name d-flex align-items-center gap-2">
-                      <h5 class="mb-0">{{ item.venue_data?.name || 'Sin cabaña' }}</h5>
+                    <div class="d-flex align-items-center gap-2">
+                      <div class="event-time fw-bold">{{ formatTime(item.time) }}</div>
                       <span 
                         v-if="getWeatherForAccommodation(item)" 
                         class="weather-badge"
@@ -62,6 +58,12 @@
                         <CIcon :icon="getWeatherForAccommodation(item)?.icon" size="sm" />
                         {{ getWeatherForAccommodation(item)?.temp_max }}°
                       </span>
+                    </div>
+                    <div class="event-duration badge bg-info">{{ formatDurationHuman(item.duration) }}</div>
+                  </div>
+                  <div class="col-12 col-md-5">
+                    <div class="venue-name">
+                      <h5 class="mb-1">{{ item.venue_data?.name || 'Sin cabaña' }}</h5>
                     </div>
                     <div class="event-customer text-muted">
                       Cliente: {{ item.customer_data?.fullname || 'N/A' }}
@@ -91,20 +93,20 @@
                   </div>
                   <div class="col-12 col-md-2 mt-2 mt-md-0">
                     <div class="d-flex flex-wrap gap-1 justify-content-start justify-content-md-end">
+                      <router-link 
+                        :to="'/business/accommodations/' + item.id" 
+                        :class="['btn', 'btn-sm', colorMode === 'dark' ? 'btn-outline-secondary' : 'btn-secondary']"
+                      >
+                        <CIcon icon="cilZoom" size="sm" class="me-1" />Detalles
+                      </router-link>
                       <a 
                         v-if="item.customer_data?.whatsapp" 
                         :href="'https://wa.me/57' + item.customer_data.whatsapp" 
                         target="_blank" 
                         :class="['btn', 'btn-sm', colorMode === 'dark' ? 'btn-outline-success' : 'btn-success', colorMode !== 'dark' ? 'text-white' : '']"
                       >
-                        <i class="cib-whatsapp me-1"></i>WhatsApp
+                        <CIcon icon="cibWhatsapp" size="sm" class="me-1" />WhatsApp
                       </a>
-                      <router-link 
-                        :to="'/business/accommodations/' + item.id" 
-                        :class="['btn', 'btn-sm', colorMode === 'dark' ? 'btn-outline-secondary' : 'btn-secondary']"
-                      >
-                        <i class="cil-zoom me-1"></i>Detalles
-                      </router-link>
                     </div>
                   </div>
                 </div>
