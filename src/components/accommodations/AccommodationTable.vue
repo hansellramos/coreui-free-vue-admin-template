@@ -80,7 +80,7 @@
           <td>
             <template v-if="getAgreedPrice(item) > 0">
               <span v-if="item.pending_balance > 0" class="text-danger fw-bold">${{ formatCurrency(item.pending_balance) }}</span>
-              <span v-else-if="item.pending_balance === 0" class="badge bg-success">Pagado</span>
+              <span v-else-if="item.pending_balance === 0" :class="['badge', colorMode === 'dark' ? 'border border-success text-success' : 'bg-success text-white']">Pagado</span>
               <span v-else class="text-warning">${{ formatCurrency(item.pending_balance) }}</span>
             </template>
             <span v-else>—</span>
@@ -110,6 +110,9 @@ import { fetchAccommodations, deleteAccommodation } from '@/services/accommodati
 import { useSettingsStore } from '@/stores/settings'
 import { useAuth } from '@/composables/useAuth'
 import { CIcon } from '@coreui/icons-vue'
+import { useColorModes } from '@coreui/vue'
+
+const { colorMode } = useColorModes('coreui-free-vue-admin-template-theme')
 
 const accommodations = ref([])
 const dateInput = ref('')

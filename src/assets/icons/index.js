@@ -86,6 +86,12 @@ import {
   cilBriefcase,
   cilBolt,
   cilZoom,
+  cilPlus,
+  cilAccountLogout,
+  cilZoomIn,
+  cilTrash,
+  cilInfo,
+  cilReload,
 } from '@coreui/icons'
 
 export const iconsSet = Object.assign(
@@ -150,6 +156,12 @@ export const iconsSet = Object.assign(
     cilXCircle,
     cilBriefcase,
     cilZoom,
+    cilPlus,
+    cilAccountLogout,
+    cilZoomIn,
+    cilTrash,
+    cilInfo,
+    cilReload,
   },
   {
     cifUs,

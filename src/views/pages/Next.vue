@@ -59,7 +59,7 @@
                         {{ getWeatherForAccommodation(item)?.temp_max }}°
                       </span>
                     </div>
-                    <div class="event-duration badge bg-info">{{ formatDurationHuman(item.duration) }}</div>
+                    <div :class="['event-duration', 'badge', colorMode === 'dark' ? 'border border-info text-info' : 'bg-info text-white']">{{ formatDurationHuman(item.duration) }}</div>
                   </div>
                   <div class="col-12 col-md-5">
                     <div class="venue-name">
@@ -68,7 +68,7 @@
                     <div class="event-customer text-muted">
                       Cliente: {{ item.customer_data?.fullname || 'N/A' }}
                     </div>
-                    <div v-if="(item.adults || 0) + (item.children || 0) > 0" class="event-attendees badge bg-secondary mt-1">
+                    <div v-if="(item.adults || 0) + (item.children || 0) > 0" :class="['event-attendees', 'badge', 'mt-1', colorMode === 'dark' ? 'border border-secondary text-secondary' : 'bg-secondary text-white']">
                       {{ formatAttendees(item.adults, item.children) }}
                     </div>
                   </div>
@@ -85,7 +85,7 @@
                       <div class="d-flex justify-content-between">
                         <span class="text-muted small">Saldo:</span>
                         <span v-if="item.pending_balance > 0" class="text-danger fw-bold">{{ formatCurrency(item.pending_balance) }}</span>
-                        <span v-else-if="item.pending_balance === 0" class="badge bg-success">Pagado</span>
+                        <span v-else-if="item.pending_balance === 0" :class="['badge', colorMode === 'dark' ? 'border border-success text-success' : 'bg-success text-white']">Pagado</span>
                         <span v-else class="text-warning">{{ formatCurrency(item.pending_balance) }}</span>
                       </div>
                     </div>
