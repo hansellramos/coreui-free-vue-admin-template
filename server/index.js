@@ -1,5 +1,6 @@
 const express = require('express');
 const cors = require('cors');
+const path = require('path');
 const { Storage } = require('@google-cloud/storage');
 const { randomUUID } = require('crypto');
 const { prisma } = require('./db');
@@ -2927,6 +2928,24 @@ Presta especial atención a comprobantes de Nequi, Daviplata, Bancolombia, y otr
         error: 'Error al procesar el comprobante',
         details: error.message 
       });
+    }
+  });
+
+  // Serve static files from Vue build in production
+  const distPath = path.join(__dirname, '..', 'dist');
+  app.use(express.static(distPath));
+  
+  // Handle SPA routing - serve index.html for all non-API routes
+  app.use((req, res, next) => {
+    // Don't serve index.html for API routes or object storage
+    if (req.path.startsWith('/api') || req.path.startsWith('/objects')) {
+      return res.status(404).json({ error: 'Not found' });
+    }
+    // Only handle GET requests for SPA routing
+    if (req.method === 'GET') {
+      res.sendFile(path.join(distPath, 'index.html'));
+    } else {
+      next();
     }
   });
 
