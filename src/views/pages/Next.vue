@@ -1,12 +1,12 @@
 <template>
   <div class="p-4">
-    <div class="d-flex align-items-center justify-content-between mb-4">
-      <h1 class="m-0">Upcoming Reservations</h1>
-      <div class="venue-search position-relative">
+    <div class="d-flex flex-column flex-md-row align-items-start align-items-md-center justify-content-between gap-2 mb-4">
+      <h1 class="m-0">Próximos Hospedajes</h1>
+      <div class="venue-search position-relative w-100 w-md-auto" style="max-width: 300px;">
         <CInputGroup>
           <CFormInput
             v-model="venueSearch"
-            placeholder="Search by venue"
+            placeholder="Buscar por cabaña"
             @input="onVenueSearchInput"
             autocomplete="off"
           />
@@ -26,7 +26,7 @@
     
     <div v-if="selectedVenues.length > 0" class="d-flex align-items-center justify-content-end mb-4">
       <CButton color="secondary" size="sm" class="clear-all-btn me-2" @click="clearAllVenueFilters">
-        <span class="me-1">Clear All</span><i class="cil-x-circle"></i>
+        <span class="me-1">Limpiar</span><i class="cil-x-circle"></i>
       </CButton>
       <div class="selected-venues">
         <div v-for="venue in selectedVenues" :key="venue.id" class="venue-chip">
@@ -46,63 +46,62 @@
         <div v-for="item in groupedItems" :key="item.id" class="event-item mb-3">
           <div class="d-flex align-items-center">
             <CCard class="event-card w-100">
-              <CCardBody class="p-3 row">
-                <div class="col-2">
-                  <div class="event-time mb-1">{{ formatTime(item.time) }}</div>
-                  <div class="event-duration badge bg-info mb-2">{{ formatDurationHuman(item.duration) }}</div>
-                </div>
-                <div class="col-5">
-                  <div class="venue-name">
-                    <h4>{{ item.venue_data?.name || 'Sin venue' }}</h4>
+              <CCardBody class="p-3">
+                <div class="row g-2">
+                  <div class="col-12 col-md-2 d-flex flex-row flex-md-column align-items-center align-items-md-start gap-2 mb-2 mb-md-0">
+                    <div class="event-time fw-bold">{{ formatTime(item.time) }}</div>
+                    <div class="event-duration badge bg-info">{{ formatDurationHuman(item.duration) }}</div>
                   </div>
-                  <div class="event-customer">
-                    <h5>Cliente: {{ item.customer_data?.fullname || 'N/A' }}</h5>
-                  </div>
-                  <div v-if="(item.adults || 0) + (item.children || 0) > 0" class="event-attendees badge bg-secondary">
-                    {{ formatAttendees(item.adults, item.children) }}
-                  </div>
-                  <div class="customer-links mt-2">
-                    <a 
-                      v-if="item.customer_data?.whatsapp" 
-                      :href="'https://wa.me/57' + item.customer_data.whatsapp" 
-                      target="_blank" 
-                      class="btn btn-sm btn-success me-2"
-                    >
-                      <i class="cib-whatsapp"></i> WhatsApp
-                    </a>
-                    <a 
-                      v-if="item.customer_data?.email" 
-                      :href="'mailto:' + item.customer_data.email" 
-                      class="btn btn-sm btn-primary me-2"
-                    >
-                      <i class="cil-envelope-closed"></i> Email
-                    </a>
-                    <router-link 
-                      :to="'/business/accommodations/' + item.id" 
-                      class="btn btn-sm btn-secondary"
-                    >
-                      <i class="cil-zoom"></i> Ver detalles
-                    </router-link>
-                  </div>
-                </div>
-                <div class="col-3">
-                  <div class="financial-summary" v-if="getAgreedPrice(item) > 0">
-                    <div class="financial-row">
-                      <span class="financial-label">Valor:</span>
-                      <span class="financial-value text-primary fw-bold">{{ formatCurrency(getAgreedPrice(item)) }}</span>
+                  <div class="col-12 col-md-5">
+                    <div class="venue-name">
+                      <h5 class="mb-1">{{ item.venue_data?.name || 'Sin cabaña' }}</h5>
                     </div>
-                    <div class="financial-row">
-                      <span class="financial-label">Abonado:</span>
-                      <span class="financial-value text-success">{{ formatCurrency(item.total_paid || 0) }}</span>
+                    <div class="event-customer text-muted">
+                      Cliente: {{ item.customer_data?.fullname || 'N/A' }}
                     </div>
-                    <div class="financial-row">
-                      <span class="financial-label">Saldo:</span>
-                      <span v-if="item.pending_balance > 0" class="financial-value text-danger fw-bold">{{ formatCurrency(item.pending_balance) }}</span>
-                      <span v-else-if="item.pending_balance === 0" class="badge bg-success">Pagado</span>
-                      <span v-else class="financial-value text-warning">{{ formatCurrency(item.pending_balance) }}</span>
+                    <div v-if="(item.adults || 0) + (item.children || 0) > 0" class="event-attendees badge bg-secondary mt-1">
+                      {{ formatAttendees(item.adults, item.children) }}
                     </div>
                   </div>
-                  <div v-else class="text-muted small">Sin precio definido</div>
+                  <div class="col-12 col-md-3">
+                    <div class="financial-summary" v-if="getAgreedPrice(item) > 0">
+                      <div class="d-flex justify-content-between">
+                        <span class="text-muted small">Valor:</span>
+                        <span class="text-primary fw-bold">{{ formatCurrency(getAgreedPrice(item)) }}</span>
+                      </div>
+                      <div class="d-flex justify-content-between">
+                        <span class="text-muted small">Abonado:</span>
+                        <span class="text-success">{{ formatCurrency(item.total_paid || 0) }}</span>
+                      </div>
+                      <div class="d-flex justify-content-between">
+                        <span class="text-muted small">Saldo:</span>
+                        <span v-if="item.pending_balance > 0" class="text-danger fw-bold">{{ formatCurrency(item.pending_balance) }}</span>
+                        <span v-else-if="item.pending_balance === 0" class="badge bg-success">Pagado</span>
+                        <span v-else class="text-warning">{{ formatCurrency(item.pending_balance) }}</span>
+                      </div>
+                    </div>
+                    <div v-else class="text-muted small">Sin precio definido</div>
+                  </div>
+                  <div class="col-12 col-md-2">
+                    <div class="d-flex flex-wrap gap-1 justify-content-start justify-content-md-end">
+                      <a 
+                        v-if="item.customer_data?.whatsapp" 
+                        :href="'https://wa.me/57' + item.customer_data.whatsapp" 
+                        target="_blank" 
+                        class="btn btn-sm btn-success"
+                        title="WhatsApp"
+                      >
+                        <i class="cib-whatsapp"></i>
+                      </a>
+                      <router-link 
+                        :to="'/business/accommodations/' + item.id" 
+                        class="btn btn-sm btn-secondary"
+                        title="Ver detalles"
+                      >
+                        <i class="cil-zoom"></i>
+                      </router-link>
+                    </div>
+                  </div>
                 </div>
               </CCardBody>
             </CCard>
