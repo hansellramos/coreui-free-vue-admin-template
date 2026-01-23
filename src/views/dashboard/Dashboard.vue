@@ -4,10 +4,10 @@
       <CCol :xs="12">
         <CCard>
           <CCardBody>
-            <div class="d-flex align-items-center justify-content-between">
+            <div class="d-flex flex-column flex-md-row align-items-start align-items-md-center justify-content-between gap-2">
               <h4 class="mb-0">Analytics de Ingresos</h4>
-              <div class="organization-filter d-flex align-items-center gap-2">
-                <div class="position-relative" style="min-width: 300px;">
+              <div class="organization-filter d-flex align-items-center gap-2 w-100 w-md-auto">
+                <div class="position-relative w-100" style="max-width: 300px;">
                   <CFormInput
                     v-model="orgSearch"
                     placeholder="Filtrar por organizaciones..."
