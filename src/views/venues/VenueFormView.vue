@@ -91,6 +91,8 @@ let form = ref({
   department: '',
   suburb: '',
   address_reference: '',
+  venue_info: '',
+  delivery_info: '',
   is_public: false
 })
 const isEdit = computed(() => !!route.params.id)

@@ -485,8 +485,8 @@ const saveDeposit = async () => {
     
     const payload = {
       accommodation_id: form.value.accommodation_id,
-      venue_id: selectedAccommodation?.venue_id || null,
-      organization_id: selectedAccommodation?.venue_data?.organization_id || null,
+      venue_id: selectedAccommodation?.venue || null,
+      organization_id: selectedAccommodation?.venue_data?.organization || null,
       amount: parseFloat(form.value.amount),
       payment_method: form.value.payment_method || null,
       payment_date: form.value.payment_date || null,
@@ -494,6 +494,15 @@ const saveDeposit = async () => {
       notes: form.value.notes || null,
       receipt_url: form.value.receipt_url || null,
       status: 'pending'
+    }
+    
+    // Add evidence array if there's a receipt
+    if (form.value.receipt_url) {
+      payload.evidence = [{
+        image_url: form.value.receipt_url,
+        type: 'receipt',
+        description: 'Comprobante de depósito'
+      }]
     }
     
     const url = isEditing.value 

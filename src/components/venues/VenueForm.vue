@@ -154,6 +154,26 @@
       />
     </div>
     <div class="mb-3">
+      <CFormLabel for="venueInfo">Información General (para IA)</CFormLabel>
+      <CFormTextarea
+        id="venueInfo"
+        v-model="form.venue_info"
+        rows="4"
+        placeholder="Describe información general de la cabaña que la IA usará para responder preguntas de los clientes..."
+      />
+      <div class="form-text">Esta información se usará como contexto para que la IA responda preguntas de los clientes.</div>
+    </div>
+    <div class="mb-3">
+      <CFormLabel for="venueDeliveryInfo">Información de Domicilios</CFormLabel>
+      <CFormTextarea
+        id="venueDeliveryInfo"
+        v-model="form.delivery_info"
+        rows="3"
+        placeholder="Ej: Pedidos por WhatsApp, domicilios de restaurantes cercanos, servicios de entrega disponibles..."
+      />
+      <div class="form-text">Información sobre domicilios y servicios de entrega para los huéspedes.</div>
+    </div>
+    <div class="mb-3">
       <CFormCheck
         id="venueIsPublic"
         v-model="form.is_public"
