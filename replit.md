@@ -59,14 +59,14 @@ The Express backend runs on port 3000 and provides:
 - `/api/uploads/request-url` - Get presigned URL for file upload (protected)
 - `/objects/:type/:id` - Serve uploaded objects (protected)
 - `/api/expense-categories` - CRUD for expense categories (system categories are protected)
-- `/api/expenses` - CRUD for expenses with filters (venue_id, organization_id, category_id, from_date, to_date)
-- `/api/deposits` - CRUD for security deposits with evidence (accommodation_id, venue_id, status filters)
+- `/api/expenses` - CRUD for expenses with filters (venue_id, organization_id, category_id, from_date, to_date) - all require auth
+- `/api/deposits` - CRUD for security deposits with evidence (accommodation_id, venue_id, status filters) - all require auth
 - `/api/deposits/:id/status` - Update deposit status (refund/claim)
 - `/api/analytics/summary` - Get income/expense/deposit summary with period filters
 - `/api/analytics/expenses-by-category` - Get expenses grouped by category
 - `/api/analytics/monthly-trend` - Get monthly income/expense trend
 
-Protected routes (POST, PUT, DELETE) require authentication.
+All expense and deposit routes require authentication and enforce organization-based access control. Protected routes (POST, PUT, DELETE) require authentication.
 
 ## File Uploads
 Receipt images for payments can be uploaded via:
