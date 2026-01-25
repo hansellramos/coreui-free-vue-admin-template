@@ -441,6 +441,11 @@ const routes = [
         component: () => import('@/views/llm-providers/LLMProvidersView.vue'),
       },
       {
+        path: '/admin/ai-settings',
+        name: 'AISettings',
+        component: () => import('@/views/settings/AISettingsView.vue'),
+      },
+      {
         path: '/venues/:id/chat',
         name: 'VenueChat',
         component: () => import('@/views/venues/VenueChatView.vue'),

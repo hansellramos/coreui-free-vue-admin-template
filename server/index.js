@@ -6,6 +6,7 @@ const { randomUUID } = require('crypto');
 const { prisma } = require('./db');
 const { setupAuth, isAuthenticated } = require('./auth/replitAuth');
 const { loadUserPermissions, hasPermission, getAccessibleOrganizationIds, getAccessibleVenueIds, requirePermission } = require('./auth/permissions');
+const llmService = require('./llm-service');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -3778,9 +3779,22 @@ async function startServer() {
         return res.status(400).json({ error: 'Se requiere la URL de la imagen' });
       }
       
-      const apiKey = process.env.ANTHROPIC_API_KEY;
+      // Get configured model for receipt extraction
+      const aiSetting = await prisma.ai_settings.findUnique({
+        where: { setting_key: 'receipt_extraction' }
+      });
+      
+      // Default to anthropic if not configured
+      const providerCode = aiSetting?.provider_code || 'anthropic_claude';
+      const modelConfig = llmService.getModelConfig(providerCode);
+      
+      if (!modelConfig) {
+        return res.status(500).json({ error: 'Modelo de IA no configurado' });
+      }
+      
+      const apiKey = llmService.getApiKeyForProvider(providerCode);
       if (!apiKey) {
-        return res.status(500).json({ error: 'ANTHROPIC_API_KEY no está configurada' });
+        return res.status(500).json({ error: `API key no configurada (${modelConfig.env_key})` });
       }
       
       // Fetch the image from object storage
@@ -3842,13 +3856,29 @@ async function startServer() {
       else if (contentType.includes('gif')) mediaType = 'image/gif';
       else if (contentType.includes('webp')) mediaType = 'image/webp';
       
-      // Use Vercel AI SDK with Anthropic
+      // Use Vercel AI SDK with configured model
       const { generateObject } = await import('ai');
-      const { anthropic } = await import('@ai-sdk/anthropic');
       const { z } = await import('zod');
       
+      let model;
+      if (modelConfig.provider === 'anthropic') {
+        const { anthropic } = await import('@ai-sdk/anthropic');
+        model = anthropic(modelConfig.model);
+      } else if (providerCode.startsWith('openai')) {
+        const { openai } = await import('@ai-sdk/openai');
+        model = openai(modelConfig.model);
+      } else {
+        // Fallback to OpenAI-compatible for xAI Grok, etc.
+        const { createOpenAI } = await import('@ai-sdk/openai');
+        const provider = createOpenAI({
+          apiKey: apiKey,
+          baseURL: modelConfig.base_url
+        });
+        model = provider(modelConfig.model);
+      }
+      
       const result = await generateObject({
-        model: anthropic('claude-sonnet-4-20250514'),
+        model,
         messages: [
           {
             role: 'user',
@@ -4132,8 +4162,164 @@ Presta especial atención a comprobantes de Nequi, Daviplata, Bancolombia, y otr
     }
   });
 
+  // ==================== AI Settings API ====================
+  
+  // Available AI models configuration (reads API keys from environment)
+  const AI_MODELS = [
+    {
+      code: 'anthropic_claude',
+      name: 'Anthropic Claude',
+      model: 'claude-sonnet-4-20250514',
+      provider: 'anthropic',
+      base_url: 'https://api.anthropic.com',
+      env_key: 'ANTHROPIC_API_KEY'
+    },
+    {
+      code: 'xai_grok',
+      name: 'xAI Grok',
+      model: 'grok-4',
+      provider: 'openai_compatible',
+      base_url: 'https://api.x.ai/v1',
+      env_key: 'GROK_API_KEY'
+    },
+    {
+      code: 'openai_gpt4o',
+      name: 'OpenAI GPT-4o',
+      model: 'gpt-4o',
+      provider: 'openai_compatible',
+      base_url: 'https://api.openai.com/v1',
+      env_key: 'OPENAI_API_KEY'
+    },
+    {
+      code: 'openai_gpt4o_mini',
+      name: 'OpenAI GPT-4o Mini',
+      model: 'gpt-4o-mini',
+      provider: 'openai_compatible',
+      base_url: 'https://api.openai.com/v1',
+      env_key: 'OPENAI_API_KEY'
+    }
+  ];
+  
+  // GET /api/ai/available-models - List available models with API keys configured
+  app.get('/api/ai/available-models', isAuthenticated, async (req, res) => {
+    try {
+      const available = AI_MODELS.filter(m => !!process.env[m.env_key]).map(m => ({
+        code: m.code,
+        name: m.name,
+        model: m.model
+      }));
+      res.json(available);
+    } catch (error) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+  
+  // GET /api/ai/settings - Get AI settings
+  app.get('/api/ai/settings', isAuthenticated, async (req, res) => {
+    try {
+      const settings = await prisma.ai_settings.findMany();
+      res.json(settings);
+    } catch (error) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+  
+  // POST /api/ai/settings - Save AI settings
+  app.post('/api/ai/settings', isAuthenticated, async (req, res) => {
+    try {
+      const { receipt_extraction, message_suggestions, customer_chat } = req.body;
+      const settingsToSave = [
+        { key: 'receipt_extraction', value: receipt_extraction },
+        { key: 'message_suggestions', value: message_suggestions },
+        { key: 'customer_chat', value: customer_chat }
+      ];
+      
+      for (const setting of settingsToSave) {
+        if (!setting.value) continue;
+        
+        const modelConfig = AI_MODELS.find(m => m.code === setting.value);
+        if (!modelConfig) continue;
+        
+        await prisma.ai_settings.upsert({
+          where: { setting_key: setting.key },
+          update: {
+            provider_code: setting.value,
+            model: modelConfig.model,
+            updated_at: new Date()
+          },
+          create: {
+            setting_key: setting.key,
+            provider_code: setting.value,
+            model: modelConfig.model
+          }
+        });
+      }
+      
+      res.json({ success: true });
+    } catch (error) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+  
+  // POST /api/ai/test-connection - Test AI model connection
+  app.post('/api/ai/test-connection', isAuthenticated, async (req, res) => {
+    try {
+      const { provider_code } = req.body;
+      const modelConfig = AI_MODELS.find(m => m.code === provider_code);
+      
+      if (!modelConfig) {
+        return res.status(400).json({ error: 'Modelo no encontrado' });
+      }
+      
+      const apiKey = process.env[modelConfig.env_key];
+      if (!apiKey) {
+        return res.status(400).json({ error: `API key no configurada (${modelConfig.env_key})` });
+      }
+      
+      let testUrl, headers, body;
+      
+      if (modelConfig.provider === 'anthropic') {
+        testUrl = `${modelConfig.base_url}/v1/messages`;
+        headers = {
+          'Content-Type': 'application/json',
+          'x-api-key': apiKey,
+          'anthropic-version': '2023-06-01'
+        };
+        body = JSON.stringify({
+          model: modelConfig.model,
+          max_tokens: 10,
+          messages: [{ role: 'user', content: 'Hi' }]
+        });
+      } else {
+        testUrl = `${modelConfig.base_url}/chat/completions`;
+        headers = {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${apiKey}`
+        };
+        body = JSON.stringify({
+          model: modelConfig.model,
+          max_tokens: 10,
+          messages: [{ role: 'user', content: 'Hi' }]
+        });
+      }
+      
+      const response = await fetch(testUrl, { method: 'POST', headers, body });
+      
+      if (response.ok) {
+        res.json({ success: true, message: 'Conexión exitosa' });
+      } else {
+        const errorData = await response.json().catch(() => ({}));
+        res.status(400).json({ 
+          success: false, 
+          error: errorData.error?.message || `Error: ${response.status}` 
+        });
+      }
+    } catch (error) {
+      res.status(500).json({ success: false, error: error.message });
+    }
+  });
+
   // ==================== Chat API ====================
-  const llmService = require('./llm-service');
 
   // POST /api/chat/:venue_id - Chat endpoint (supports internal and webhook calls)
   app.post('/api/chat/:venue_id', async (req, res) => {
@@ -4196,33 +4382,22 @@ Presta especial atención a comprobantes de Nequi, Daviplata, Bancolombia, y otr
         }
       });
       
-      // Get or select provider
-      let provider;
-      if (provider_id) {
-        provider = await prisma.llm_providers.findUnique({
-          where: { id: provider_id }
-        });
-      } else if (venue.default_llm_provider) {
-        provider = await prisma.llm_providers.findUnique({
-          where: { id: venue.default_llm_provider }
-        });
+      // Get configured model for customer chat from ai_settings
+      const chatSetting = await prisma.ai_settings.findUnique({
+        where: { setting_key: 'customer_chat' }
+      });
+      
+      const chatProviderCode = chatSetting?.provider_code || 'anthropic_claude';
+      const chatModelConfig = llmService.getModelConfig(chatProviderCode);
+      
+      if (!chatModelConfig) {
+        return res.status(400).json({ error: 'Modelo de chat no configurado' });
       }
       
-      if (!provider) {
-        provider = await prisma.llm_providers.findFirst({
-          where: { is_default: true, is_active: true }
-        });
-      }
-      
-      if (!provider) {
-        provider = await prisma.llm_providers.findFirst({
-          where: { is_active: true, api_key: { not: null } }
-        });
-      }
-      
-      if (!provider || !provider.api_key) {
+      const chatApiKey = llmService.getApiKeyForProvider(chatProviderCode);
+      if (!chatApiKey) {
         return res.status(400).json({ 
-          error: 'No hay un proveedor de IA configurado con API key' 
+          error: `API key no configurada (${chatModelConfig.env_key})` 
         });
       }
       
@@ -4273,8 +4448,8 @@ Presta especial atención a comprobantes de Nequi, Daviplata, Bancolombia, y otr
       // Add current message
       llmMessages.push({ role: 'user', content: userMessage });
       
-      // Call LLM
-      const llmResponse = await llmService.callLLM(provider, llmMessages, {
+      // Call LLM using configured model
+      const llmResponse = await llmService.callLLMByCode(chatProviderCode, llmMessages, {
         maxTokens: 1024,
         temperature: 0.7
       });
@@ -4285,7 +4460,7 @@ Presta especial atención a comprobantes de Nequi, Daviplata, Bancolombia, y otr
           conversation_id: conversation.id,
           role: 'assistant',
           content: llmResponse.content,
-          provider: provider.code,
+          provider: chatProviderCode,
           model: llmResponse.model,
           tokens_used: llmResponse.usage?.total_tokens
         }
@@ -4300,7 +4475,7 @@ Presta especial atención a comprobantes de Nequi, Daviplata, Bancolombia, y otr
       res.json({
         conversation_id: conversation.id,
         message: llmResponse.content,
-        provider: provider.code,
+        provider: chatProviderCode,
         model: llmResponse.model,
         tokens_used: llmResponse.usage?.total_tokens
       });

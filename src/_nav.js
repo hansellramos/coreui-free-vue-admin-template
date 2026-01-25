@@ -105,8 +105,8 @@ export default [
   },
   {
     component: 'CNavItem',
-    name: 'Proveedores IA',
-    to: '/admin/llm-providers',
+    name: 'Configuración IA',
+    to: '/admin/ai-settings',
     icon: 'cil-bolt',
   },
   {

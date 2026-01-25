@@ -1,3 +1,66 @@
+const AI_MODELS = {
+  anthropic_claude: {
+    code: 'anthropic_claude',
+    name: 'Anthropic Claude',
+    model: 'claude-sonnet-4-20250514',
+    provider: 'anthropic',
+    base_url: 'https://api.anthropic.com',
+    env_key: 'ANTHROPIC_API_KEY'
+  },
+  xai_grok: {
+    code: 'xai_grok',
+    name: 'xAI Grok',
+    model: 'grok-4',
+    provider: 'openai_compatible',
+    base_url: 'https://api.x.ai/v1',
+    env_key: 'GROK_API_KEY'
+  },
+  openai_gpt4o: {
+    code: 'openai_gpt4o',
+    name: 'OpenAI GPT-4o',
+    model: 'gpt-4o',
+    provider: 'openai_compatible',
+    base_url: 'https://api.openai.com/v1',
+    env_key: 'OPENAI_API_KEY'
+  },
+  openai_gpt4o_mini: {
+    code: 'openai_gpt4o_mini',
+    name: 'OpenAI GPT-4o Mini',
+    model: 'gpt-4o-mini',
+    provider: 'openai_compatible',
+    base_url: 'https://api.openai.com/v1',
+    env_key: 'OPENAI_API_KEY'
+  }
+};
+
+function getModelConfig(providerCode) {
+  return AI_MODELS[providerCode] || null;
+}
+
+function getApiKeyForProvider(providerCode) {
+  const config = getModelConfig(providerCode);
+  if (!config) return null;
+  return process.env[config.env_key] || null;
+}
+
+async function callLLMByCode(providerCode, messages, options = {}) {
+  const config = getModelConfig(providerCode);
+  if (!config) {
+    throw new Error(`Modelo no encontrado: ${providerCode}`);
+  }
+  
+  const apiKey = getApiKeyForProvider(providerCode);
+  if (!apiKey) {
+    throw new Error(`API key no configurada para ${config.name} (${config.env_key})`);
+  }
+  
+  if (config.provider === 'anthropic') {
+    return callAnthropicAPI(apiKey, config.model, messages, options);
+  } else {
+    return callOpenAICompatibleAPI(apiKey, config.base_url, config.model, messages, options);
+  }
+}
+
 async function callLLM(provider, messages, options = {}) {
   const { code, api_key, base_url, model, config } = provider;
   
@@ -178,6 +241,10 @@ ${context}`;
 }
 
 module.exports = {
+  AI_MODELS,
+  getModelConfig,
+  getApiKeyForProvider,
+  callLLMByCode,
   callLLM,
   buildVenueContext,
   buildSystemPrompt
