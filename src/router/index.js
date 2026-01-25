@@ -431,6 +431,22 @@ const routes = [
         component: () => import('@/views/expense-categories/ExpenseCategoryListView.vue'),
       },
       {
+        path: '/admin/message-templates',
+        name: 'MessageTemplatesList',
+        component: () => import('@/views/message-templates/MessageTemplatesView.vue'),
+      },
+      {
+        path: '/admin/llm-providers',
+        name: 'LLMProviders',
+        component: () => import('@/views/llm-providers/LLMProvidersView.vue'),
+      },
+      {
+        path: '/venues/:id/chat',
+        name: 'VenueChat',
+        component: () => import('@/views/venues/VenueChatView.vue'),
+        props: true,
+      },
+      {
         path: '/business/venues/:id/plans',
         name: 'VenuePlans',
         component: () => import('@/views/venues/VenuePlansView.vue'),

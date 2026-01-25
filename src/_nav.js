@@ -99,6 +99,18 @@ export default [
   },
   {
     component: 'CNavItem',
+    name: 'Templates de Mensajes',
+    to: '/admin/message-templates',
+    icon: 'cil-speech',
+  },
+  {
+    component: 'CNavItem',
+    name: 'Proveedores IA',
+    to: '/admin/llm-providers',
+    icon: 'cil-bolt',
+  },
+  {
+    component: 'CNavItem',
     name: 'Configuración',
     to: '/settings',
     icon: 'cil-settings',

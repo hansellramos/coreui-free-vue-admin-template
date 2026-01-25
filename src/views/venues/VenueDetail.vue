@@ -76,6 +76,11 @@
               <RouterLink :to="`/business/venues/${venue.id}/edit`">
                 <CButton color="primary" size="sm">Editar</CButton>
               </RouterLink>
+              <RouterLink :to="`/venues/${venue.id}/chat`">
+                <CButton color="info" size="sm">
+                  <CIcon icon="cil-comment-square" class="me-1" /> Chat IA
+                </CButton>
+              </RouterLink>
               <RouterLink to="/business/venues">
                 <CButton color="secondary" size="sm" variant="outline">Volver a la Lista</CButton>
               </RouterLink>
