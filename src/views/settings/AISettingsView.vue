@@ -110,14 +110,22 @@
   </CRow>
 
   <CToaster placement="top-end">
-    <CToast :visible="toast.visible" :color="toast.color" class="text-white" :autohide="true" :delay="4000" @close="toast.visible = false">
-      <CToastBody>{{ toast.message }}</CToastBody>
+    <CToast 
+      v-for="(t, index) in toasts" 
+      :key="index"
+      :color="t.color" 
+      class="text-white" 
+      :autohide="true" 
+      :delay="4000"
+      visible
+    >
+      <CToastBody>{{ t.message }}</CToastBody>
     </CToast>
   </CToaster>
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, reactive, onMounted } from 'vue'
 import {
   CRow, CCol, CCard, CCardHeader, CCardBody, CButton, CSpinner,
   CFormLabel, CFormSelect, CAlert,
@@ -138,14 +146,10 @@ const testing = ref({
   message_suggestions: false,
   customer_chat: false
 })
-const toast = ref({
-  visible: false,
-  message: '',
-  color: 'success'
-})
+const toasts = reactive([])
 
 const showToast = (message, color = 'success') => {
-  toast.value = { visible: true, message, color }
+  toasts.push({ message, color })
 }
 
 const loadData = async () => {
