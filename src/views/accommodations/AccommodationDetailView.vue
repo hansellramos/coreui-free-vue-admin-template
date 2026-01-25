@@ -20,8 +20,17 @@
               <p class="fs-5">{{ accommodation.customer_data?.fullname || accommodation.customer_data?.user_data?.email || '—' }}</p>
             </CCol>
             <CCol :md="6">
-              <h6 class="text-muted">Venue</h6>
-              <p class="fs-5">{{ accommodation.venue_data?.name || '—' }}</p>
+              <h6 class="text-muted">Cabaña</h6>
+              <p class="fs-5">
+                <router-link 
+                  v-if="accommodation.venue_data?.id" 
+                  :to="`/business/venues/${accommodation.venue_data.id}`"
+                  class="text-decoration-none"
+                >
+                  {{ accommodation.venue_data?.name || '—' }}
+                </router-link>
+                <span v-else>{{ accommodation.venue_data?.name || '—' }}</span>
+              </p>
             </CCol>
           </CRow>
           <CRow class="mt-3">
