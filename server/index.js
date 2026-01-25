@@ -68,7 +68,129 @@ app.use(cors({
 }));
 app.use(express.json());
 
+// Seed default message templates
+async function seedDefaultMessageTemplates() {
+  const defaultTemplates = [
+    {
+      code: 'location',
+      name: '¿Cómo llegar?',
+      category: 'info',
+      content: 'Proporciona instrucciones de cómo llegar al venue usando la información de dirección, enlaces de Waze y Google Maps disponibles.',
+      is_system: true,
+      venue_id: null,
+      sort_order: 1
+    },
+    {
+      code: 'wifi',
+      name: 'Clave del WiFi',
+      category: 'info',
+      content: 'Proporciona la información del WiFi: nombre de red (SSID) y contraseña.',
+      is_system: true,
+      venue_id: null,
+      sort_order: 2
+    },
+    {
+      code: 'delivery',
+      name: 'Domicilios cercanos',
+      category: 'services',
+      content: 'Proporciona información sobre servicios de domicilios cercanos disponibles.',
+      is_system: true,
+      venue_id: null,
+      sort_order: 3
+    },
+    {
+      code: 'beer_delivery',
+      name: 'Domicilios de cervezas',
+      category: 'services',
+      content: 'Proporciona información sobre servicios de domicilios de cervezas disponibles.',
+      is_system: true,
+      venue_id: null,
+      sort_order: 4
+    },
+    {
+      code: 'plans',
+      name: 'Información de planes',
+      category: 'info',
+      content: 'Proporciona información detallada sobre los planes disponibles, precios, y qué incluyen.',
+      is_system: true,
+      venue_id: null,
+      sort_order: 5
+    },
+    {
+      code: 'general_info',
+      name: 'Información general',
+      category: 'info',
+      content: 'Proporciona información general sobre el venue, horarios, servicios y amenidades.',
+      is_system: true,
+      venue_id: null,
+      sort_order: 6
+    }
+  ];
+
+  for (const template of defaultTemplates) {
+    const existing = await prisma.message_templates.findFirst({
+      where: { code: template.code, venue_id: null }
+    });
+    if (!existing) {
+      await prisma.message_templates.create({ data: template });
+      console.log(`Created default message template: ${template.code}`);
+    }
+  }
+}
+
+// Seed default LLM providers (without API keys)
+async function seedDefaultLLMProviders() {
+  const defaultProviders = [
+    {
+      code: 'deepseek',
+      name: 'DeepSeek V3',
+      base_url: 'https://api.deepseek.com',
+      model: 'deepseek-chat',
+      is_active: true,
+      is_default: false
+    },
+    {
+      code: 'groq',
+      name: 'Groq',
+      base_url: 'https://api.groq.com/openai/v1',
+      model: 'llama-3.3-70b-versatile',
+      is_active: true,
+      is_default: false
+    },
+    {
+      code: 'openai',
+      name: 'OpenAI',
+      base_url: 'https://api.openai.com/v1',
+      model: 'gpt-4o-mini',
+      is_active: true,
+      is_default: true
+    },
+    {
+      code: 'anthropic',
+      name: 'Anthropic Claude',
+      base_url: 'https://api.anthropic.com',
+      model: 'claude-3-haiku-20240307',
+      is_active: true,
+      is_default: false
+    }
+  ];
+
+  for (const provider of defaultProviders) {
+    const existing = await prisma.llm_providers.findUnique({
+      where: { code: provider.code }
+    });
+    if (!existing) {
+      await prisma.llm_providers.create({ data: provider });
+      console.log(`Created default LLM provider: ${provider.code}`);
+    }
+  }
+}
+
 async function startServer() {
+  // Seed default data
+  await seedDefaultMessageTemplates();
+  await seedDefaultLLMProviders();
+  
   await setupAuth(app);
   
   app.use(loadUserPermissions);
@@ -3766,6 +3888,489 @@ Presta especial atención a comprobantes de Nequi, Daviplata, Bancolombia, y otr
         error: 'Error al procesar el comprobante',
         details: error.message 
       });
+    }
+  });
+
+  // ==========================================
+  // Message Templates API
+  // ==========================================
+  
+  // GET /api/message-templates - List templates (optional venue_id filter)
+  app.get('/api/message-templates', isAuthenticated, async (req, res) => {
+    try {
+      const { venue_id } = req.query;
+      const whereClause = {};
+      
+      if (venue_id) {
+        // Get templates for specific venue + system templates (venue_id=null)
+        whereClause.OR = [
+          { venue_id: venue_id },
+          { venue_id: null }
+        ];
+      }
+      
+      const templates = await prisma.message_templates.findMany({
+        where: whereClause,
+        orderBy: [{ sort_order: 'asc' }, { name: 'asc' }]
+      });
+      res.json(templates);
+    } catch (error) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // GET /api/message-templates/:id - Get template by ID
+  app.get('/api/message-templates/:id', isAuthenticated, async (req, res) => {
+    try {
+      const template = await prisma.message_templates.findUnique({
+        where: { id: req.params.id }
+      });
+      if (!template) {
+        return res.status(404).json({ error: 'Template no encontrado' });
+      }
+      res.json(template);
+    } catch (error) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // POST /api/message-templates - Create template
+  app.post('/api/message-templates', isAuthenticated, async (req, res) => {
+    try {
+      const template = await prisma.message_templates.create({
+        data: req.body
+      });
+      res.json(template);
+    } catch (error) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // PUT /api/message-templates/:id - Update template
+  app.put('/api/message-templates/:id', isAuthenticated, async (req, res) => {
+    try {
+      const template = await prisma.message_templates.update({
+        where: { id: req.params.id },
+        data: {
+          ...req.body,
+          updated_at: new Date()
+        }
+      });
+      res.json(template);
+    } catch (error) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // DELETE /api/message-templates/:id - Delete template (only if not is_system)
+  app.delete('/api/message-templates/:id', isAuthenticated, async (req, res) => {
+    try {
+      const template = await prisma.message_templates.findUnique({
+        where: { id: req.params.id }
+      });
+      
+      if (!template) {
+        return res.status(404).json({ error: 'Template no encontrado' });
+      }
+      
+      if (template.is_system) {
+        return res.status(403).json({ error: 'No se pueden eliminar templates del sistema' });
+      }
+      
+      await prisma.message_templates.delete({
+        where: { id: req.params.id }
+      });
+      res.json({ success: true });
+    } catch (error) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // ==========================================
+  // LLM Providers API
+  // ==========================================
+  
+  // GET /api/llm-providers - List active providers
+  app.get('/api/llm-providers', isAuthenticated, async (req, res) => {
+    try {
+      const providers = await prisma.llm_providers.findMany({
+        where: { is_active: true },
+        orderBy: { name: 'asc' },
+        select: {
+          id: true,
+          code: true,
+          name: true,
+          base_url: true,
+          model: true,
+          is_active: true,
+          is_default: true,
+          config: true,
+          created_at: true,
+          updated_at: true
+          // api_key excluded for security
+        }
+      });
+      res.json(providers);
+    } catch (error) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // GET /api/llm-providers/:id - Get provider by ID
+  app.get('/api/llm-providers/:id', isAuthenticated, async (req, res) => {
+    try {
+      const provider = await prisma.llm_providers.findUnique({
+        where: { id: req.params.id },
+        select: {
+          id: true,
+          code: true,
+          name: true,
+          base_url: true,
+          model: true,
+          is_active: true,
+          is_default: true,
+          config: true,
+          created_at: true,
+          updated_at: true
+          // api_key excluded for security
+        }
+      });
+      if (!provider) {
+        return res.status(404).json({ error: 'Proveedor no encontrado' });
+      }
+      res.json(provider);
+    } catch (error) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // POST /api/llm-providers - Create provider
+  app.post('/api/llm-providers', isAuthenticated, async (req, res) => {
+    try {
+      const provider = await prisma.llm_providers.create({
+        data: req.body
+      });
+      // Return without api_key
+      const { api_key, ...safeProvider } = provider;
+      res.json(safeProvider);
+    } catch (error) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // PUT /api/llm-providers/:id - Update provider
+  app.put('/api/llm-providers/:id', isAuthenticated, async (req, res) => {
+    try {
+      const provider = await prisma.llm_providers.update({
+        where: { id: req.params.id },
+        data: {
+          ...req.body,
+          updated_at: new Date()
+        }
+      });
+      // Return without api_key
+      const { api_key, ...safeProvider } = provider;
+      res.json(safeProvider);
+    } catch (error) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // DELETE /api/llm-providers/:id - Delete provider
+  app.delete('/api/llm-providers/:id', isAuthenticated, async (req, res) => {
+    try {
+      await prisma.llm_providers.delete({
+        where: { id: req.params.id }
+      });
+      res.json({ success: true });
+    } catch (error) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // POST /api/llm-providers/:id/test - Test provider connection
+  app.post('/api/llm-providers/:id/test', isAuthenticated, async (req, res) => {
+    try {
+      const provider = await prisma.llm_providers.findUnique({
+        where: { id: req.params.id }
+      });
+      
+      if (!provider) {
+        return res.status(404).json({ error: 'Proveedor no encontrado' });
+      }
+      
+      if (!provider.api_key) {
+        return res.status(400).json({ error: 'El proveedor no tiene API key configurada' });
+      }
+      
+      // Test the connection by making a simple request
+      let testUrl = provider.base_url;
+      let headers = {
+        'Content-Type': 'application/json'
+      };
+      let body;
+      
+      if (provider.code === 'anthropic') {
+        // Anthropic uses a different API structure
+        testUrl = `${provider.base_url}/v1/messages`;
+        headers['x-api-key'] = provider.api_key;
+        headers['anthropic-version'] = '2023-06-01';
+        body = JSON.stringify({
+          model: provider.model || 'claude-3-haiku-20240307',
+          max_tokens: 10,
+          messages: [{ role: 'user', content: 'Hi' }]
+        });
+      } else {
+        // OpenAI-compatible API (OpenAI, DeepSeek, Groq, etc.)
+        testUrl = `${provider.base_url}/chat/completions`;
+        headers['Authorization'] = `Bearer ${provider.api_key}`;
+        body = JSON.stringify({
+          model: provider.model || 'gpt-4o-mini',
+          max_tokens: 10,
+          messages: [{ role: 'user', content: 'Hi' }]
+        });
+      }
+      
+      const response = await fetch(testUrl, {
+        method: 'POST',
+        headers,
+        body
+      });
+      
+      if (response.ok) {
+        res.json({ success: true, message: 'Conexión exitosa' });
+      } else {
+        const errorData = await response.json().catch(() => ({}));
+        res.status(400).json({ 
+          success: false, 
+          error: errorData.error?.message || `Error: ${response.status}` 
+        });
+      }
+    } catch (error) {
+      res.status(500).json({ success: false, error: error.message });
+    }
+  });
+
+  // ==================== Chat API ====================
+  const llmService = require('./llm-service');
+
+  // POST /api/chat/:venue_id - Chat endpoint (supports internal and webhook calls)
+  app.post('/api/chat/:venue_id', async (req, res) => {
+    try {
+      const { venue_id } = req.params;
+      const { message, conversation_id, provider_id, source = 'web' } = req.body;
+      
+      // For Twilio/Meta webhooks, extract message from their format
+      let userMessage = message;
+      let externalId = null;
+      let phone = null;
+      let userName = null;
+      
+      // Handle Twilio webhook format
+      if (req.body.Body && req.body.From) {
+        userMessage = req.body.Body;
+        phone = req.body.From;
+        externalId = req.body.MessageSid;
+      }
+      
+      // Handle Meta/WhatsApp webhook format
+      if (req.body.entry && req.body.entry[0]?.changes) {
+        const changes = req.body.entry[0].changes[0];
+        if (changes?.value?.messages) {
+          const msg = changes.value.messages[0];
+          userMessage = msg.text?.body || msg.body;
+          phone = msg.from;
+          externalId = msg.id;
+          const contact = changes.value.contacts?.[0];
+          userName = contact?.profile?.name;
+        }
+      }
+      
+      if (!userMessage) {
+        return res.status(400).json({ error: 'Se requiere un mensaje' });
+      }
+      
+      // Get venue with all relevant info
+      const venue = await prisma.venues.findUnique({
+        where: { id: venue_id }
+      });
+      
+      if (!venue) {
+        return res.status(404).json({ error: 'Cabaña no encontrada' });
+      }
+      
+      // Get venue plans
+      const plans = await prisma.venue_plans.findMany({
+        where: { venue_id, is_active: true }
+      });
+      
+      // Get templates for this venue (including system templates)
+      const templates = await prisma.message_templates.findMany({
+        where: {
+          is_active: true,
+          OR: [
+            { venue_id },
+            { venue_id: null, is_system: true }
+          ]
+        }
+      });
+      
+      // Get or select provider
+      let provider;
+      if (provider_id) {
+        provider = await prisma.llm_providers.findUnique({
+          where: { id: provider_id }
+        });
+      } else if (venue.default_llm_provider) {
+        provider = await prisma.llm_providers.findUnique({
+          where: { id: venue.default_llm_provider }
+        });
+      }
+      
+      if (!provider) {
+        provider = await prisma.llm_providers.findFirst({
+          where: { is_default: true, is_active: true }
+        });
+      }
+      
+      if (!provider) {
+        provider = await prisma.llm_providers.findFirst({
+          where: { is_active: true, api_key: { not: null } }
+        });
+      }
+      
+      if (!provider || !provider.api_key) {
+        return res.status(400).json({ 
+          error: 'No hay un proveedor de IA configurado con API key' 
+        });
+      }
+      
+      // Get or create conversation
+      let conversation;
+      if (conversation_id) {
+        conversation = await prisma.chat_conversations.findUnique({
+          where: { id: conversation_id },
+          include: { messages: { orderBy: { created_at: 'asc' }, take: 20 } }
+        });
+      }
+      
+      if (!conversation) {
+        conversation = await prisma.chat_conversations.create({
+          data: {
+            venue_id,
+            source,
+            external_id: externalId,
+            phone,
+            name: userName
+          }
+        });
+        conversation.messages = [];
+      }
+      
+      // Save user message
+      await prisma.chat_messages.create({
+        data: {
+          conversation_id: conversation.id,
+          role: 'user',
+          content: userMessage
+        }
+      });
+      
+      // Build context and messages
+      const context = llmService.buildVenueContext(venue, templates, plans);
+      const systemPrompt = llmService.buildSystemPrompt(venue, context);
+      
+      const llmMessages = [
+        { role: 'system', content: systemPrompt }
+      ];
+      
+      // Add conversation history
+      for (const msg of conversation.messages) {
+        llmMessages.push({ role: msg.role, content: msg.content });
+      }
+      
+      // Add current message
+      llmMessages.push({ role: 'user', content: userMessage });
+      
+      // Call LLM
+      const llmResponse = await llmService.callLLM(provider, llmMessages, {
+        maxTokens: 1024,
+        temperature: 0.7
+      });
+      
+      // Save assistant response
+      const assistantMessage = await prisma.chat_messages.create({
+        data: {
+          conversation_id: conversation.id,
+          role: 'assistant',
+          content: llmResponse.content,
+          provider: provider.code,
+          model: llmResponse.model,
+          tokens_used: llmResponse.usage?.total_tokens
+        }
+      });
+      
+      // Update conversation timestamp
+      await prisma.chat_conversations.update({
+        where: { id: conversation.id },
+        data: { updated_at: new Date() }
+      });
+      
+      res.json({
+        conversation_id: conversation.id,
+        message: llmResponse.content,
+        provider: provider.code,
+        model: llmResponse.model,
+        tokens_used: llmResponse.usage?.total_tokens
+      });
+    } catch (error) {
+      console.error('Chat error:', error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // GET /api/chat/:venue_id/conversations - List conversations for a venue
+  app.get('/api/chat/:venue_id/conversations', isAuthenticated, async (req, res) => {
+    try {
+      const { venue_id } = req.params;
+      
+      const conversations = await prisma.chat_conversations.findMany({
+        where: { venue_id },
+        orderBy: { updated_at: 'desc' },
+        take: 50
+      });
+      
+      res.json(conversations);
+    } catch (error) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // GET /api/chat/conversation/:id - Get conversation with messages
+  app.get('/api/chat/conversation/:id', isAuthenticated, async (req, res) => {
+    try {
+      const conversation = await prisma.chat_conversations.findUnique({
+        where: { id: req.params.id },
+        include: { messages: { orderBy: { created_at: 'asc' } } }
+      });
+      
+      res.json(conversation);
+    } catch (error) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // Webhook verification for Meta/WhatsApp
+  app.get('/api/webhook/:venue_id', (req, res) => {
+    const mode = req.query['hub.mode'];
+    const token = req.query['hub.verify_token'];
+    const challenge = req.query['hub.challenge'];
+    
+    // For now, accept any verification with the venue_id as token
+    if (mode === 'subscribe' && token) {
+      res.status(200).send(challenge);
+    } else {
+      res.sendStatus(403);
     }
   });
 

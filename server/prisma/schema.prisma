@@ -193,25 +193,30 @@ model venue_packages {
 }
 
 model venues {
-  id                String        @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  name              String?       @db.VarChar
-  created_at        DateTime      @default(now()) @db.Timestamptz(6)
-  whatsapp          Decimal?      @db.Decimal
-  address           String?       @db.VarChar
-  zip_code          String?       @db.VarChar
-  latitude          Float?
-  longitude         Float?
-  city              String?       @db.VarChar
-  country           String?       @db.VarChar
-  department        String?       @db.VarChar
-  suburb            String?       @db.VarChar
-  address_reference String?
-  instagram         String?       @db.VarChar
-  organization      String?       @db.Uuid
-  is_public         Boolean       @default(false)
-  waze_link         String?       @db.Text
-  google_maps_link  String?       @db.Text
-  venue_plans       venue_plans[]
+  id                    String        @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  name                  String?       @db.VarChar
+  created_at            DateTime      @default(now()) @db.Timestamptz(6)
+  whatsapp              Decimal?      @db.Decimal
+  address               String?       @db.VarChar
+  zip_code              String?       @db.VarChar
+  latitude              Float?
+  longitude             Float?
+  city                  String?       @db.VarChar
+  country               String?       @db.VarChar
+  department            String?       @db.VarChar
+  suburb                String?       @db.VarChar
+  address_reference     String?
+  instagram             String?       @db.VarChar
+  organization          String?       @db.Uuid
+  is_public             Boolean       @default(false)
+  waze_link             String?       @db.Text
+  google_maps_link      String?       @db.Text
+  venue_info            String?       @db.Text
+  wifi_ssid             String?       @db.VarChar(100)
+  wifi_password         String?       @db.VarChar(100)
+  delivery_info         String?       @db.Text
+  default_llm_provider  String?       @db.Uuid
+  venue_plans           venue_plans[]
 }
 
 model sessions {
@@ -372,4 +377,61 @@ model deposit_evidence {
   sort_order  Int      @default(0)
   created_at  DateTime @default(now()) @db.Timestamptz(6)
   deposit     deposits @relation(fields: [deposit_id], references: [id], onDelete: Cascade)
+}
+
+model llm_providers {
+  id          String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  code        String   @unique @db.VarChar(50)
+  name        String   @db.VarChar(100)
+  api_key     String?  @db.Text
+  base_url    String?  @db.Text
+  model       String?  @db.VarChar(100)
+  is_active   Boolean  @default(true)
+  is_default  Boolean  @default(false)
+  config      Json?    @db.Json
+  created_at  DateTime @default(now()) @db.Timestamptz(6)
+  updated_at  DateTime? @db.Timestamptz(6)
+}
+
+model message_templates {
+  id          String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  venue_id    String?  @db.Uuid
+  code        String   @db.VarChar(50)
+  name        String   @db.VarChar(255)
+  category    String?  @db.VarChar(50)
+  content     String   @db.Text
+  variables   Json?    @db.Json
+  is_system   Boolean  @default(false)
+  is_active   Boolean  @default(true)
+  sort_order  Int      @default(0)
+  created_at  DateTime @default(now()) @db.Timestamptz(6)
+  updated_at  DateTime? @db.Timestamptz(6)
+
+  @@unique([venue_id, code])
+}
+
+model chat_conversations {
+  id          String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  venue_id    String   @db.Uuid
+  external_id String?  @db.VarChar(255)
+  source      String   @db.VarChar(50)
+  phone       String?  @db.VarChar(50)
+  name        String?  @db.VarChar(255)
+  metadata    Json?    @db.Json
+  created_at  DateTime @default(now()) @db.Timestamptz(6)
+  updated_at  DateTime? @db.Timestamptz(6)
+  messages    chat_messages[]
+}
+
+model chat_messages {
+  id              String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  conversation_id String   @db.Uuid
+  role            String   @db.VarChar(20)
+  content         String   @db.Text
+  provider        String?  @db.VarChar(50)
+  model           String?  @db.VarChar(100)
+  tokens_used     Int?
+  cost            Decimal? @db.Decimal
+  created_at      DateTime @default(now()) @db.Timestamptz(6)
+  conversation    chat_conversations @relation(fields: [conversation_id], references: [id], onDelete: Cascade)
 }
