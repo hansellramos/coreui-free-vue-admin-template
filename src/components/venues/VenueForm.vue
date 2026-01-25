@@ -45,6 +45,16 @@
       />
       <div class="form-text">Pega aquí el link de Waze para facilitar la llegada de los clientes</div>
     </div>
+    <div class="mb-3">
+      <CFormLabel for="venueGoogleMapsLink">Link de Google Maps</CFormLabel>
+      <CFormInput
+        id="venueGoogleMapsLink"
+        v-model="form.google_maps_link"
+        type="url"
+        placeholder="https://maps.google.com/..."
+      />
+      <div class="form-text">Pega aquí el link de Google Maps para facilitar la llegada de los clientes</div>
+    </div>
     
     <div class="mb-3">
       <CFormLabel>Ubicación</CFormLabel>
