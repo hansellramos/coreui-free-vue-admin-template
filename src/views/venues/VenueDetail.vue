@@ -25,7 +25,7 @@
             <p><strong>Referencia:</strong> <span class="text-body-secondary">{{ venue.address_reference }}</span></p>
             
             <!-- Navigation Links Preview -->
-            <div v-if="venue.waze_link || venue.google_maps_link || (venue.latitude && venue.longitude)" class="mb-4">
+            <div v-if="venue.waze_link || venue.google_maps_link" class="mb-4">
               <strong>Navegación:</strong>
               <CRow class="mt-2 g-3">
                 <CCol :xs="12" :sm="6" v-if="venue.waze_link">
@@ -44,7 +44,7 @@
                     </CCardBody>
                   </CCard>
                 </CCol>
-                <CCol :xs="12" :sm="6" v-if="venue.google_maps_link || (venue.latitude && venue.longitude)">
+                <CCol :xs="12" :sm="6" v-if="venue.google_maps_link">
                   <CCard class="h-100 navigation-card">
                     <CCardBody class="d-flex align-items-center p-3">
                       <div class="nav-icon-wrapper bg-success-subtle me-3">
