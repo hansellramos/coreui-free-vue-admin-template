@@ -2809,6 +2809,844 @@ async function startServer() {
     }
   });
 
+  // Expense Categories API
+  app.get('/api/expense-categories', async (req, res) => {
+    try {
+      const categories = await prisma.expense_categories.findMany({
+        where: { is_active: true },
+        orderBy: { name: 'asc' }
+      });
+      res.json(categories);
+    } catch (error) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.get('/api/expense-categories/:id', async (req, res) => {
+    try {
+      const category = await prisma.expense_categories.findUnique({
+        where: { id: req.params.id }
+      });
+      res.json(category);
+    } catch (error) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.post('/api/expense-categories', isAuthenticated, async (req, res) => {
+    try {
+      const category = await prisma.expense_categories.create({
+        data: req.body
+      });
+      res.json(category);
+    } catch (error) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.put('/api/expense-categories/:id', isAuthenticated, async (req, res) => {
+    try {
+      const existing = await prisma.expense_categories.findUnique({
+        where: { id: req.params.id }
+      });
+      if (existing?.is_system) {
+        return res.status(403).json({ error: 'No se pueden modificar categorías del sistema' });
+      }
+      const category = await prisma.expense_categories.update({
+        where: { id: req.params.id },
+        data: req.body
+      });
+      res.json(category);
+    } catch (error) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.delete('/api/expense-categories/:id', isAuthenticated, async (req, res) => {
+    try {
+      const existing = await prisma.expense_categories.findUnique({
+        where: { id: req.params.id }
+      });
+      if (existing?.is_system) {
+        return res.status(403).json({ error: 'No se pueden eliminar categorías del sistema' });
+      }
+      await prisma.expense_categories.delete({
+        where: { id: req.params.id }
+      });
+      res.json({ success: true });
+    } catch (error) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // Expenses API
+  app.get('/api/expenses', isAuthenticated, async (req, res) => {
+    try {
+      const { venue_id, organization_id, category_id, from_date, to_date, viewAll } = req.query;
+      const viewAllFlag = viewAll === 'true';
+      
+      let accessibleOrgIds = null;
+      
+      if (req.user) {
+        const userId = String(req.user.claims?.sub);
+        const currentUser = await prisma.users.findUnique({ where: { id: userId } });
+        
+        if (viewAllFlag && currentUser?.is_super_admin) {
+          accessibleOrgIds = null;
+        } else if (currentUser?.is_super_admin) {
+          const userOrgs = await prisma.user_organizations.findMany({
+            where: { user_id: userId }
+          });
+          accessibleOrgIds = userOrgs.map(uo => uo.organization_id);
+        } else {
+          accessibleOrgIds = await getAccessibleOrganizationIds(req.userPermissions);
+        }
+      } else {
+        accessibleOrgIds = [];
+      }
+      
+      const whereClause = {};
+      
+      if (accessibleOrgIds !== null) {
+        if (accessibleOrgIds.length === 0) {
+          return res.json([]);
+        }
+        whereClause.organization_id = { in: accessibleOrgIds };
+      }
+      
+      if (venue_id) whereClause.venue_id = venue_id;
+      if (organization_id) whereClause.organization_id = organization_id;
+      if (category_id) whereClause.category_id = category_id;
+      
+      if (from_date || to_date) {
+        whereClause.expense_date = {};
+        if (from_date) whereClause.expense_date.gte = new Date(from_date);
+        if (to_date) whereClause.expense_date.lte = new Date(to_date);
+      }
+      
+      const expenses = await prisma.expenses.findMany({
+        where: whereClause,
+        include: { category: true },
+        orderBy: { expense_date: 'desc' }
+      });
+      
+      // Enrich with venue and organization data
+      const venueIds = [...new Set(expenses.filter(e => e.venue_id).map(e => e.venue_id))];
+      const orgIds = [...new Set(expenses.filter(e => e.organization_id).map(e => e.organization_id))];
+      
+      const venues = venueIds.length > 0 ? await prisma.venues.findMany({
+        where: { id: { in: venueIds } }
+      }) : [];
+      const organizations = orgIds.length > 0 ? await prisma.organizations.findMany({
+        where: { id: { in: orgIds } }
+      }) : [];
+      
+      const venuesMap = {};
+      venues.forEach(v => { venuesMap[v.id] = v; });
+      const orgsMap = {};
+      organizations.forEach(o => { orgsMap[o.id] = o; });
+      
+      const enriched = expenses.map(e => ({
+        ...e,
+        venue_data: e.venue_id ? venuesMap[e.venue_id] : null,
+        organization_data: e.organization_id ? orgsMap[e.organization_id] : null
+      }));
+      
+      res.json(enriched);
+    } catch (error) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.get('/api/expenses/:id', isAuthenticated, async (req, res) => {
+    try {
+      const userId = String(req.user.claims?.sub);
+      const currentUser = await prisma.users.findUnique({ where: { id: userId } });
+      
+      const expense = await prisma.expenses.findUnique({
+        where: { id: req.params.id },
+        include: { category: true }
+      });
+      
+      if (!expense) {
+        return res.status(404).json({ error: 'Gasto no encontrado' });
+      }
+      
+      // Check access to this expense's organization
+      if (!currentUser?.is_super_admin) {
+        const accessibleOrgIds = await getAccessibleOrganizationIds(req.userPermissions);
+        if (accessibleOrgIds !== null && expense.organization_id && !accessibleOrgIds.includes(expense.organization_id)) {
+          return res.status(403).json({ error: 'No tiene acceso a este gasto' });
+        }
+      }
+      
+      res.json(expense);
+    } catch (error) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.post('/api/expenses', isAuthenticated, async (req, res) => {
+    try {
+      const userId = String(req.user.claims?.sub);
+      const currentUser = await prisma.users.findUnique({ where: { id: userId } });
+      
+      // Verify user has access to the organization
+      if (!currentUser?.is_super_admin && req.body.organization_id) {
+        const accessibleOrgIds = await getAccessibleOrganizationIds(req.userPermissions);
+        if (accessibleOrgIds !== null && !accessibleOrgIds.includes(req.body.organization_id)) {
+          return res.status(403).json({ error: 'No tiene acceso a esta organización' });
+        }
+      }
+      
+      const expense = await prisma.expenses.create({
+        data: {
+          ...req.body,
+          expense_date: new Date(req.body.expense_date),
+          created_by: userId
+        }
+      });
+      res.json(expense);
+    } catch (error) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.put('/api/expenses/:id', isAuthenticated, async (req, res) => {
+    try {
+      const userId = String(req.user.claims?.sub);
+      const currentUser = await prisma.users.findUnique({ where: { id: userId } });
+      
+      // Check access to the existing expense
+      const existing = await prisma.expenses.findUnique({ where: { id: req.params.id } });
+      if (!existing) {
+        return res.status(404).json({ error: 'Gasto no encontrado' });
+      }
+      
+      if (!currentUser?.is_super_admin) {
+        const accessibleOrgIds = await getAccessibleOrganizationIds(req.userPermissions);
+        if (accessibleOrgIds !== null && existing.organization_id && !accessibleOrgIds.includes(existing.organization_id)) {
+          return res.status(403).json({ error: 'No tiene acceso a este gasto' });
+        }
+      }
+      
+      const updateData = { ...req.body, updated_at: new Date(), updated_by: userId };
+      if (req.body.expense_date) {
+        updateData.expense_date = new Date(req.body.expense_date);
+      }
+      const expense = await prisma.expenses.update({
+        where: { id: req.params.id },
+        data: updateData
+      });
+      res.json(expense);
+    } catch (error) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.delete('/api/expenses/:id', isAuthenticated, async (req, res) => {
+    try {
+      const userId = String(req.user.claims?.sub);
+      const currentUser = await prisma.users.findUnique({ where: { id: userId } });
+      
+      // Check access to the expense
+      const existing = await prisma.expenses.findUnique({ where: { id: req.params.id } });
+      if (!existing) {
+        return res.status(404).json({ error: 'Gasto no encontrado' });
+      }
+      
+      if (!currentUser?.is_super_admin) {
+        const accessibleOrgIds = await getAccessibleOrganizationIds(req.userPermissions);
+        if (accessibleOrgIds !== null && existing.organization_id && !accessibleOrgIds.includes(existing.organization_id)) {
+          return res.status(403).json({ error: 'No tiene acceso a este gasto' });
+        }
+      }
+      
+      await prisma.expenses.delete({
+        where: { id: req.params.id }
+      });
+      res.json({ success: true });
+    } catch (error) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // Deposits API
+  app.get('/api/deposits', isAuthenticated, async (req, res) => {
+    try {
+      const { accommodation_id, venue_id, status, viewAll } = req.query;
+      const viewAllFlag = viewAll === 'true';
+      
+      let accessibleOrgIds = null;
+      
+      if (req.user) {
+        const userId = String(req.user.claims?.sub);
+        const currentUser = await prisma.users.findUnique({ where: { id: userId } });
+        
+        if (viewAllFlag && currentUser?.is_super_admin) {
+          accessibleOrgIds = null;
+        } else if (currentUser?.is_super_admin) {
+          const userOrgs = await prisma.user_organizations.findMany({
+            where: { user_id: userId }
+          });
+          accessibleOrgIds = userOrgs.map(uo => uo.organization_id);
+        } else {
+          accessibleOrgIds = await getAccessibleOrganizationIds(req.userPermissions);
+        }
+      } else {
+        accessibleOrgIds = [];
+      }
+      
+      const whereClause = {};
+      
+      if (accessibleOrgIds !== null) {
+        if (accessibleOrgIds.length === 0) {
+          return res.json([]);
+        }
+        whereClause.organization_id = { in: accessibleOrgIds };
+      }
+      
+      if (accommodation_id) whereClause.accommodation_id = accommodation_id;
+      if (venue_id) whereClause.venue_id = venue_id;
+      if (status) whereClause.status = status;
+      
+      const deposits = await prisma.deposits.findMany({
+        where: whereClause,
+        include: { evidence: true },
+        orderBy: { created_at: 'desc' }
+      });
+      
+      // Enrich with accommodation and venue data
+      const accommodationIds = [...new Set(deposits.map(d => d.accommodation_id))];
+      const venueIds = [...new Set(deposits.filter(d => d.venue_id).map(d => d.venue_id))];
+      
+      const accommodations = accommodationIds.length > 0 ? await prisma.accommodations.findMany({
+        where: { id: { in: accommodationIds } }
+      }) : [];
+      const venues = venueIds.length > 0 ? await prisma.venues.findMany({
+        where: { id: { in: venueIds } }
+      }) : [];
+      
+      const accommodationsMap = {};
+      accommodations.forEach(a => { accommodationsMap[a.id] = a; });
+      const venuesMap = {};
+      venues.forEach(v => { venuesMap[v.id] = v; });
+      
+      // Get customer data for accommodations
+      const customerIds = [...new Set(accommodations.filter(a => a.customer).map(a => a.customer))];
+      const customers = customerIds.length > 0 ? await prisma.contacts.findMany({
+        where: { id: { in: customerIds } }
+      }) : [];
+      const customersMap = {};
+      customers.forEach(c => { customersMap[c.id] = c; });
+      
+      const enriched = deposits.map(d => {
+        const accommodation = accommodationsMap[d.accommodation_id];
+        return {
+          ...d,
+          accommodation_data: accommodation ? {
+            ...accommodation,
+            customer_data: accommodation.customer ? customersMap[accommodation.customer] : null
+          } : null,
+          venue_data: d.venue_id ? venuesMap[d.venue_id] : null
+        };
+      });
+      
+      res.json(enriched);
+    } catch (error) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.get('/api/deposits/:id', isAuthenticated, async (req, res) => {
+    try {
+      const userId = String(req.user.claims?.sub);
+      const currentUser = await prisma.users.findUnique({ where: { id: userId } });
+      
+      const deposit = await prisma.deposits.findUnique({
+        where: { id: req.params.id },
+        include: { evidence: { orderBy: { sort_order: 'asc' } } }
+      });
+      
+      if (!deposit) {
+        return res.status(404).json({ error: 'Depósito no encontrado' });
+      }
+      
+      // Check access to this deposit's organization
+      if (!currentUser?.is_super_admin) {
+        const accessibleOrgIds = await getAccessibleOrganizationIds(req.userPermissions);
+        if (accessibleOrgIds !== null && deposit.organization_id && !accessibleOrgIds.includes(deposit.organization_id)) {
+          return res.status(403).json({ error: 'No tiene acceso a este depósito' });
+        }
+      }
+      
+      const accommodation = await prisma.accommodations.findUnique({
+        where: { id: deposit.accommodation_id }
+      });
+      let customer = null;
+      if (accommodation?.customer) {
+        customer = await prisma.contacts.findUnique({
+          where: { id: accommodation.customer }
+        });
+      }
+      let venue = null;
+      if (deposit.venue_id) {
+        venue = await prisma.venues.findUnique({
+          where: { id: deposit.venue_id }
+        });
+      }
+      deposit.accommodation_data = accommodation ? { ...accommodation, customer_data: customer } : null;
+      deposit.venue_data = venue;
+      
+      res.json(deposit);
+    } catch (error) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.post('/api/deposits', isAuthenticated, async (req, res) => {
+    try {
+      const userId = String(req.user.claims?.sub);
+      const currentUser = await prisma.users.findUnique({ where: { id: userId } });
+      const { evidence, ...depositData } = req.body;
+      
+      // Verify user has access to the organization
+      if (!currentUser?.is_super_admin && depositData.organization_id) {
+        const accessibleOrgIds = await getAccessibleOrganizationIds(req.userPermissions);
+        if (accessibleOrgIds !== null && !accessibleOrgIds.includes(depositData.organization_id)) {
+          return res.status(403).json({ error: 'No tiene acceso a esta organización' });
+        }
+      }
+      
+      const deposit = await prisma.deposits.create({
+        data: {
+          ...depositData,
+          payment_date: depositData.payment_date ? new Date(depositData.payment_date) : null,
+          created_by: userId
+        }
+      });
+      
+      if (evidence && evidence.length > 0) {
+        await prisma.deposit_evidence.createMany({
+          data: evidence.map((e, i) => ({
+            deposit_id: deposit.id,
+            image_url: e.image_url,
+            type: e.type,
+            description: e.description,
+            sort_order: i
+          }))
+        });
+      }
+      
+      const created = await prisma.deposits.findUnique({
+        where: { id: deposit.id },
+        include: { evidence: true }
+      });
+      
+      res.json(created);
+    } catch (error) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.put('/api/deposits/:id', isAuthenticated, async (req, res) => {
+    try {
+      const userId = String(req.user.claims?.sub);
+      const currentUser = await prisma.users.findUnique({ where: { id: userId } });
+      const { evidence, ...depositData } = req.body;
+      
+      // Check access to the existing deposit
+      const existing = await prisma.deposits.findUnique({ where: { id: req.params.id } });
+      if (!existing) {
+        return res.status(404).json({ error: 'Depósito no encontrado' });
+      }
+      
+      if (!currentUser?.is_super_admin) {
+        const accessibleOrgIds = await getAccessibleOrganizationIds(req.userPermissions);
+        if (accessibleOrgIds !== null && existing.organization_id && !accessibleOrgIds.includes(existing.organization_id)) {
+          return res.status(403).json({ error: 'No tiene acceso a este depósito' });
+        }
+      }
+      
+      const updateData = {
+        ...depositData,
+        updated_at: new Date(),
+        updated_by: userId
+      };
+      if (depositData.payment_date) updateData.payment_date = new Date(depositData.payment_date);
+      if (depositData.refund_date) updateData.refund_date = new Date(depositData.refund_date);
+      
+      const deposit = await prisma.deposits.update({
+        where: { id: req.params.id },
+        data: updateData
+      });
+      
+      if (evidence !== undefined) {
+        await prisma.deposit_evidence.deleteMany({
+          where: { deposit_id: req.params.id }
+        });
+        if (evidence.length > 0) {
+          await prisma.deposit_evidence.createMany({
+            data: evidence.map((e, i) => ({
+              deposit_id: req.params.id,
+              image_url: e.image_url,
+              type: e.type,
+              description: e.description,
+              sort_order: i
+            }))
+          });
+        }
+      }
+      
+      const updated = await prisma.deposits.findUnique({
+        where: { id: req.params.id },
+        include: { evidence: true }
+      });
+      
+      res.json(updated);
+    } catch (error) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.delete('/api/deposits/:id', isAuthenticated, async (req, res) => {
+    try {
+      const userId = String(req.user.claims?.sub);
+      const currentUser = await prisma.users.findUnique({ where: { id: userId } });
+      
+      // Check access to the deposit
+      const existing = await prisma.deposits.findUnique({ where: { id: req.params.id } });
+      if (!existing) {
+        return res.status(404).json({ error: 'Depósito no encontrado' });
+      }
+      
+      if (!currentUser?.is_super_admin) {
+        const accessibleOrgIds = await getAccessibleOrganizationIds(req.userPermissions);
+        if (accessibleOrgIds !== null && existing.organization_id && !accessibleOrgIds.includes(existing.organization_id)) {
+          return res.status(403).json({ error: 'No tiene acceso a este depósito' });
+        }
+      }
+      
+      await prisma.deposits.delete({
+        where: { id: req.params.id }
+      });
+      res.json({ success: true });
+    } catch (error) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // Deposit status update (refund/claim damage)
+  app.put('/api/deposits/:id/status', isAuthenticated, async (req, res) => {
+    try {
+      const userId = String(req.user.claims?.sub);
+      const currentUser = await prisma.users.findUnique({ where: { id: userId } });
+      const { status, refund_amount, refund_date, refund_reference, damage_amount, damage_notes } = req.body;
+      
+      // Check access to the deposit
+      const existing = await prisma.deposits.findUnique({ where: { id: req.params.id } });
+      if (!existing) {
+        return res.status(404).json({ error: 'Depósito no encontrado' });
+      }
+      
+      if (!currentUser?.is_super_admin) {
+        const accessibleOrgIds = await getAccessibleOrganizationIds(req.userPermissions);
+        if (accessibleOrgIds !== null && existing.organization_id && !accessibleOrgIds.includes(existing.organization_id)) {
+          return res.status(403).json({ error: 'No tiene acceso a este depósito' });
+        }
+      }
+      
+      const updateData = {
+        status,
+        updated_at: new Date(),
+        updated_by: userId
+      };
+      
+      if (status === 'refunded') {
+        updateData.refund_amount = refund_amount;
+        updateData.refund_date = refund_date ? new Date(refund_date) : new Date();
+        updateData.refund_reference = refund_reference;
+      } else if (status === 'claimed') {
+        updateData.damage_amount = damage_amount;
+        updateData.damage_notes = damage_notes;
+      }
+      
+      const deposit = await prisma.deposits.update({
+        where: { id: req.params.id },
+        data: updateData,
+        include: { evidence: true }
+      });
+      
+      res.json(deposit);
+    } catch (error) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // Analytics API
+  app.get('/api/analytics/summary', async (req, res) => {
+    try {
+      const { venue_id, organization_id, from_date, to_date, period, viewAll } = req.query;
+      const viewAllFlag = viewAll === 'true';
+      
+      let accessibleOrgIds = null;
+      
+      if (req.user) {
+        const userId = String(req.user.claims?.sub);
+        const currentUser = await prisma.users.findUnique({ where: { id: userId } });
+        
+        if (viewAllFlag && currentUser?.is_super_admin) {
+          accessibleOrgIds = null;
+        } else if (currentUser?.is_super_admin) {
+          const userOrgs = await prisma.user_organizations.findMany({
+            where: { user_id: userId }
+          });
+          accessibleOrgIds = userOrgs.map(uo => uo.organization_id);
+        } else {
+          accessibleOrgIds = await getAccessibleOrganizationIds(req.userPermissions);
+        }
+      } else {
+        return res.json({ income: 0, expenses: 0, depositsHeld: 0, depositsClaimed: 0, profit: 0 });
+      }
+      
+      // Build date range
+      let startDate, endDate;
+      const now = new Date();
+      
+      if (period === 'month') {
+        startDate = new Date(now.getFullYear(), now.getMonth(), 1);
+        endDate = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+      } else if (period === 'quarter') {
+        const quarter = Math.floor(now.getMonth() / 3);
+        startDate = new Date(now.getFullYear(), quarter * 3, 1);
+        endDate = new Date(now.getFullYear(), quarter * 3 + 3, 0);
+      } else if (period === 'year') {
+        startDate = new Date(now.getFullYear(), 0, 1);
+        endDate = new Date(now.getFullYear(), 11, 31);
+      } else if (from_date && to_date) {
+        startDate = new Date(from_date);
+        endDate = new Date(to_date);
+      } else {
+        startDate = new Date(now.getFullYear(), now.getMonth(), 1);
+        endDate = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+      }
+      
+      // Build where clauses
+      const orgFilter = accessibleOrgIds !== null ? { in: accessibleOrgIds } : undefined;
+      
+      const incomeWhere = {
+        date: { gte: startDate, lte: endDate }
+      };
+      if (orgFilter) incomeWhere.organization_id = orgFilter;
+      if (venue_id) incomeWhere.venue_id = venue_id;
+      if (organization_id) incomeWhere.organization_id = organization_id;
+      
+      const expenseWhere = {
+        expense_date: { gte: startDate, lte: endDate }
+      };
+      if (orgFilter) expenseWhere.organization_id = orgFilter;
+      if (venue_id) expenseWhere.venue_id = venue_id;
+      if (organization_id) expenseWhere.organization_id = organization_id;
+      
+      const depositWhere = {
+        created_at: { gte: startDate, lte: endDate }
+      };
+      if (orgFilter) depositWhere.organization_id = orgFilter;
+      if (venue_id) depositWhere.venue_id = venue_id;
+      if (organization_id) depositWhere.organization_id = organization_id;
+      
+      // Query aggregates
+      const incomeResult = await prisma.incomes.aggregate({
+        where: incomeWhere,
+        _sum: { amount: true }
+      });
+      
+      const expenseResult = await prisma.expenses.aggregate({
+        where: expenseWhere,
+        _sum: { amount: true }
+      });
+      
+      const depositsHeldResult = await prisma.deposits.aggregate({
+        where: { ...depositWhere, status: 'pending' },
+        _sum: { amount: true }
+      });
+      
+      const depositsClaimedResult = await prisma.deposits.aggregate({
+        where: { ...depositWhere, status: 'claimed' },
+        _sum: { damage_amount: true }
+      });
+      
+      const income = parseFloat(incomeResult._sum.amount) || 0;
+      const expenses = parseFloat(expenseResult._sum.amount) || 0;
+      const depositsHeld = parseFloat(depositsHeldResult._sum.amount) || 0;
+      const depositsClaimed = parseFloat(depositsClaimedResult._sum.damage_amount) || 0;
+      
+      res.json({
+        income,
+        expenses,
+        depositsHeld,
+        depositsClaimed,
+        profit: income - expenses,
+        period: { from: startDate, to: endDate }
+      });
+    } catch (error) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.get('/api/analytics/expenses-by-category', async (req, res) => {
+    try {
+      const { venue_id, organization_id, from_date, to_date, period, viewAll } = req.query;
+      const viewAllFlag = viewAll === 'true';
+      
+      let accessibleOrgIds = null;
+      
+      if (req.user) {
+        const userId = String(req.user.claims?.sub);
+        const currentUser = await prisma.users.findUnique({ where: { id: userId } });
+        
+        if (viewAllFlag && currentUser?.is_super_admin) {
+          accessibleOrgIds = null;
+        } else if (currentUser?.is_super_admin) {
+          const userOrgs = await prisma.user_organizations.findMany({
+            where: { user_id: userId }
+          });
+          accessibleOrgIds = userOrgs.map(uo => uo.organization_id);
+        } else {
+          accessibleOrgIds = await getAccessibleOrganizationIds(req.userPermissions);
+        }
+      } else {
+        return res.json([]);
+      }
+      
+      let startDate, endDate;
+      const now = new Date();
+      
+      if (period === 'month') {
+        startDate = new Date(now.getFullYear(), now.getMonth(), 1);
+        endDate = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+      } else if (period === 'quarter') {
+        const quarter = Math.floor(now.getMonth() / 3);
+        startDate = new Date(now.getFullYear(), quarter * 3, 1);
+        endDate = new Date(now.getFullYear(), quarter * 3 + 3, 0);
+      } else if (period === 'year') {
+        startDate = new Date(now.getFullYear(), 0, 1);
+        endDate = new Date(now.getFullYear(), 11, 31);
+      } else if (from_date && to_date) {
+        startDate = new Date(from_date);
+        endDate = new Date(to_date);
+      } else {
+        startDate = new Date(now.getFullYear(), now.getMonth(), 1);
+        endDate = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+      }
+      
+      const whereClause = {
+        expense_date: { gte: startDate, lte: endDate }
+      };
+      if (accessibleOrgIds !== null) {
+        if (accessibleOrgIds.length === 0) return res.json([]);
+        whereClause.organization_id = { in: accessibleOrgIds };
+      }
+      if (venue_id) whereClause.venue_id = venue_id;
+      if (organization_id) whereClause.organization_id = organization_id;
+      
+      const expenses = await prisma.expenses.findMany({
+        where: whereClause,
+        include: { category: true }
+      });
+      
+      const byCategory = {};
+      expenses.forEach(e => {
+        const catId = e.category_id || 'uncategorized';
+        const catName = e.category?.name || 'Sin categoría';
+        const catIcon = e.category?.icon || 'cilOptions';
+        const catColor = e.category?.color || 'secondary';
+        if (!byCategory[catId]) {
+          byCategory[catId] = { id: catId, name: catName, icon: catIcon, color: catColor, total: 0, count: 0 };
+        }
+        byCategory[catId].total += parseFloat(e.amount) || 0;
+        byCategory[catId].count += 1;
+      });
+      
+      const result = Object.values(byCategory).sort((a, b) => b.total - a.total);
+      res.json(result);
+    } catch (error) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.get('/api/analytics/monthly-trend', async (req, res) => {
+    try {
+      const { venue_id, organization_id, months, viewAll } = req.query;
+      const viewAllFlag = viewAll === 'true';
+      const numMonths = parseInt(months) || 6;
+      
+      let accessibleOrgIds = null;
+      
+      if (req.user) {
+        const userId = String(req.user.claims?.sub);
+        const currentUser = await prisma.users.findUnique({ where: { id: userId } });
+        
+        if (viewAllFlag && currentUser?.is_super_admin) {
+          accessibleOrgIds = null;
+        } else if (currentUser?.is_super_admin) {
+          const userOrgs = await prisma.user_organizations.findMany({
+            where: { user_id: userId }
+          });
+          accessibleOrgIds = userOrgs.map(uo => uo.organization_id);
+        } else {
+          accessibleOrgIds = await getAccessibleOrganizationIds(req.userPermissions);
+        }
+      } else {
+        return res.json([]);
+      }
+      
+      const now = new Date();
+      const result = [];
+      
+      for (let i = numMonths - 1; i >= 0; i--) {
+        const startDate = new Date(now.getFullYear(), now.getMonth() - i, 1);
+        const endDate = new Date(now.getFullYear(), now.getMonth() - i + 1, 0);
+        
+        const baseWhere = {};
+        if (accessibleOrgIds !== null) {
+          if (accessibleOrgIds.length === 0) {
+            result.push({ month: startDate.toISOString().slice(0, 7), income: 0, expenses: 0, profit: 0 });
+            continue;
+          }
+          baseWhere.organization_id = { in: accessibleOrgIds };
+        }
+        if (venue_id) baseWhere.venue_id = venue_id;
+        if (organization_id) baseWhere.organization_id = organization_id;
+        
+        const incomeResult = await prisma.incomes.aggregate({
+          where: { ...baseWhere, date: { gte: startDate, lte: endDate } },
+          _sum: { amount: true }
+        });
+        
+        const expenseResult = await prisma.expenses.aggregate({
+          where: { ...baseWhere, expense_date: { gte: startDate, lte: endDate } },
+          _sum: { amount: true }
+        });
+        
+        const income = parseFloat(incomeResult._sum.amount) || 0;
+        const expenses = parseFloat(expenseResult._sum.amount) || 0;
+        
+        result.push({
+          month: startDate.toISOString().slice(0, 7),
+          monthName: startDate.toLocaleString('es-CO', { month: 'short', year: 'numeric' }),
+          income,
+          expenses,
+          profit: income - expenses
+        });
+      }
+      
+      res.json(result);
+    } catch (error) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
   // AI-powered receipt data extraction
   app.post('/api/payments/extract-receipt', isAuthenticated, async (req, res) => {
     try {

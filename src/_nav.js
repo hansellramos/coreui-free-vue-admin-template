@@ -8,7 +8,7 @@ export default [
   {
     component: 'CNavItem',
     name: 'Análisis',
-    to: '/dashboard',
+    to: '/analytics',
     icon: 'cil-chart-pie',
   },
   {
@@ -58,6 +58,18 @@ export default [
     icon: 'cil-dollar',
   },
   {
+    component: 'CNavItem',
+    name: 'Depósitos',
+    to: '/business/deposits',
+    icon: 'cil-wallet',
+  },
+  {
+    component: 'CNavItem',
+    name: 'Egresos',
+    to: '/business/expenses',
+    icon: 'cil-cart',
+  },
+  {
     component: 'CNavTitle',
     name: 'Sistema',
   },
@@ -78,6 +90,12 @@ export default [
     name: 'Amenidades',
     to: '/admin/amenities',
     icon: 'cil-list-rich',
+  },
+  {
+    component: 'CNavItem',
+    name: 'Categorías de Gastos',
+    to: '/admin/expense-categories',
+    icon: 'cil-applications',
   },
   {
     component: 'CNavItem',

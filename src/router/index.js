@@ -426,10 +426,47 @@ const routes = [
         component: () => import('@/views/amenities/AmenityListView.vue'),
       },
       {
+        path: '/admin/expense-categories',
+        name: 'ExpenseCategoryList',
+        component: () => import('@/views/expense-categories/ExpenseCategoryListView.vue'),
+      },
+      {
         path: '/business/venues/:id/plans',
         name: 'VenuePlans',
         component: () => import('@/views/venues/VenuePlansView.vue'),
         props: true,
+      },
+      {
+        path: '/business/expenses',
+        name: 'ExpensesList',
+        component: () => import('@/views/expenses/ExpensesListView.vue'),
+      },
+      {
+        path: '/business/expenses/create',
+        name: 'ExpenseCreate',
+        component: () => import('@/views/expenses/ExpenseFormView.vue'),
+      },
+      {
+        path: '/business/expenses/:id/edit',
+        name: 'ExpenseEdit',
+        component: () => import('@/views/expenses/ExpenseFormView.vue'),
+        props: true,
+      },
+      {
+        path: '/business/deposits',
+        name: 'DepositsList',
+        component: () => import('@/views/deposits/DepositsListView.vue'),
+      },
+      {
+        path: '/business/deposits/:id',
+        name: 'DepositDetail',
+        component: () => import('@/views/deposits/DepositDetailView.vue'),
+        props: true,
+      },
+      {
+        path: '/analytics',
+        name: 'Analytics',
+        component: () => import('@/views/analytics/AnalyticsView.vue'),
       },
     ],
   },

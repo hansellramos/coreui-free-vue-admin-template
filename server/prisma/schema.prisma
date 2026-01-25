@@ -308,3 +308,68 @@ model venue_amenities {
 
   @@id([venue_id, amenity_id])
 }
+
+model expense_categories {
+  id          String     @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  name        String     @db.VarChar(100)
+  description String?    @db.Text
+  icon        String?    @db.VarChar(50)
+  color       String?    @db.VarChar(20)
+  is_system   Boolean    @default(false)
+  is_active   Boolean    @default(true)
+  created_at  DateTime   @default(now()) @db.Timestamptz(6)
+  expenses    expenses[]
+}
+
+model expenses {
+  id                  String              @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  organization_id     String?             @db.Uuid
+  venue_id            String?             @db.Uuid
+  category_id         String?             @db.Uuid
+  amount              Decimal             @db.Decimal
+  description         String?             @db.Text
+  expense_date        DateTime            @db.Date
+  reference           String?             @db.VarChar(255)
+  receipt_url         String?             @db.Text
+  notes               String?             @db.Text
+  created_by          String?             @db.VarChar(255)
+  created_at          DateTime            @default(now()) @db.Timestamptz(6)
+  updated_at          DateTime?           @db.Timestamptz(6)
+  updated_by          String?             @db.VarChar(255)
+  category            expense_categories? @relation(fields: [category_id], references: [id])
+}
+
+model deposits {
+  id               String             @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  accommodation_id String             @db.Uuid
+  venue_id         String?            @db.Uuid
+  organization_id  String?            @db.Uuid
+  amount           Decimal            @db.Decimal
+  status           String             @default("pending") @db.VarChar(50)
+  payment_method   String?            @db.VarChar(100)
+  payment_date     DateTime?          @db.Date
+  reference        String?            @db.VarChar(255)
+  receipt_url      String?            @db.Text
+  refund_amount    Decimal?           @db.Decimal
+  refund_date      DateTime?          @db.Date
+  refund_reference String?            @db.VarChar(255)
+  damage_amount    Decimal?           @db.Decimal
+  damage_notes     String?            @db.Text
+  notes            String?            @db.Text
+  created_by       String?            @db.VarChar(255)
+  created_at       DateTime           @default(now()) @db.Timestamptz(6)
+  updated_at       DateTime?          @db.Timestamptz(6)
+  updated_by       String?            @db.VarChar(255)
+  evidence         deposit_evidence[]
+}
+
+model deposit_evidence {
+  id          String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  deposit_id  String   @db.Uuid
+  image_url   String   @db.Text
+  type        String   @db.VarChar(50)
+  description String?  @db.Text
+  sort_order  Int      @default(0)
+  created_at  DateTime @default(now()) @db.Timestamptz(6)
+  deposit     deposits @relation(fields: [deposit_id], references: [id], onDelete: Cascade)
+}

@@ -58,6 +58,13 @@ The Express backend runs on port 3000 and provides:
 - `/api/permissions` - List available permissions
 - `/api/uploads/request-url` - Get presigned URL for file upload (protected)
 - `/objects/:type/:id` - Serve uploaded objects (protected)
+- `/api/expense-categories` - CRUD for expense categories (system categories are protected)
+- `/api/expenses` - CRUD for expenses with filters (venue_id, organization_id, category_id, from_date, to_date)
+- `/api/deposits` - CRUD for security deposits with evidence (accommodation_id, venue_id, status filters)
+- `/api/deposits/:id/status` - Update deposit status (refund/claim)
+- `/api/analytics/summary` - Get income/expense/deposit summary with period filters
+- `/api/analytics/expenses-by-category` - Get expenses grouped by category
+- `/api/analytics/monthly-trend` - Get monthly income/expense trend
 
 Protected routes (POST, PUT, DELETE) require authentication.
 
@@ -108,6 +115,10 @@ A PostgreSQL database is available with the following tables:
 - `user_organizations` - Many-to-many relationship for user-to-organization access
 - `subscriptions` - Subscription plans with limits and Stripe integration fields
 - `subscription_users` - Many-to-many relationship for user-to-subscription membership
+- `expense_categories` - Expense category templates with icons and colors (system categories protected)
+- `expenses` - Expense records linked to venues/organizations with categories
+- `deposits` - Security deposits for accommodations with status tracking (pending/refunded/claimed)
+- `deposit_evidence` - Evidence photos for deposits (damage/invoice types)
 
 The database connection is available via the `DATABASE_URL` environment variable.
 
@@ -190,6 +201,38 @@ Venues can have multiple plans (pasadía/pasanoche/hospedaje) with:
 - Active/inactive status
 
 Access venue plans via the "Planes" button in the Cabañas list.
+
+## Expenses and Deposits System
+
+### Expense Categories
+System comes with pre-configured expense categories:
+- Servicios (utilities), Nómina (payroll), Insumos (supplies), Arreglos (repairs)
+- Mantenimiento (maintenance), Jardinería (gardening), Limpieza (cleaning)
+- Seguridad (security), Impuestos (taxes), Otros (other)
+
+Each category has a CoreUI icon and Bootstrap color. Custom categories can be added.
+System categories cannot be modified or deleted.
+
+### Expenses
+Track all venue/organization expenses with:
+- Category, amount, date, description
+- Optional receipt upload
+- Filter by venue, organization, category, date range
+
+### Security Deposits
+Manage security deposits for accommodations:
+- **Status flow**: pending → refunded (no damage) OR claimed (damage found)
+- **Refund**: Record refund amount, date, and reference
+- **Claim**: Record damage amount and add evidence photos
+- **Evidence types**: damage (photos of damage), invoice (repair receipts)
+
+### Analytics Dashboard
+View financial analytics with:
+- Period selector: Este Mes, Este Trimestre, Este Año, or custom date range
+- Summary cards: Ingresos, Egresos, Depósitos Retenidos, Utilidad
+- Monthly trend chart (income vs expenses)
+- Expenses by category chart
+- Filter by venue and organization
 
 ## Environment Variables
 - `VITE_MAPBOX_ACCESS_TOKEN` - Mapbox API token (optional)
