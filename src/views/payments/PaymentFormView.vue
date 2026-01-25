@@ -114,7 +114,8 @@
                 <div v-if="form.receipt_url" class="small text-muted mt-1 mb-2" style="word-break: break-all;">
                   URL: {{ form.receipt_url }}
                 </div>
-                <div v-if="form.receipt_url" class="position-relative d-inline-block">
+                <div v-if="form.receipt_url" class="mt-2">
+                <div class="position-relative d-inline-block">
                   <img 
                     v-if="!imageLoadError"
                     :src="form.receipt_url" 
@@ -141,7 +142,8 @@
                     <CIcon name="cil-x" />
                   </CButton>
                 </div>
-                <div v-if="form.receipt_url" class="mt-2">
+                </div>
+                <div class="mt-2">
                   <CButton 
                     color="info" 
                     size="sm"
