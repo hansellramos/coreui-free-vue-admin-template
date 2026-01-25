@@ -110,7 +110,7 @@
   </CRow>
 
   <CToaster placement="top-end">
-    <CToast v-if="toast.visible" :color="toast.color" class="text-white" :autohide="true" :delay="4000" @close="toast.visible = false">
+    <CToast :visible="toast.visible" :color="toast.color" class="text-white" :autohide="true" :delay="4000" @close="toast.visible = false">
       <CToastBody>{{ toast.message }}</CToastBody>
     </CToast>
   </CToaster>
