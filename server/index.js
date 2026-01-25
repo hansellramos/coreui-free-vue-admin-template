@@ -74,7 +74,7 @@ async function seedDefaultMessageTemplates() {
     {
       code: 'location',
       name: '¿Cómo llegar?',
-      category: 'info',
+      category: 'ubicacion',
       content: 'Proporciona instrucciones de cómo llegar al venue usando la información de dirección, enlaces de Waze y Google Maps disponibles.',
       is_system: true,
       venue_id: null,
@@ -83,7 +83,7 @@ async function seedDefaultMessageTemplates() {
     {
       code: 'wifi',
       name: 'Clave del WiFi',
-      category: 'info',
+      category: 'wifi',
       content: 'Proporciona la información del WiFi: nombre de red (SSID) y contraseña.',
       is_system: true,
       venue_id: null,
@@ -92,7 +92,7 @@ async function seedDefaultMessageTemplates() {
     {
       code: 'delivery',
       name: 'Domicilios cercanos',
-      category: 'services',
+      category: 'domicilios',
       content: 'Proporciona información sobre servicios de domicilios cercanos disponibles.',
       is_system: true,
       venue_id: null,
@@ -101,7 +101,7 @@ async function seedDefaultMessageTemplates() {
     {
       code: 'beer_delivery',
       name: 'Domicilios de cervezas',
-      category: 'services',
+      category: 'domicilios',
       content: 'Proporciona información sobre servicios de domicilios de cervezas disponibles.',
       is_system: true,
       venue_id: null,
@@ -110,7 +110,7 @@ async function seedDefaultMessageTemplates() {
     {
       code: 'plans',
       name: 'Información de planes',
-      category: 'info',
+      category: 'planes',
       content: 'Proporciona información detallada sobre los planes disponibles, precios, y qué incluyen.',
       is_system: true,
       venue_id: null,
@@ -119,7 +119,7 @@ async function seedDefaultMessageTemplates() {
     {
       code: 'general_info',
       name: 'Información general',
-      category: 'info',
+      category: 'general',
       content: 'Proporciona información general sobre el venue, horarios, servicios y amenidades.',
       is_system: true,
       venue_id: null,
@@ -3995,22 +3995,14 @@ Presta especial atención a comprobantes de Nequi, Daviplata, Bancolombia, y otr
     try {
       const providers = await prisma.llm_providers.findMany({
         where: { is_active: true },
-        orderBy: { name: 'asc' },
-        select: {
-          id: true,
-          code: true,
-          name: true,
-          base_url: true,
-          model: true,
-          is_active: true,
-          is_default: true,
-          config: true,
-          created_at: true,
-          updated_at: true
-          // api_key excluded for security
-        }
+        orderBy: { name: 'asc' }
       });
-      res.json(providers);
+      // Add has_api_key flag and remove actual api_key
+      const safeProviders = providers.map(p => {
+        const { api_key, ...rest } = p;
+        return { ...rest, has_api_key: !!api_key };
+      });
+      res.json(safeProviders);
     } catch (error) {
       res.status(500).json({ error: error.message });
     }
@@ -4020,25 +4012,14 @@ Presta especial atención a comprobantes de Nequi, Daviplata, Bancolombia, y otr
   app.get('/api/llm-providers/:id', isAuthenticated, async (req, res) => {
     try {
       const provider = await prisma.llm_providers.findUnique({
-        where: { id: req.params.id },
-        select: {
-          id: true,
-          code: true,
-          name: true,
-          base_url: true,
-          model: true,
-          is_active: true,
-          is_default: true,
-          config: true,
-          created_at: true,
-          updated_at: true
-          // api_key excluded for security
-        }
+        where: { id: req.params.id }
       });
       if (!provider) {
         return res.status(404).json({ error: 'Proveedor no encontrado' });
       }
-      res.json(provider);
+      // Add has_api_key flag and remove actual api_key
+      const { api_key, ...safeProvider } = provider;
+      res.json({ ...safeProvider, has_api_key: !!api_key });
     } catch (error) {
       res.status(500).json({ error: error.message });
     }
