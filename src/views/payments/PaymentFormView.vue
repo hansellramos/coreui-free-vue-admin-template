@@ -21,7 +21,13 @@
               </CCol>
               <CCol :md="4">
                 <CFormLabel>Reservación</CFormLabel>
-                <CFormSelect v-model="form.accommodation" :disabled="fromAccommodation">
+                <div v-if="fromAccommodation && selectedAccommodation" class="form-control-plaintext">
+                  <router-link :to="`/business/accommodations/${form.accommodation}`" class="text-decoration-none">
+                    <CIcon name="cil-arrow-left" class="me-1" />
+                    {{ formatAccommodation(selectedAccommodation) }}
+                  </router-link>
+                </div>
+                <CFormSelect v-else v-model="form.accommodation">
                   <option value="">Sin asociar a reserva</option>
                   <option v-for="acc in accommodations" :key="acc.id" :value="acc.id">
                     {{ formatAccommodation(acc) }}
@@ -31,6 +37,90 @@
               <CCol :md="4">
                 <CFormLabel>Fecha del pago</CFormLabel>
                 <CFormInput type="date" v-model="form.payment_date" />
+              </CCol>
+            </CRow>
+            <CRow class="mb-3">
+              <CCol :md="12">
+                <CFormLabel>Comprobante</CFormLabel>
+                <div 
+                  v-if="!form.receipt_url"
+                  class="receipt-upload-area"
+                  :class="{ 'is-dragging': isDragging, 'is-uploading': uploading }"
+                  @paste="handlePaste"
+                  @drop.prevent="handleDrop"
+                  @dragover.prevent="isDragging = true"
+                  @dragleave="isDragging = false"
+                  tabindex="0"
+                >
+                  <div v-if="uploading" class="text-center">
+                    <CSpinner size="sm" class="me-2" />
+                    Subiendo imagen...
+                  </div>
+                  <div v-else class="text-center">
+                    <CIcon name="cil-cloud-upload" size="xl" class="mb-2 text-secondary" />
+                    <div class="mb-2">Arrastrar imagen aquí o Ctrl+V para pegar</div>
+                    <div class="d-flex justify-content-center gap-2">
+                      <CButton color="primary" size="sm" @click.stop="triggerFileInput">
+                        <CIcon name="cil-folder-open" class="me-1" /> Seleccionar archivo
+                      </CButton>
+                      <CButton color="secondary" size="sm" @click.stop="pasteFromClipboard">
+                        <CIcon name="cil-clipboard" class="me-1" /> Pegar
+                      </CButton>
+                    </div>
+                  </div>
+                  <input 
+                    ref="fileInput" 
+                    type="file" 
+                    accept="image/*" 
+                    class="d-none" 
+                    @change="handleFileSelect"
+                  />
+                </div>
+                <div v-if="uploadError" class="text-danger small mt-2">
+                  {{ uploadError }}
+                </div>
+                <div v-if="form.receipt_url" class="mt-2">
+                  <div class="position-relative d-inline-block">
+                    <img 
+                      v-if="!imageLoadError"
+                      :src="form.receipt_url" 
+                      class="img-thumbnail" 
+                      style="max-height: 200px; cursor: pointer;"
+                      @click="showReceiptModal = true"
+                      @error="handleImageError"
+                    />
+                    <div 
+                      v-else
+                      class="receipt-placeholder"
+                      @click="showReceiptModal = true"
+                    >
+                      <CIcon name="cil-image" size="xl" class="text-secondary mb-2" />
+                      <div class="small text-muted">Imagen no disponible</div>
+                    </div>
+                    <CButton 
+                      color="danger" 
+                      size="sm" 
+                      class="position-absolute top-0 end-0 m-1"
+                      @click.stop="deleteReceipt"
+                    >
+                      <CIcon name="cil-x" />
+                    </CButton>
+                  </div>
+                  <div class="mt-2">
+                    <CButton 
+                      color="info" 
+                      size="sm"
+                      :disabled="extractingData"
+                      @click="extractReceiptData"
+                    >
+                      <CSpinner v-if="extractingData" size="sm" class="me-2" />
+                      <CIcon v-else name="cil-lightbulb" class="me-2" />
+                      {{ extractingData ? 'Leyendo comprobante...' : 'Leer con IA' }}
+                    </CButton>
+                    <span v-if="extractionError" class="text-danger small ms-2">{{ extractionError }}</span>
+                    <span v-if="extractionSuccess" class="text-success small ms-2">Datos extraídos correctamente</span>
+                  </div>
+                </div>
               </CCol>
             </CRow>
             <CRow class="mb-3">
@@ -75,88 +165,6 @@
                   rows="2"
                   placeholder="Notas adicionales sobre el pago..."
                 />
-              </CCol>
-            </CRow>
-            <CRow class="mb-3">
-              <CCol :md="12">
-                <CFormLabel>Comprobante</CFormLabel>
-                <div 
-                  v-if="!form.receipt_url"
-                  class="receipt-upload-area"
-                  :class="{ 'is-dragging': isDragging, 'is-uploading': uploading }"
-                  @paste="handlePaste"
-                  @drop.prevent="handleDrop"
-                  @dragover.prevent="isDragging = true"
-                  @dragleave="isDragging = false"
-                  @click="triggerFileInput"
-                  tabindex="0"
-                >
-                  <div v-if="uploading" class="text-center">
-                    <CSpinner size="sm" class="me-2" />
-                    Subiendo imagen...
-                  </div>
-                  <div v-else class="text-center">
-                    <CIcon name="cil-cloud-upload" size="xl" class="mb-2 text-secondary" />
-                    <div>Pegar imagen (Ctrl+V), arrastrar, o hacer clic para seleccionar</div>
-                    <div class="small text-muted mt-1">Soporta capturas de pantalla y archivos de imagen</div>
-                  </div>
-                  <input 
-                    ref="fileInput" 
-                    type="file" 
-                    accept="image/*" 
-                    class="d-none" 
-                    @change="handleFileSelect"
-                  />
-                </div>
-                <div v-if="uploadError" class="text-danger small mt-2">
-                  {{ uploadError }}
-                </div>
-                <div v-if="form.receipt_url" class="small text-muted mt-1 mb-2" style="word-break: break-all;">
-                  URL: {{ form.receipt_url }}
-                </div>
-                <div v-if="form.receipt_url" class="mt-2">
-                <div class="position-relative d-inline-block">
-                  <img 
-                    v-if="!imageLoadError"
-                    :src="form.receipt_url" 
-                    class="img-thumbnail" 
-                    style="max-height: 200px; cursor: pointer;"
-                    @click="showReceiptModal = true"
-                    @error="handleImageError"
-                  />
-                  <div 
-                    v-else
-                    class="receipt-placeholder"
-                    @click="showReceiptModal = true"
-                  >
-                    <CIcon name="cil-image" size="xl" class="text-secondary mb-2" />
-                    <div class="small text-muted">Imagen no disponible</div>
-                    <div class="small text-muted">Clic para intentar ver</div>
-                  </div>
-                  <CButton 
-                    color="danger" 
-                    size="sm" 
-                    class="position-absolute top-0 end-0 m-1"
-                    @click.stop="deleteReceipt"
-                  >
-                    <CIcon name="cil-x" />
-                  </CButton>
-                </div>
-                </div>
-                <div class="mt-2">
-                  <CButton 
-                    color="info" 
-                    size="sm"
-                    :disabled="extractingData"
-                    @click="extractReceiptData"
-                  >
-                    <CSpinner v-if="extractingData" size="sm" class="me-2" />
-                    <CIcon v-else name="cil-lightbulb" class="me-2" />
-                    {{ extractingData ? 'Leyendo comprobante...' : 'Leer con IA' }}
-                  </CButton>
-                  <span v-if="extractionError" class="text-danger small ms-2">{{ extractionError }}</span>
-                  <span v-if="extractionSuccess" class="text-success small ms-2">Datos extraídos correctamente</span>
-                </div>
               </CCol>
             </CRow>
             <CRow v-if="isEditing && existingPayment" class="mb-3">
@@ -232,6 +240,10 @@ const router = useRouter()
 
 const isEditing = computed(() => route.params.id && route.params.id !== 'new')
 const fromAccommodation = computed(() => !!route.query.accommodation_id)
+const selectedAccommodation = computed(() => {
+  if (!form.value.accommodation) return null
+  return accommodations.value.find(a => a.id === form.value.accommodation)
+})
 const accommodations = ref([])
 const existingPayment = ref(null)
 const saving = ref(false)
@@ -360,6 +372,25 @@ const handleDrop = (e) => {
   const file = e.dataTransfer?.files?.[0]
   if (file && file.type.startsWith('image/')) {
     uploadFile(file)
+  }
+}
+
+const pasteFromClipboard = async () => {
+  try {
+    const clipboardItems = await navigator.clipboard.read()
+    for (const item of clipboardItems) {
+      const imageType = item.types.find(type => type.startsWith('image/'))
+      if (imageType) {
+        const blob = await item.getType(imageType)
+        const file = new File([blob], 'pasted-image.png', { type: imageType })
+        uploadFile(file)
+        return
+      }
+    }
+    uploadError.value = 'No hay imagen en el portapapeles'
+  } catch (error) {
+    console.error('Clipboard error:', error)
+    uploadError.value = 'No se pudo acceder al portapapeles. Usa Ctrl+V en el área de carga.'
   }
 }
 
