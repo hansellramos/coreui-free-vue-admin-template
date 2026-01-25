@@ -19,6 +19,10 @@ const permissions = [
   { code: 'payments:edit', name: 'Editar pagos', description: 'Permite editar pagos' },
   { code: 'payments:delete', name: 'Eliminar pagos', description: 'Permite eliminar pagos' },
   { code: 'payments:verify', name: 'Verificar pagos', description: 'Permite verificar pagos' },
+  { code: 'deposits:view', name: 'Ver depósitos', description: 'Permite ver depósitos de organizaciones asignadas' },
+  { code: 'deposits:create', name: 'Crear depósitos', description: 'Permite crear nuevos depósitos' },
+  { code: 'deposits:edit', name: 'Editar depósitos', description: 'Permite editar depósitos' },
+  { code: 'deposits:delete', name: 'Eliminar depósitos', description: 'Permite eliminar depósitos' },
   { code: 'contacts:view', name: 'Ver contactos', description: 'Permite ver contactos de organizaciones asignadas' },
   { code: 'contacts:create', name: 'Crear contactos', description: 'Permite crear nuevos contactos' },
   { code: 'contacts:edit', name: 'Editar contactos', description: 'Permite editar contactos' },
@@ -42,6 +46,7 @@ const profiles = [
       'venues:view',
       'accommodations:view',
       'payments:view',
+      'deposits:view',
       'contacts:view'
     ],
     is_system: true
@@ -55,6 +60,7 @@ const profiles = [
       'venues:view', 'venues:create', 'venues:edit', 'venues:delete',
       'accommodations:view', 'accommodations:create', 'accommodations:edit', 'accommodations:delete',
       'payments:view', 'payments:create', 'payments:edit', 'payments:delete', 'payments:verify',
+      'deposits:view', 'deposits:create', 'deposits:edit', 'deposits:delete',
       'contacts:view', 'contacts:create', 'contacts:edit', 'contacts:delete'
     ],
     is_system: true

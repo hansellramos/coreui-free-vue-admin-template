@@ -4,6 +4,14 @@
       <CCard class="mb-4">
         <CCardHeader class="d-flex justify-content-between align-items-center">
           <strong>Depósitos</strong>
+          <CButton 
+            v-if="hasPermission('deposits:create')" 
+            color="primary" 
+            size="sm" 
+            @click="$router.push('/business/deposits/new')"
+          >
+            <CIcon :icon="cilPlus" class="me-1" /> Nuevo Depósito
+          </CButton>
         </CCardHeader>
         <CCardBody>
           <CRow class="mb-3">
@@ -72,9 +80,11 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, inject } from 'vue'
 import { CIcon } from '@coreui/icons-vue'
-import { cilZoom } from '@coreui/icons'
+import { cilZoom, cilPlus } from '@coreui/icons'
+
+const hasPermission = inject('hasPermission', () => false)
 
 const deposits = ref([])
 const venues = ref([])

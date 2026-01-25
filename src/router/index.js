@@ -474,6 +474,17 @@ const routes = [
         component: () => import('@/views/deposits/DepositsListView.vue'),
       },
       {
+        path: '/business/deposits/new',
+        name: 'DepositNew',
+        component: () => import('@/views/deposits/DepositFormView.vue'),
+      },
+      {
+        path: '/business/deposits/:id/edit',
+        name: 'DepositEdit',
+        component: () => import('@/views/deposits/DepositFormView.vue'),
+        props: true,
+      },
+      {
         path: '/business/deposits/:id',
         name: 'DepositDetail',
         component: () => import('@/views/deposits/DepositDetailView.vue'),

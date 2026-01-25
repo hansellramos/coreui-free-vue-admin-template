@@ -183,7 +183,7 @@
                   v-if="!deposit" 
                   color="primary" 
                   size="sm" 
-                  @click="openDepositModal"
+                  @click="$router.push(`/business/deposits/new?accommodation_id=${route.params.id}`)"
                 >
                   Registrar Depósito
                 </CButton>
@@ -287,53 +287,6 @@
       <MessageSuggestions v-if="accommodation" :accommodation="accommodation" />
     </CCol>
   </CRow>
-
-  <CModal 
-    :visible="showDepositModal" 
-    @close="showDepositModal = false"
-    backdrop="static"
-  >
-    <CModalHeader>
-      <CModalTitle>Registrar Depósito</CModalTitle>
-    </CModalHeader>
-    <CModalBody>
-      <div class="mb-3">
-        <label class="form-label">Monto del Depósito *</label>
-        <CFormInput 
-          type="number" 
-          v-model="depositForm.amount" 
-          placeholder="Ej: 200000"
-          required
-        />
-      </div>
-      <div class="mb-3">
-        <label class="form-label">Fecha de Recepción *</label>
-        <CFormInput type="date" v-model="depositForm.payment_date" required />
-      </div>
-      <div class="mb-3">
-        <label class="form-label">Método de Pago</label>
-        <CFormSelect v-model="depositForm.payment_method">
-          <option value="">Seleccionar...</option>
-          <option value="Efectivo">Efectivo</option>
-          <option value="Transferencia">Transferencia</option>
-          <option value="Nequi">Nequi</option>
-          <option value="Daviplata">Daviplata</option>
-        </CFormSelect>
-      </div>
-      <div class="mb-3">
-        <label class="form-label">Referencia / Nota</label>
-        <CFormInput v-model="depositForm.reference" placeholder="Número de referencia o nota" />
-      </div>
-    </CModalBody>
-    <CModalFooter>
-      <CButton color="secondary" variant="outline" @click="showDepositModal = false">
-        Cancelar
-      </CButton>
-      <CButton color="primary" @click="saveDeposit" :disabled="savingDeposit">
-        {{ savingDeposit ? 'Guardando...' : 'Guardar Depósito' }}
-      </CButton>
-    </CModalFooter>
-  </CModal>
 
   <CModal 
     :visible="showRefundModal" 
@@ -557,23 +510,14 @@ const receiptLoadError = ref(false)
 const verifying = ref(false)
 
 const deposit = ref(null)
-const showDepositModal = ref(false)
 const showRefundModal = ref(false)
 const showClaimModal = ref(false)
 const showEvidenceModal = ref(false)
 const selectedEvidence = ref(null)
-const savingDeposit = ref(false)
 const processingRefund = ref(false)
 const processingClaim = ref(false)
 const refundFile = ref(null)
 const claimFiles = ref([])
-
-const depositForm = ref({
-  amount: '',
-  payment_date: new Date().toISOString().split('T')[0],
-  payment_method: '',
-  reference: ''
-})
 
 const refundForm = ref({
   refund_amount: '',
@@ -778,55 +722,6 @@ function depositStatusLabel(status) {
     claimed: 'Retenido'
   }
   return labels[status] || status
-}
-
-function openDepositModal() {
-  depositForm.value = {
-    amount: '',
-    payment_date: new Date().toISOString().split('T')[0],
-    payment_method: '',
-    reference: ''
-  }
-  showDepositModal.value = true
-}
-
-async function saveDeposit() {
-  if (!depositForm.value.amount || !depositForm.value.payment_date) {
-    alert('Por favor complete los campos requeridos')
-    return
-  }
-  
-  savingDeposit.value = true
-  try {
-    const res = await fetch('/api/deposits', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      credentials: 'include',
-      body: JSON.stringify({
-        accommodation_id: route.params.id,
-        venue_id: accommodation.value?.venue_id,
-        organization_id: accommodation.value?.venue_data?.organization_id,
-        amount: parseFloat(depositForm.value.amount),
-        payment_date: depositForm.value.payment_date,
-        payment_method: depositForm.value.payment_method || null,
-        reference: depositForm.value.reference || null,
-        status: 'pending'
-      })
-    })
-    
-    if (res.ok) {
-      showDepositModal.value = false
-      await loadDeposit()
-    } else {
-      const err = await res.json()
-      alert(err.error || 'Error al guardar el depósito')
-    }
-  } catch (error) {
-    console.error('Error saving deposit:', error)
-    alert('Error al guardar el depósito')
-  } finally {
-    savingDeposit.value = false
-  }
 }
 
 function openRefundModal() {
