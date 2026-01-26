@@ -4043,14 +4043,19 @@ async function startServer() {
 
   // AI-powered receipt data extraction
   app.post('/api/payments/extract-receipt', isAuthenticated, async (req, res) => {
+    const startTime = Date.now();
+    const timings = {};
+    
     try {
       const { imageUrl } = req.body;
+      console.log(`[extract-receipt] Starting extraction for: ${imageUrl?.substring(0, 50)}...`);
       
       if (!imageUrl) {
         return res.status(400).json({ error: 'Se requiere la URL de la imagen' });
       }
       
       // Get configured model for receipt extraction
+      const configStartTime = Date.now();
       const aiSetting = await prisma.ai_settings.findUnique({
         where: { setting_key: 'receipt_extraction' }
       });
@@ -4058,6 +4063,8 @@ async function startServer() {
       // Default to anthropic if not configured
       const providerCode = aiSetting?.provider_code || 'anthropic_claude';
       const modelConfig = llmService.getModelConfig(providerCode);
+      timings.configLookup = Date.now() - configStartTime;
+      console.log(`[extract-receipt] Config lookup: ${timings.configLookup}ms, provider: ${providerCode}`);
       
       if (!modelConfig) {
         return res.status(500).json({ error: 'Modelo de IA no configurado' });
@@ -4069,6 +4076,7 @@ async function startServer() {
       }
       
       // Fetch the image from object storage
+      const imageFetchStartTime = Date.now();
       let imageBuffer;
       let contentType = 'image/jpeg';
       
@@ -4117,6 +4125,8 @@ async function startServer() {
         imageBuffer = Buffer.from(await imageResponse.arrayBuffer());
         contentType = imageResponse.headers.get('content-type') || 'image/jpeg';
       }
+      timings.imageFetch = Date.now() - imageFetchStartTime;
+      console.log(`[extract-receipt] Image fetch: ${timings.imageFetch}ms, size: ${imageBuffer.length} bytes`);
       
       // Convert to base64
       const base64Image = imageBuffer.toString('base64');
@@ -4147,7 +4157,11 @@ async function startServer() {
         });
         model = provider(modelConfig.model);
       }
+      timings.modelSetup = Date.now() - imageFetchStartTime - timings.imageFetch;
+      console.log(`[extract-receipt] Model setup: ${timings.modelSetup}ms`);
       
+      const aiStartTime = Date.now();
+      console.log(`[extract-receipt] Starting AI extraction with model: ${modelConfig.model}`);
       const result = await generateObject({
         model,
         messages: [
@@ -4178,13 +4192,20 @@ Presta especial atención a comprobantes de Nequi, Daviplata, Bancolombia, y otr
           payment_date: z.string().nullable().describe('Fecha de la transferencia en formato YYYY-MM-DD')
         })
       });
+      timings.aiExtraction = Date.now() - aiStartTime;
+      timings.total = Date.now() - startTime;
+      
+      console.log(`[extract-receipt] AI extraction completed: ${timings.aiExtraction}ms`);
+      console.log(`[extract-receipt] Total time: ${timings.total}ms | Breakdown: config=${timings.configLookup}ms, imageFetch=${timings.imageFetch}ms, modelSetup=${timings.modelSetup}ms, aiExtraction=${timings.aiExtraction}ms`);
+      console.log(`[extract-receipt] Result:`, JSON.stringify(result.object));
       
       res.json({
         success: true,
         data: result.object
       });
     } catch (error) {
-      console.error('Error extracting receipt data:', error);
+      const errorTime = Date.now() - startTime;
+      console.error(`[extract-receipt] Error after ${errorTime}ms:`, error);
       res.status(500).json({ 
         error: 'Error al procesar el comprobante',
         details: error.message 

@@ -76,7 +76,10 @@ async function callLLM(provider, messages, options = {}) {
 }
 
 async function callOpenAICompatibleAPI(apiKey, baseUrl, model, messages, options = {}) {
+  const startTime = Date.now();
   const { maxTokens = 1024, temperature = 0.7, tools } = options;
+  
+  console.log(`[llm-service] OpenAI-compatible API call starting: model=${model}, messages=${messages.length}, maxTokens=${maxTokens}`);
   
   const body = {
     model,
@@ -99,13 +102,18 @@ async function callOpenAICompatibleAPI(apiKey, baseUrl, model, messages, options
     body: JSON.stringify(body)
   });
   
+  const responseTime = Date.now() - startTime;
+  
   if (!response.ok) {
     const error = await response.text();
+    console.error(`[llm-service] OpenAI-compatible API error after ${responseTime}ms:`, error);
     throw new Error(`Error del proveedor LLM: ${error}`);
   }
   
   const data = await response.json();
   const choice = data.choices[0];
+  
+  console.log(`[llm-service] OpenAI-compatible API completed: ${responseTime}ms, usage: input=${data.usage?.prompt_tokens || 'N/A'}, output=${data.usage?.completion_tokens || 'N/A'}`);
   
   return {
     content: choice?.message?.content || '',
@@ -116,7 +124,10 @@ async function callOpenAICompatibleAPI(apiKey, baseUrl, model, messages, options
 }
 
 async function callAnthropicAPI(apiKey, model, messages, options = {}) {
+  const startTime = Date.now();
   const { maxTokens = 1024, temperature = 0.7, tools } = options;
+  
+  console.log(`[llm-service] Anthropic API call starting: model=${model}, messages=${messages.length}, maxTokens=${maxTokens}`);
   
   const systemMessage = messages.find(m => m.role === 'system');
   const otherMessages = messages.filter(m => m.role !== 'system');
@@ -172,12 +183,16 @@ async function callAnthropicAPI(apiKey, model, messages, options = {}) {
     body: JSON.stringify(body)
   });
   
+  const responseTime = Date.now() - startTime;
+  
   if (!response.ok) {
     const error = await response.text();
+    console.error(`[llm-service] Anthropic API error after ${responseTime}ms:`, error);
     throw new Error(`Error de Anthropic: ${error}`);
   }
   
   const data = await response.json();
+  console.log(`[llm-service] Anthropic API completed: ${responseTime}ms, usage: input=${data.usage?.input_tokens || 'N/A'}, output=${data.usage?.output_tokens || 'N/A'}`);
   
   let content = '';
   let tool_calls = null;

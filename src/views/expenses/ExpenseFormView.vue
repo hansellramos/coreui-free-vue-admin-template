@@ -235,7 +235,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, watch } from 'vue'
 import { RouterLink, useRoute, useRouter } from 'vue-router'
 import {
   CRow, CCol, CCard, CCardHeader, CCardBody, CButton,
@@ -277,7 +277,7 @@ const form = ref({
 
 const filteredVenues = computed(() => {
   if (!form.value.organization_id) return venues.value
-  return venues.value.filter(v => v.organization_id === form.value.organization_id)
+  return venues.value.filter(v => String(v.organization) === String(form.value.organization_id))
 })
 
 const lockedVenue = computed(() => {
@@ -296,6 +296,15 @@ const lockedOrganization = computed(() => {
 
 const selectedCategory = computed(() => {
   return categories.value.find(c => c.id === form.value.category_id)
+})
+
+watch(() => form.value.venue_id, (newVenueId) => {
+  if (newVenueId && !lockedVenue.value) {
+    const venue = venues.value.find(v => String(v.id) === String(newVenueId))
+    if (venue && venue.organization && !form.value.organization_id) {
+      form.value.organization_id = venue.organization
+    }
+  }
 })
 
 const goBack = () => {
