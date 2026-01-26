@@ -191,11 +191,11 @@
               
               <div v-if="deposit" class="border rounded p-3">
                 <CRow>
-                  <CCol :md="4">
+                  <CCol :md="3">
                     <h6 class="text-muted mb-1">Monto</h6>
                     <p class="fs-4 fw-bold text-primary mb-0">{{ formatCurrency(deposit.amount) }}</p>
                   </CCol>
-                  <CCol :md="4">
+                  <CCol :md="3">
                     <h6 class="text-muted mb-1">Estado</h6>
                     <CBadge 
                       :color="depositStatusColor(deposit.status)" 
@@ -204,7 +204,35 @@
                       {{ depositStatusLabel(deposit.status) }}
                     </CBadge>
                   </CCol>
-                  <CCol :md="4">
+                  <CCol :md="3">
+                    <h6 class="text-muted mb-1">Verificación</h6>
+                    <CBadge :color="deposit.verified ? 'success' : 'warning'" class="px-3 py-2">
+                      {{ deposit.verified ? 'Verificado' : 'Pendiente' }}
+                    </CBadge>
+                    <div v-if="deposit.verified && deposit.verified_by_user" class="small text-muted mt-1">
+                      por {{ deposit.verified_by_user.name || deposit.verified_by_user.email }}
+                    </div>
+                    <CButton 
+                      v-if="!deposit.verified"
+                      color="success" 
+                      size="sm" 
+                      class="mt-2"
+                      @click="verifyDeposit"
+                    >
+                      Verificar
+                    </CButton>
+                    <CButton 
+                      v-else
+                      color="warning" 
+                      size="sm" 
+                      variant="outline"
+                      class="mt-2"
+                      @click="unverifyDeposit"
+                    >
+                      Quitar verificación
+                    </CButton>
+                  </CCol>
+                  <CCol :md="3">
                     <h6 class="text-muted mb-1">Fecha de Recepción</h6>
                     <p class="mb-0">{{ formatPaymentDate(deposit.payment_date) }}</p>
                   </CCol>
@@ -570,6 +598,52 @@ async function verifyPayment() {
     alert('Error al verificar el pago')
   } finally {
     verifying.value = false
+  }
+}
+
+async function verifyDeposit() {
+  if (!deposit.value) return
+  
+  try {
+    const res = await fetch(`/api/deposits/${deposit.value.id}/verify`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify({ verified: true })
+    })
+    
+    if (res.ok) {
+      await loadDeposit()
+    } else {
+      const err = await res.json()
+      alert(err.error || 'Error al verificar el depósito')
+    }
+  } catch (error) {
+    console.error('Error verifying deposit:', error)
+    alert('Error al verificar el depósito')
+  }
+}
+
+async function unverifyDeposit() {
+  if (!deposit.value) return
+  
+  try {
+    const res = await fetch(`/api/deposits/${deposit.value.id}/verify`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify({ verified: false })
+    })
+    
+    if (res.ok) {
+      await loadDeposit()
+    } else {
+      const err = await res.json()
+      alert(err.error || 'Error al quitar la verificación')
+    }
+  } catch (error) {
+    console.error('Error unverifying deposit:', error)
+    alert('Error al quitar la verificación')
   }
 }
 
