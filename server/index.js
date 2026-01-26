@@ -4403,7 +4403,8 @@ Presta especial atención a comprobantes de Nequi, Daviplata, Bancolombia, y otr
       
       // Get or create conversation
       let conversation;
-      if (conversation_id) {
+      const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+      if (conversation_id && uuidRegex.test(conversation_id)) {
         conversation = await prisma.chat_conversations.findUnique({
           where: { id: conversation_id },
           include: { messages: { orderBy: { created_at: 'asc' }, take: 20 } }
