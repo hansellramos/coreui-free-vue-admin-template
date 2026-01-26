@@ -132,8 +132,15 @@
                   </div>
                   <div v-else class="text-center">
                     <CIcon name="cil-cloud-upload" size="xl" class="mb-2 text-secondary" />
-                    <div>Pegar imagen (Ctrl+V), arrastrar, o hacer clic para seleccionar</div>
-                    <div class="small text-muted mt-1">Soporta capturas de pantalla y archivos de imagen</div>
+                    <div class="mb-2">Arrastrar imagen aquí o Ctrl+V para pegar</div>
+                    <div class="d-flex justify-content-center gap-2">
+                      <CButton color="primary" size="sm" @click.stop="triggerFileInput">
+                        <CIcon name="cil-folder-open" class="me-1" /> Seleccionar archivo
+                      </CButton>
+                      <CButton color="secondary" size="sm" @click.stop="pasteFromClipboard">
+                        <CIcon name="cil-clipboard" class="me-1" /> Pegar
+                      </CButton>
+                    </div>
                   </div>
                   <input 
                     ref="fileInput" 
@@ -361,6 +368,26 @@ const handlePaste = (e) => {
       if (file) uploadFile(file)
       break
     }
+  }
+}
+
+const pasteFromClipboard = async () => {
+  try {
+    const clipboardItems = await navigator.clipboard.read()
+    for (const clipboardItem of clipboardItems) {
+      for (const type of clipboardItem.types) {
+        if (type.startsWith('image/')) {
+          const blob = await clipboardItem.getType(type)
+          const file = new File([blob], 'pasted-image.png', { type })
+          uploadFile(file)
+          return
+        }
+      }
+    }
+    uploadError.value = 'No se encontró imagen en el portapapeles'
+  } catch (error) {
+    console.error('Error reading clipboard:', error)
+    uploadError.value = 'No se pudo acceder al portapapeles. Intenta con Ctrl+V'
   }
 }
 
