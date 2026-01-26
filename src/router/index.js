@@ -500,6 +500,17 @@ const routes = [
         name: 'Analytics',
         component: () => import('@/views/analytics/AnalyticsView.vue'),
       },
+      {
+        path: '/business/estimates',
+        name: 'EstimatesList',
+        component: () => import('@/views/estimates/EstimatesListView.vue'),
+      },
+      {
+        path: '/business/estimates/:id',
+        name: 'EstimateDetail',
+        component: () => import('@/views/estimates/EstimateFormView.vue'),
+        props: true,
+      },
     ],
   },
   {

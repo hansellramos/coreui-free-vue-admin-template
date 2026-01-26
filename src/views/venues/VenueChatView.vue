@@ -20,6 +20,21 @@
           </div>
         </CCardHeader>
         <CCardBody class="p-0">
+          <div class="contact-input-bar">
+            <div class="d-flex align-items-center gap-2">
+              <CFormSelect v-model="contactType" size="sm" style="width: auto; min-width: 130px;">
+                <option value="whatsapp">WhatsApp</option>
+                <option value="instagram">Instagram</option>
+              </CFormSelect>
+              <CFormInput 
+                v-model="contactValue"
+                :placeholder="contactType === 'whatsapp' ? 'Ej: 3101234567' : 'Ej: @usuario'"
+                size="sm"
+                style="max-width: 180px;"
+              />
+              <small class="text-muted">Simular contacto del cliente</small>
+            </div>
+          </div>
           <div class="chat-container">
             <div class="chat-messages" ref="messagesContainer">
               <div v-if="messages.length === 0" class="text-center text-muted py-5">
@@ -109,6 +124,8 @@ const newMessage = ref('')
 const sending = ref(false)
 const conversationId = ref(null)
 const messagesContainer = ref(null)
+const contactType = ref('whatsapp')
+const contactValue = ref('')
 
 const toast = ref({
   visible: false,
@@ -173,7 +190,9 @@ const sendMessage = async () => {
       body: JSON.stringify({
         message: userMessage,
         provider_id: selectedProviderId.value,
-        conversation_id: conversationId.value
+        conversation_id: conversationId.value,
+        contact_type: contactType.value,
+        contact_value: contactValue.value
       })
     })
     
@@ -228,10 +247,16 @@ onMounted(() => {
 </script>
 
 <style scoped>
+.contact-input-bar {
+  padding: 0.75rem 1rem;
+  background-color: #e9ecef;
+  border-bottom: 1px solid #dee2e6;
+}
+
 .chat-container {
   display: flex;
   flex-direction: column;
-  height: 500px;
+  height: 450px;
 }
 
 .chat-messages {

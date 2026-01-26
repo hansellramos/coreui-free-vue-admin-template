@@ -65,6 +65,12 @@ export default [
   },
   {
     component: 'CNavItem',
+    name: 'Cotizaciones',
+    to: '/business/estimates',
+    icon: 'cil-notes',
+  },
+  {
+    component: 'CNavItem',
     name: 'Egresos',
     to: '/business/expenses',
     icon: 'cil-cart',
