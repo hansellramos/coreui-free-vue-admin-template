@@ -104,7 +104,7 @@ const selectedProviderId = ref('')
 const messages = ref([])
 const newMessage = ref('')
 const sending = ref(false)
-const conversationId = ref(generateConversationId())
+const conversationId = ref(null)
 const messagesContainer = ref(null)
 
 const toast = ref({
@@ -112,10 +112,6 @@ const toast = ref({
   message: '',
   color: 'success'
 })
-
-function generateConversationId() {
-  return 'conv_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9)
-}
 
 const showToast = (message, color = 'success') => {
   toast.value = { visible: true, message, color }
@@ -181,9 +177,18 @@ const sendMessage = async () => {
     const result = await response.json()
     
     if (response.ok) {
+      // Store conversation_id from backend for subsequent messages
+      if (result.conversation_id) {
+        conversationId.value = result.conversation_id
+      }
+      
+      // Remove tool marker from displayed content if present
+      let displayContent = result.response || result.message || ''
+      displayContent = displayContent.replace(/\n<!-- \{.*?\} -->/g, '')
+      
       messages.value.push({
         role: 'assistant',
-        content: result.response || result.message,
+        content: displayContent,
         meta: {
           model: result.model || 'Desconocido',
           tokens: result.tokens || result.usage?.total_tokens
@@ -205,7 +210,7 @@ const sendMessage = async () => {
 
 const clearConversation = () => {
   messages.value = []
-  conversationId.value = generateConversationId()
+  conversationId.value = null
   showToast('Conversación reiniciada')
 }
 
