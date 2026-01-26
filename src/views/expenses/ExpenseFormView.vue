@@ -262,8 +262,8 @@ const lockedVenue = computed(() => {
 })
 
 const lockedOrganization = computed(() => {
-  if (lockedVenue.value && lockedVenue.value.organization_id) {
-    return organizations.value.find(o => String(o.id) === String(lockedVenue.value.organization_id))
+  if (lockedVenue.value && lockedVenue.value.organization) {
+    return organizations.value.find(o => String(o.id) === String(lockedVenue.value.organization))
   }
   return null
 })
@@ -460,8 +460,8 @@ onMounted(async () => {
   if (route.query.venue_id && !isEditing.value) {
     form.value.venue_id = route.query.venue_id
     const venue = venues.value.find(v => String(v.id) === String(route.query.venue_id))
-    if (venue && venue.organization_id) {
-      form.value.organization_id = venue.organization_id
+    if (venue && venue.organization) {
+      form.value.organization_id = venue.organization
     }
   }
   
