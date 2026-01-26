@@ -14,8 +14,8 @@
                 {{ provider.name }} ({{ provider.model }})
               </option>
             </CFormSelect>
-            <CButton color="secondary" size="sm" variant="outline" @click="clearConversation" title="Nueva conversación">
-              <CIcon name="cil-reload" />
+            <CButton color="secondary" size="sm" variant="outline" @click="clearConversation">
+              <CIcon name="cil-chat-bubble" class="me-1" /> Nueva
             </CButton>
           </div>
         </CCardHeader>
