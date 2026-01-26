@@ -130,7 +130,7 @@
 
 <script setup>
 import { ref, computed, onMounted } from 'vue'
-import { RouterLink } from 'vue-router'
+import { RouterLink, useRoute } from 'vue-router'
 import {
   CRow, CCol, CCard, CCardHeader, CCardBody, CButton,
   CTable, CTableHead, CTableRow, CTableHeaderCell, CTableBody, CTableDataCell, CTableFoot,
@@ -236,7 +236,12 @@ const deleteExpense = async () => {
   }
 }
 
+const route = useRoute()
+
 onMounted(() => {
+  if (route.query.venue_id) {
+    filters.value.venue_id = route.query.venue_id
+  }
   loadExpenses()
   loadVenues()
   loadCategories()

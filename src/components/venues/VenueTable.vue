@@ -39,6 +39,7 @@
             <CTableDataCell>
               <CButton color="primary" size="sm" @click="onEdit(venue)">Editar</CButton>
               <CButton color="success" size="sm" class="ms-2" @click="viewPlans(venue)">Planes</CButton>
+              <CButton color="warning" size="sm" class="ms-2" @click="viewExpenses(venue)">Egresos</CButton>
               <CButton color="info" size="sm" class="ms-2" @click="viewUpcoming(venue)">Próximos</CButton>
               <CButton color="danger" size="sm" class="ms-2" @click="onDelete(venue)">Eliminar</CButton>
             </CTableDataCell>
@@ -130,6 +131,13 @@ function viewUpcoming(venue) {
 
 function viewPlans(venue) {
   router.push(`/business/venues/${venue.id}/plans`)
+}
+
+function viewExpenses(venue) {
+  router.push({
+    path: '/business/expenses',
+    query: { venue_id: venue.id }
+  })
 }
 
 async function onDelete(venue) {

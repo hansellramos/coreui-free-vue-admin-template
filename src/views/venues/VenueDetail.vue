@@ -81,6 +81,11 @@
                   <CIcon icon="cil-comment-square" class="me-1" /> Chat IA
                 </CButton>
               </RouterLink>
+              <RouterLink :to="{ path: '/business/expenses', query: { venue_id: venue.id } }">
+                <CButton color="warning" size="sm">
+                  <CIcon icon="cil-wallet" class="me-1" /> Egresos
+                </CButton>
+              </RouterLink>
               <RouterLink to="/business/venues">
                 <CButton color="secondary" size="sm" variant="outline">Volver a la Lista</CButton>
               </RouterLink>
