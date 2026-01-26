@@ -3506,6 +3506,46 @@ async function startServer() {
     }
   });
 
+  // Verify deposit
+  app.put('/api/deposits/:id/verify', isAuthenticated, async (req, res) => {
+    try {
+      const { verified } = req.body;
+      const depositId = req.params.id;
+      
+      const currentDeposit = await prisma.deposits.findUnique({
+        where: { id: depositId }
+      });
+      
+      if (!currentDeposit) {
+        return res.status(404).json({ error: 'Depósito no encontrado' });
+      }
+      
+      const replitId = String(req.user?.claims?.sub);
+      const dbUser = await prisma.users.findUnique({
+        where: { id: replitId }
+      });
+      const userId = dbUser?.id || null;
+      
+      const data = {
+        verified: verified === true,
+        verified_at: verified === true ? new Date() : null,
+        verified_by: verified === true ? userId : null,
+        updated_at: new Date(),
+        updated_by: userId
+      };
+      
+      const deposit = await prisma.deposits.update({
+        where: { id: depositId },
+        data,
+        include: { evidence: true }
+      });
+      
+      res.json(deposit);
+    } catch (error) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
   // Estimates CRUD
   app.get('/api/estimates', isAuthenticated, async (req, res) => {
     try {

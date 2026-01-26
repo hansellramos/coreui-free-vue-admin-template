@@ -361,6 +361,9 @@ model deposits {
   damage_amount    Decimal?           @db.Decimal
   damage_notes     String?            @db.Text
   notes            String?            @db.Text
+  verified         Boolean            @default(false)
+  verified_at      DateTime?          @db.Timestamptz(6)
+  verified_by      String?            @db.VarChar(255)
   created_by       String?            @db.VarChar(255)
   created_at       DateTime           @default(now()) @db.Timestamptz(6)
   updated_at       DateTime?          @db.Timestamptz(6)
