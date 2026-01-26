@@ -206,31 +206,33 @@
                   </CCol>
                   <CCol :md="3">
                     <h6 class="text-muted mb-1">Verificación</h6>
-                    <CBadge :color="deposit.verified ? 'success' : 'warning'" class="px-3 py-2">
-                      {{ deposit.verified ? 'Verificado' : 'Pendiente' }}
-                    </CBadge>
+                    <div>
+                      <CBadge :color="deposit.verified ? 'success' : 'warning'" class="px-3 py-2">
+                        {{ deposit.verified ? 'Verificado' : 'Pendiente' }}
+                      </CBadge>
+                    </div>
                     <div v-if="deposit.verified && deposit.verified_by_user" class="small text-muted mt-1">
                       por {{ deposit.verified_by_user.name || deposit.verified_by_user.email }}
                     </div>
-                    <CButton 
-                      v-if="!deposit.verified"
-                      color="success" 
-                      size="sm" 
-                      class="mt-2"
-                      @click="verifyDeposit"
-                    >
-                      Verificar
-                    </CButton>
-                    <CButton 
-                      v-else
-                      color="warning" 
-                      size="sm" 
-                      variant="outline"
-                      class="mt-2"
-                      @click="unverifyDeposit"
-                    >
-                      Quitar verificación
-                    </CButton>
+                    <div class="mt-2">
+                      <CButton 
+                        v-if="!deposit.verified"
+                        color="success" 
+                        size="sm" 
+                        @click="verifyDeposit"
+                      >
+                        Verificar
+                      </CButton>
+                      <CButton 
+                        v-else
+                        color="warning" 
+                        size="sm" 
+                        variant="outline"
+                        @click="unverifyDeposit"
+                      >
+                        Quitar verificación
+                      </CButton>
+                    </div>
                   </CCol>
                   <CCol :md="3">
                     <h6 class="text-muted mb-1">Fecha de Recepción</h6>
