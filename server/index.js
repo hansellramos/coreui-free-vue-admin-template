@@ -3049,7 +3049,7 @@ async function startServer() {
       
       const expenses = await prisma.expenses.findMany({
         where: whereClause,
-        include: { category: true },
+        include: { category: true, provider: true },
         orderBy: { expense_date: 'desc' }
       });
       
@@ -3088,7 +3088,7 @@ async function startServer() {
       
       const expense = await prisma.expenses.findUnique({
         where: { id: req.params.id },
-        include: { category: true }
+        include: { category: true, provider: true }
       });
       
       if (!expense) {
@@ -3189,6 +3189,111 @@ async function startServer() {
         where: { id: req.params.id }
       });
       res.json({ success: true });
+    } catch (error) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // ==========================================
+  // Providers API
+  // ==========================================
+  
+  // GET /api/providers - List providers with optional search
+  app.get('/api/providers', isAuthenticated, async (req, res) => {
+    try {
+      const { search, organization_id } = req.query;
+      
+      const whereClause = {};
+      
+      if (organization_id) {
+        whereClause.organization_id = organization_id;
+      }
+      
+      if (search) {
+        whereClause.name = {
+          contains: search,
+          mode: 'insensitive'
+        };
+      }
+      
+      const providers = await prisma.providers.findMany({
+        where: whereClause,
+        orderBy: { name: 'asc' },
+        take: 50
+      });
+      
+      res.json(providers);
+    } catch (error) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+  
+  // POST /api/providers - Create a new provider
+  app.post('/api/providers', isAuthenticated, async (req, res) => {
+    try {
+      const { name, organization_id, phone, email, address, notes } = req.body;
+      
+      if (!name || !name.trim()) {
+        return res.status(400).json({ error: 'El nombre del proveedor es requerido' });
+      }
+      
+      // Check if provider already exists with same name in organization
+      const existing = await prisma.providers.findFirst({
+        where: {
+          name: { equals: name.trim(), mode: 'insensitive' },
+          organization_id: organization_id || null
+        }
+      });
+      
+      if (existing) {
+        return res.json(existing);
+      }
+      
+      const provider = await prisma.providers.create({
+        data: {
+          name: name.trim(),
+          organization_id: organization_id || null,
+          phone: phone || null,
+          email: email || null,
+          address: address || null,
+          notes: notes || null
+        }
+      });
+      
+      res.json(provider);
+    } catch (error) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+  
+  // POST /api/providers/find-or-create - Find or create provider by name
+  app.post('/api/providers/find-or-create', isAuthenticated, async (req, res) => {
+    try {
+      const { name, organization_id } = req.body;
+      
+      if (!name || !name.trim()) {
+        return res.status(400).json({ error: 'El nombre del proveedor es requerido' });
+      }
+      
+      // Try to find existing provider
+      let provider = await prisma.providers.findFirst({
+        where: {
+          name: { equals: name.trim(), mode: 'insensitive' },
+          organization_id: organization_id || null
+        }
+      });
+      
+      // Create if not found
+      if (!provider) {
+        provider = await prisma.providers.create({
+          data: {
+            name: name.trim(),
+            organization_id: organization_id || null
+          }
+        });
+      }
+      
+      res.json(provider);
     } catch (error) {
       res.status(500).json({ error: error.message });
     }

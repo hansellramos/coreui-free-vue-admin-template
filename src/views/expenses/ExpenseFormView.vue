@@ -54,9 +54,9 @@
               </CCol>
             </CRow>
             <CRow class="mb-3">
-              <CCol :md="6">
+              <CCol :md="4">
                 <CFormLabel>Categoría *</CFormLabel>
-                <CFormSelect v-model="form.category_id" required>
+                <CFormSelect v-model="form.category_id" required @change="onCategoryChange">
                   <option value="">Seleccionar...</option>
                   <option v-for="category in categories" :key="category.id" :value="category.id">
                     {{ category.name }}
@@ -69,13 +69,22 @@
                   </CBadge>
                 </div>
               </CCol>
-              <CCol :md="6">
+              <CCol :md="4">
+                <CFormLabel>Subcategoría</CFormLabel>
+                <CFormSelect v-model="form.subcategory" :disabled="!subcategoryOptions.length">
+                  <option value="">{{ subcategoryOptions.length ? 'Seleccionar...' : 'N/A para esta categoría' }}</option>
+                  <option v-for="sub in subcategoryOptions" :key="sub" :value="sub">
+                    {{ sub }}
+                  </option>
+                </CFormSelect>
+              </CCol>
+              <CCol :md="4">
                 <CFormLabel>Fecha del gasto *</CFormLabel>
                 <CFormInput type="date" v-model="form.expense_date" required />
               </CCol>
             </CRow>
             <CRow class="mb-3">
-              <CCol :md="6">
+              <CCol :md="4">
                 <CFormLabel>Monto *</CFormLabel>
                 <CFormInput 
                   type="number" 
@@ -84,12 +93,53 @@
                   required
                 />
               </CCol>
-              <CCol :md="6">
+              <CCol :md="4">
                 <CFormLabel>Referencia</CFormLabel>
                 <CFormInput 
                   v-model="form.reference" 
                   placeholder="Ej: Factura #12345"
                 />
+              </CCol>
+              <CCol :md="4">
+                <CFormLabel>Proveedor</CFormLabel>
+                <div class="position-relative">
+                  <CFormInput 
+                    v-model="providerSearch"
+                    placeholder="Buscar o crear proveedor..."
+                    @input="searchProviders"
+                    @focus="showProviderSuggestions = true"
+                    @blur="hideProviderSuggestions"
+                    autocomplete="off"
+                  />
+                  <div 
+                    v-if="showProviderSuggestions && (providerSuggestions.length > 0 || (providerSearch && providerSearch.length >= 2))"
+                    class="provider-suggestions"
+                  >
+                    <div 
+                      v-for="provider in providerSuggestions" 
+                      :key="provider.id"
+                      class="provider-suggestion"
+                      @mousedown="selectProvider(provider)"
+                    >
+                      {{ provider.name }}
+                    </div>
+                    <div 
+                      v-if="providerSearch && providerSearch.length >= 2 && !providerSuggestions.some(p => p.name.toLowerCase() === providerSearch.toLowerCase())"
+                      class="provider-suggestion provider-create"
+                      @mousedown="createAndSelectProvider"
+                    >
+                      <CIcon name="cil-plus" class="me-1" />
+                      Crear "{{ providerSearch }}"
+                    </div>
+                  </div>
+                </div>
+                <div v-if="selectedProvider" class="mt-2">
+                  <CBadge color="info">
+                    <CIcon name="cil-user" class="me-1" />
+                    {{ selectedProvider.name }}
+                    <CIcon name="cil-x" size="sm" class="ms-1 cursor-pointer" @click="clearProvider" />
+                  </CBadge>
+                </div>
               </CCol>
             </CRow>
             <CRow class="mb-3">
@@ -267,12 +317,29 @@ const form = ref({
   organization_id: '',
   venue_id: '',
   category_id: '',
+  subcategory: '',
+  provider_id: '',
   amount: '',
   expense_date: new Date().toISOString().split('T')[0],
   description: '',
   reference: '',
   receipt_url: '',
   notes: ''
+})
+
+const providerSearch = ref('')
+const providerSuggestions = ref([])
+const showProviderSuggestions = ref(false)
+const selectedProvider = ref(null)
+
+const subcategoryMap = {
+  'Servicios': ['Internet/Tv', 'Agua', 'Energía', 'Gas', 'Aseo'],
+  'Mantenimiento': ['Piscina', 'Equipos', 'Eléctrico', 'Aires Acondicionados', 'Kiosco']
+}
+
+const subcategoryOptions = computed(() => {
+  if (!selectedCategory.value) return []
+  return subcategoryMap[selectedCategory.value.name] || []
 })
 
 const filteredVenues = computed(() => {
@@ -309,6 +376,73 @@ watch(() => form.value.venue_id, (newVenueId) => {
 
 const goBack = () => {
   router.push('/business/expenses')
+}
+
+const onCategoryChange = () => {
+  form.value.subcategory = ''
+}
+
+const searchProviders = async () => {
+  if (!providerSearch.value || providerSearch.value.length < 2) {
+    providerSuggestions.value = []
+    return
+  }
+  
+  try {
+    const params = new URLSearchParams({ search: providerSearch.value })
+    if (form.value.organization_id) {
+      params.append('organization_id', form.value.organization_id)
+    }
+    const response = await fetch(`/api/providers?${params}`, { credentials: 'include' })
+    if (response.ok) {
+      providerSuggestions.value = await response.json()
+    }
+  } catch (error) {
+    console.error('Error searching providers:', error)
+  }
+}
+
+const selectProvider = (provider) => {
+  selectedProvider.value = provider
+  form.value.provider_id = provider.id
+  providerSearch.value = ''
+  showProviderSuggestions.value = false
+  providerSuggestions.value = []
+}
+
+const createAndSelectProvider = async () => {
+  if (!providerSearch.value || providerSearch.value.length < 2) return
+  
+  try {
+    const response = await fetch('/api/providers/find-or-create', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify({
+        name: providerSearch.value,
+        organization_id: form.value.organization_id || null
+      })
+    })
+    
+    if (response.ok) {
+      const provider = await response.json()
+      selectProvider(provider)
+    }
+  } catch (error) {
+    console.error('Error creating provider:', error)
+  }
+}
+
+const clearProvider = () => {
+  selectedProvider.value = null
+  form.value.provider_id = ''
+  providerSearch.value = ''
+}
+
+const hideProviderSuggestions = () => {
+  setTimeout(() => {
+    showProviderSuggestions.value = false
+  }, 200)
 }
 
 const loadOrganizations = async () => {
@@ -354,12 +488,17 @@ const loadExpense = async () => {
         organization_id: expense.organization_id || '',
         venue_id: expense.venue_id || '',
         category_id: expense.category_id || '',
+        subcategory: expense.subcategory || '',
+        provider_id: expense.provider_id || '',
         amount: expense.amount || '',
         expense_date: expense.expense_date ? expense.expense_date.split('T')[0] : '',
         description: expense.description || '',
         reference: expense.reference || '',
         receipt_url: expense.receipt_url || '',
         notes: expense.notes || ''
+      }
+      if (expense.provider) {
+        selectedProvider.value = expense.provider
       }
     }
   } catch (error) {
@@ -612,5 +751,40 @@ onMounted(async () => {
 
 .receipt-placeholder:hover {
   background-color: var(--cui-gray-200);
+}
+
+.provider-suggestions {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  z-index: 1000;
+  background-color: var(--cui-body-bg);
+  border: 1px solid var(--cui-border-color);
+  border-top: none;
+  border-radius: 0 0 0.375rem 0.375rem;
+  max-height: 200px;
+  overflow-y: auto;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+
+.provider-suggestion {
+  padding: 0.5rem 0.75rem;
+  cursor: pointer;
+  transition: background-color 0.15s;
+}
+
+.provider-suggestion:hover {
+  background-color: var(--cui-light);
+}
+
+.provider-suggestion.provider-create {
+  border-top: 1px solid var(--cui-border-color);
+  color: var(--cui-primary);
+  font-weight: 500;
+}
+
+.cursor-pointer {
+  cursor: pointer;
 }
 </style>

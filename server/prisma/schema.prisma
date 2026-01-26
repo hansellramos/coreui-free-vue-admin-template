@@ -331,6 +331,8 @@ model expenses {
   organization_id     String?             @db.Uuid
   venue_id            String?             @db.Uuid
   category_id         String?             @db.Uuid
+  subcategory         String?             @db.VarChar(100)
+  provider_id         String?             @db.Uuid
   amount              Decimal             @db.Decimal
   description         String?             @db.Text
   expense_date        DateTime            @db.Date
@@ -342,6 +344,20 @@ model expenses {
   updated_at          DateTime?           @db.Timestamptz(6)
   updated_by          String?             @db.VarChar(255)
   category            expense_categories? @relation(fields: [category_id], references: [id])
+  provider            providers?          @relation(fields: [provider_id], references: [id])
+}
+
+model providers {
+  id              String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  name            String    @db.VarChar(255)
+  organization_id String?   @db.Uuid
+  phone           String?   @db.VarChar(50)
+  email           String?   @db.VarChar(255)
+  address         String?   @db.Text
+  notes           String?   @db.Text
+  created_at      DateTime  @default(now()) @db.Timestamptz(6)
+  updated_at      DateTime? @db.Timestamptz(6)
+  expenses        expenses[]
 }
 
 model deposits {
