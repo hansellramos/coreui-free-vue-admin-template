@@ -13,12 +13,22 @@
             <CRow class="mb-3">
               <CCol :md="6">
                 <CFormLabel>Organización *</CFormLabel>
-                <CFormSelect v-model="form.organization_id" required>
-                  <option value="">Seleccionar...</option>
-                  <option v-for="org in organizations" :key="org.id" :value="org.id">
-                    {{ org.name }}
-                  </option>
-                </CFormSelect>
+                <template v-if="lockedOrganization">
+                  <div class="form-control-plaintext">
+                    <CBadge color="secondary" class="fs-6 py-2 px-3">
+                      <CIcon name="cil-building" class="me-1" />
+                      {{ lockedOrganization.name }}
+                    </CBadge>
+                  </div>
+                </template>
+                <template v-else>
+                  <CFormSelect v-model="form.organization_id" required>
+                    <option value="">Seleccionar...</option>
+                    <option v-for="org in organizations" :key="org.id" :value="org.id">
+                      {{ org.name }}
+                    </option>
+                  </CFormSelect>
+                </template>
               </CCol>
               <CCol :md="6">
                 <CFormLabel>Sede *</CFormLabel>
@@ -247,6 +257,13 @@ const filteredVenues = computed(() => {
 const lockedVenue = computed(() => {
   if (route.query.venue_id && !isEditing.value) {
     return venues.value.find(v => String(v.id) === String(route.query.venue_id))
+  }
+  return null
+})
+
+const lockedOrganization = computed(() => {
+  if (lockedVenue.value && lockedVenue.value.organization_id) {
+    return organizations.value.find(o => String(o.id) === String(lockedVenue.value.organization_id))
   }
   return null
 })
