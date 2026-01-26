@@ -4,7 +4,7 @@
       <CCard class="mb-4">
         <CCardHeader class="d-flex justify-content-between align-items-center">
           <strong>Gastos</strong>
-          <RouterLink to="/business/expenses/create" class="btn btn-primary btn-sm">
+          <RouterLink :to="newExpenseLink" class="btn btn-primary btn-sm">
             <CIcon name="cil-plus" class="me-1" /> Nuevo Gasto
           </RouterLink>
         </CCardHeader>
@@ -156,6 +156,13 @@ const filters = ref({
 
 const totalAmount = computed(() => {
   return expenses.value.reduce((sum, e) => sum + (parseFloat(e.amount) || 0), 0)
+})
+
+const newExpenseLink = computed(() => {
+  if (filters.value.venue_id) {
+    return { path: '/business/expenses/create', query: { venue_id: filters.value.venue_id } }
+  }
+  return '/business/expenses/create'
 })
 
 const loadExpenses = async () => {

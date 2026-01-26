@@ -22,12 +22,25 @@
               </CCol>
               <CCol :md="6">
                 <CFormLabel>Sede *</CFormLabel>
-                <CFormSelect v-model="form.venue_id" required>
-                  <option value="">Seleccionar...</option>
-                  <option v-for="venue in filteredVenues" :key="venue.id" :value="venue.id">
-                    {{ venue.name }}
-                  </option>
-                </CFormSelect>
+                <template v-if="lockedVenue">
+                  <div class="form-control-plaintext">
+                    <RouterLink :to="`/business/venues/${lockedVenue.id}/read`" class="text-decoration-none">
+                      <CBadge color="warning" class="fs-6 py-2 px-3">
+                        <CIcon name="cil-location-pin" class="me-1" />
+                        {{ lockedVenue.name }}
+                        <CIcon name="cil-external-link" size="sm" class="ms-1" />
+                      </CBadge>
+                    </RouterLink>
+                  </div>
+                </template>
+                <template v-else>
+                  <CFormSelect v-model="form.venue_id" required>
+                    <option value="">Seleccionar...</option>
+                    <option v-for="venue in filteredVenues" :key="venue.id" :value="venue.id">
+                      {{ venue.name }}
+                    </option>
+                  </CFormSelect>
+                </template>
               </CCol>
             </CRow>
             <CRow class="mb-3">
@@ -190,7 +203,7 @@
 
 <script setup>
 import { ref, computed, onMounted } from 'vue'
-import { useRoute, useRouter } from 'vue-router'
+import { RouterLink, useRoute, useRouter } from 'vue-router'
 import {
   CRow, CCol, CCard, CCardHeader, CCardBody, CButton,
   CForm, CFormLabel, CFormInput, CFormTextarea, CFormSelect,
@@ -229,6 +242,13 @@ const form = ref({
 const filteredVenues = computed(() => {
   if (!form.value.organization_id) return venues.value
   return venues.value.filter(v => v.organization_id === form.value.organization_id)
+})
+
+const lockedVenue = computed(() => {
+  if (route.query.venue_id && !isEditing.value) {
+    return venues.value.find(v => String(v.id) === String(route.query.venue_id))
+  }
+  return null
 })
 
 const selectedCategory = computed(() => {
@@ -417,10 +437,17 @@ const saveExpense = async () => {
   }
 }
 
-onMounted(() => {
-  loadOrganizations()
-  loadVenues()
-  loadCategories()
+onMounted(async () => {
+  await Promise.all([loadOrganizations(), loadVenues(), loadCategories()])
+  
+  if (route.query.venue_id && !isEditing.value) {
+    form.value.venue_id = route.query.venue_id
+    const venue = venues.value.find(v => String(v.id) === String(route.query.venue_id))
+    if (venue && venue.organization_id) {
+      form.value.organization_id = venue.organization_id
+    }
+  }
+  
   loadExpense()
 })
 </script>
