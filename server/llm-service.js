@@ -76,7 +76,19 @@ async function callLLM(provider, messages, options = {}) {
 }
 
 async function callOpenAICompatibleAPI(apiKey, baseUrl, model, messages, options = {}) {
-  const { maxTokens = 1024, temperature = 0.7 } = options;
+  const { maxTokens = 1024, temperature = 0.7, tools } = options;
+  
+  const body = {
+    model,
+    messages,
+    max_tokens: maxTokens,
+    temperature
+  };
+  
+  if (tools && tools.length > 0) {
+    body.tools = tools;
+    body.tool_choice = 'auto';
+  }
   
   const response = await fetch(`${baseUrl}/chat/completions`, {
     method: 'POST',
@@ -84,12 +96,7 @@ async function callOpenAICompatibleAPI(apiKey, baseUrl, model, messages, options
       'Authorization': `Bearer ${apiKey}`,
       'Content-Type': 'application/json'
     },
-    body: JSON.stringify({
-      model,
-      messages,
-      max_tokens: maxTokens,
-      temperature
-    })
+    body: JSON.stringify(body)
   });
   
   if (!response.ok) {
@@ -98,31 +105,61 @@ async function callOpenAICompatibleAPI(apiKey, baseUrl, model, messages, options
   }
   
   const data = await response.json();
+  const choice = data.choices[0];
   
   return {
-    content: data.choices[0]?.message?.content || '',
+    content: choice?.message?.content || '',
+    tool_calls: choice?.message?.tool_calls || null,
     usage: data.usage || {},
     model: data.model || model
   };
 }
 
 async function callAnthropicAPI(apiKey, model, messages, options = {}) {
-  const { maxTokens = 1024, temperature = 0.7 } = options;
+  const { maxTokens = 1024, temperature = 0.7, tools } = options;
   
   const systemMessage = messages.find(m => m.role === 'system');
   const otherMessages = messages.filter(m => m.role !== 'system');
   
+  // Check if any message has block content (tool_use/tool_result)
+  const hasBlockContent = otherMessages.some(m => Array.isArray(m.content));
+  
+  // Normalize messages for Anthropic format
+  const normalizedMessages = otherMessages.map(m => {
+    const role = m.role === 'assistant' ? 'assistant' : 'user';
+    
+    // If content is already an array (block format), use as-is
+    if (Array.isArray(m.content)) {
+      return { role, content: m.content };
+    }
+    
+    // If we have any block content in the conversation, wrap all strings in text blocks for consistency
+    if (hasBlockContent && typeof m.content === 'string') {
+      return { role, content: [{ type: 'text', text: m.content }] };
+    }
+    
+    // For simple conversations without tool use, strings are fine
+    return { role, content: m.content };
+  });
+  
   const body = {
     model,
     max_tokens: maxTokens,
-    messages: otherMessages.map(m => ({
-      role: m.role === 'assistant' ? 'assistant' : 'user',
-      content: m.content
-    }))
+    messages: normalizedMessages
   };
   
   if (systemMessage) {
-    body.system = systemMessage.content;
+    body.system = typeof systemMessage.content === 'string' 
+      ? systemMessage.content 
+      : systemMessage.content;
+  }
+  
+  if (tools && tools.length > 0) {
+    body.tools = tools.map(t => ({
+      name: t.function.name,
+      description: t.function.description,
+      input_schema: t.function.parameters
+    }));
   }
   
   const response = await fetch('https://api.anthropic.com/v1/messages', {
@@ -142,8 +179,28 @@ async function callAnthropicAPI(apiKey, model, messages, options = {}) {
   
   const data = await response.json();
   
+  let content = '';
+  let tool_calls = null;
+  
+  for (const block of data.content || []) {
+    if (block.type === 'text') {
+      content = block.text;
+    } else if (block.type === 'tool_use') {
+      if (!tool_calls) tool_calls = [];
+      tool_calls.push({
+        id: block.id,
+        type: 'function',
+        function: {
+          name: block.name,
+          arguments: JSON.stringify(block.input)
+        }
+      });
+    }
+  }
+  
   return {
-    content: data.content[0]?.text || '',
+    content,
+    tool_calls,
     usage: {
       prompt_tokens: data.usage?.input_tokens,
       completion_tokens: data.usage?.output_tokens,
@@ -235,13 +292,57 @@ REGLAS IMPORTANTES:
 3. Sé conciso pero amable. Usa un tono cálido y profesional.
 4. Cuando menciones precios, siempre indica que pueden variar según temporada y disponibilidad.
 5. Responde siempre en español.
-6. Si preguntan por disponibilidad de fechas específicas, indica que deben confirmar por WhatsApp ya que no tienes acceso al calendario en tiempo real.
+
+VERIFICACIÓN DE DISPONIBILIDAD:
+- Tienes acceso a una herramienta para verificar disponibilidad en tiempo real llamada "check_availability".
+- Cuando el cliente pregunte por disponibilidad para una fecha específica, DEBES usar esta herramienta.
+- Antes de verificar disponibilidad, pregunta al cliente:
+  * La fecha de llegada (check_in)
+  * La fecha de salida (check_out) - solo si es hospedaje/pasanoche
+  * Cuántos adultos van
+  * Cuántos niños van
+- Si el cliente solo menciona una fecha, asume que es pasadía (check_in = check_out).
+- Las fechas deben estar en formato YYYY-MM-DD.
+- Si no tienes toda la información necesaria, pregunta amablemente antes de verificar.
 
 ${context}`;
 }
 
+const CHAT_TOOLS = [
+  {
+    type: 'function',
+    function: {
+      name: 'check_availability',
+      description: 'Verifica la disponibilidad de la cabaña para fechas específicas y cantidad de personas. Usar cuando el cliente pregunte si hay disponibilidad.',
+      parameters: {
+        type: 'object',
+        properties: {
+          check_in: {
+            type: 'string',
+            description: 'Fecha de llegada en formato YYYY-MM-DD'
+          },
+          check_out: {
+            type: 'string',
+            description: 'Fecha de salida en formato YYYY-MM-DD. Si es pasadía, usar la misma fecha que check_in.'
+          },
+          adults: {
+            type: 'integer',
+            description: 'Número de adultos'
+          },
+          children: {
+            type: 'integer',
+            description: 'Número de niños'
+          }
+        },
+        required: ['check_in', 'adults']
+      }
+    }
+  }
+];
+
 module.exports = {
   AI_MODELS,
+  CHAT_TOOLS,
   getModelConfig,
   getApiKeyForProvider,
   callLLMByCode,

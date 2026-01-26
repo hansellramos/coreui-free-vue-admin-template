@@ -4449,11 +4449,125 @@ Presta especial atención a comprobantes de Nequi, Daviplata, Bancolombia, y otr
       // Add current message
       llmMessages.push({ role: 'user', content: userMessage });
       
-      // Call LLM using configured model
-      const llmResponse = await llmService.callLLMByCode(chatProviderCode, llmMessages, {
+      // Call LLM using configured model with tools
+      let llmResponse = await llmService.callLLMByCode(chatProviderCode, llmMessages, {
         maxTokens: 1024,
-        temperature: 0.7
+        temperature: 0.7,
+        tools: llmService.CHAT_TOOLS
       });
+      
+      // Handle tool calls (function calling)
+      if (llmResponse.tool_calls && llmResponse.tool_calls.length > 0) {
+        for (const toolCall of llmResponse.tool_calls) {
+          if (toolCall.function.name === 'check_availability') {
+            const args = JSON.parse(toolCall.function.arguments);
+            
+            // Call availability check directly (internal function, not HTTP)
+            const checkInDate = new Date(args.check_in);
+            const checkOutDate = args.check_out ? new Date(args.check_out) : checkInDate;
+            const numAdults = parseInt(args.adults) || 1;
+            const numChildren = parseInt(args.children) || 0;
+            const totalGuests = numAdults + numChildren;
+            
+            // Check for existing accommodations
+            const existingAccommodations = await prisma.accommodations.findMany({
+              where: { venue: venue_id }
+            });
+            
+            let isAvailable = true;
+            for (const acc of existingAccommodations) {
+              const accDate = new Date(acc.date);
+              const durationSeconds = parseInt(acc.duration) || 43200;
+              const accEndDate = new Date(accDate.getTime() + durationSeconds * 1000);
+              
+              const accStartDay = new Date(accDate.getUTCFullYear(), accDate.getUTCMonth(), accDate.getUTCDate());
+              const accEndDay = new Date(accEndDate.getUTCFullYear(), accEndDate.getUTCMonth(), accEndDate.getUTCDate());
+              const checkInDay = new Date(checkInDate.getUTCFullYear(), checkInDate.getUTCMonth(), checkInDate.getUTCDate());
+              const checkOutDay = new Date(checkOutDate.getUTCFullYear(), checkOutDate.getUTCMonth(), checkOutDate.getUTCDate());
+              
+              if (accStartDay <= checkOutDay && accEndDay >= checkInDay) {
+                isAvailable = false;
+                break;
+              }
+            }
+            
+            // Check suitable plans
+            const suitablePlans = plans.filter(p => {
+              const planMin = p.min_guests || 1;
+              const planMax = p.max_capacity || 999;
+              return totalGuests >= planMin && totalGuests <= planMax;
+            }).map(p => ({
+              name: p.name,
+              plan_type: p.plan_type,
+              adult_price: p.adult_price,
+              child_price: p.child_price
+            }));
+            
+            const availabilityData = {
+              venue_name: venue.name,
+              check_in: args.check_in,
+              check_out: args.check_out || args.check_in,
+              adults: numAdults,
+              children: numChildren,
+              total_guests: totalGuests,
+              is_available: isAvailable,
+              suitable_plans: suitablePlans,
+              message: isAvailable 
+                ? (suitablePlans.length > 0 
+                    ? `La cabaña está disponible para ${totalGuests} persona(s). Hay ${suitablePlans.length} plan(es) disponible(s).`
+                    : `La cabaña está disponible pero no hay planes para ${totalGuests} persona(s).`)
+                : 'La cabaña no está disponible para esas fechas, ya hay una reservación.'
+            };
+            
+            const toolResultContent = JSON.stringify(availabilityData);
+            
+            // Handle differently for Anthropic vs OpenAI
+            if (chatModelConfig.provider === 'anthropic') {
+              // For Anthropic, add assistant message with tool_use and user message with tool_result
+              llmMessages.push({
+                role: 'assistant',
+                content: [
+                  ...(llmResponse.content ? [{ type: 'text', text: llmResponse.content }] : []),
+                  {
+                    type: 'tool_use',
+                    id: toolCall.id,
+                    name: toolCall.function.name,
+                    input: args
+                  }
+                ]
+              });
+              
+              llmMessages.push({
+                role: 'user',
+                content: [{
+                  type: 'tool_result',
+                  tool_use_id: toolCall.id,
+                  content: toolResultContent
+                }]
+              });
+            } else {
+              // For OpenAI-compatible, use standard tool message format
+              llmMessages.push({
+                role: 'assistant',
+                content: llmResponse.content || null,
+                tool_calls: llmResponse.tool_calls
+              });
+              
+              llmMessages.push({
+                role: 'tool',
+                tool_call_id: toolCall.id,
+                content: toolResultContent
+              });
+            }
+            
+            // Get final response with tool results
+            llmResponse = await llmService.callLLMByCode(chatProviderCode, llmMessages, {
+              maxTokens: 1024,
+              temperature: 0.7
+            });
+          }
+        }
+      }
       
       // Save assistant response
       const assistantMessage = await prisma.chat_messages.create({
