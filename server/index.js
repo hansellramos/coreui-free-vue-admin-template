@@ -3263,10 +3263,19 @@ async function startServer() {
       const customersMap = {};
       customers.forEach(c => { customersMap[c.id] = c; });
       
+      // Get verified_by users
+      const verifiedByIds = [...new Set(deposits.filter(d => d.verified_by).map(d => d.verified_by))];
+      const verifiedByUsers = verifiedByIds.length > 0 ? await prisma.users.findMany({
+        where: { id: { in: verifiedByIds } }
+      }) : [];
+      const verifiedByMap = {};
+      verifiedByUsers.forEach(u => { verifiedByMap[u.id] = u; });
+      
       const enriched = deposits.map(d => {
         const accommodation = accommodationsMap[d.accommodation_id];
         return {
           ...d,
+          verified_by_user: d.verified_by ? verifiedByMap[d.verified_by] : null,
           accommodation_data: accommodation ? {
             ...accommodation,
             customer_data: accommodation.customer ? customersMap[accommodation.customer] : null

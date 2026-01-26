@@ -53,8 +53,35 @@
                   <CBadge :color="getStatusColor(deposit.status)">
                     {{ getStatusLabel(deposit.status) }}
                   </CBadge>
+                  <CBadge :color="deposit.verified ? 'success' : 'warning'" class="ms-1">
+                    {{ deposit.verified ? 'Verificado' : 'Sin verificar' }}
+                  </CBadge>
+                  <div v-if="deposit.verified && deposit.verified_by_user" class="small text-muted mt-1 d-mobile-none">
+                    por {{ deposit.verified_by_user.name || deposit.verified_by_user.email }}
+                    <br />{{ formatDateTime(deposit.verified_at) }}
+                  </div>
                 </CTableDataCell>
                 <CTableDataCell>
+                  <CButton
+                    v-if="!deposit.verified && hasPermission('deposits:update')"
+                    color="success"
+                    size="sm"
+                    variant="ghost"
+                    @click="verifyDeposit(deposit)"
+                    title="Verificar depósito"
+                  >
+                    <CIcon :icon="cilCheckCircle" />
+                  </CButton>
+                  <CButton
+                    v-if="deposit.verified && hasPermission('deposits:update')"
+                    color="warning"
+                    size="sm"
+                    variant="ghost"
+                    @click="unverifyDeposit(deposit)"
+                    title="Quitar verificación"
+                  >
+                    <CIcon :icon="cilXCircle" />
+                  </CButton>
                   <CButton
                     color="info"
                     size="sm"
@@ -82,7 +109,7 @@
 <script setup>
 import { ref, onMounted, inject } from 'vue'
 import { CIcon } from '@coreui/icons-vue'
-import { cilZoom, cilPlus } from '@coreui/icons'
+import { cilZoom, cilPlus, cilCheckCircle, cilXCircle } from '@coreui/icons'
 
 const hasPermission = inject('hasPermission', () => false)
 
@@ -145,6 +172,47 @@ const getStatusLabel = (status) => {
     case 'refunded': return 'Devuelto'
     case 'claimed': return 'Cobrado'
     default: return status
+  }
+}
+
+const formatDateTime = (date) => {
+  if (!date) return '—'
+  return new Date(date).toLocaleDateString('es-CO', { 
+    day: '2-digit', 
+    month: 'short', 
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit'
+  })
+}
+
+const verifyDeposit = async (deposit) => {
+  try {
+    const response = await fetch(`/api/deposits/${deposit.id}/verify`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ verified: true })
+    })
+    if (response.ok) {
+      await loadDeposits()
+    }
+  } catch (error) {
+    console.error('Error verifying deposit:', error)
+  }
+}
+
+const unverifyDeposit = async (deposit) => {
+  try {
+    const response = await fetch(`/api/deposits/${deposit.id}/verify`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ verified: false })
+    })
+    if (response.ok) {
+      await loadDeposits()
+    }
+  } catch (error) {
+    console.error('Error unverifying deposit:', error)
   }
 }
 
