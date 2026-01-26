@@ -96,9 +96,11 @@ import {
 } from '@coreui/vue'
 import { CIcon } from '@coreui/icons-vue'
 import { getVenueById } from '@/services/venueService'
+import { useSettingsStore } from '@/stores/settings'
 
 const route = useRoute()
-const isDev = import.meta.env.DEV
+const settingsStore = useSettingsStore()
+const isDev = settingsStore.developmentMode
 const venue = ref(null)
 const providers = ref([])
 const selectedProviderId = ref('')
