@@ -8,7 +8,7 @@
             <span v-if="venue" class="text-muted ms-2">- {{ venue.name }}</span>
           </div>
           <div class="d-flex align-items-center gap-2">
-            <CFormSelect v-model="selectedProviderId" size="sm" style="width: auto; min-width: 180px;">
+            <CFormSelect v-if="isDev" v-model="selectedProviderId" size="sm" style="width: auto; min-width: 180px;">
               <option value="">Seleccionar proveedor</option>
               <option v-for="provider in providers" :key="provider.id" :value="provider.id">
                 {{ provider.name }} ({{ provider.model }})
@@ -33,7 +33,7 @@
               >
                 <div :class="['message-bubble', message.role === 'user' ? 'bubble-user' : 'bubble-assistant']">
                   <div class="message-content">{{ message.content }}</div>
-                  <div v-if="message.role === 'assistant' && message.meta" class="message-meta">
+                  <div v-if="isDev && message.role === 'assistant' && message.meta" class="message-meta">
                     <small class="text-muted">
                       {{ message.meta.model }} 
                       <span v-if="message.meta.tokens">| {{ message.meta.tokens }} tokens</span>
@@ -98,6 +98,7 @@ import { CIcon } from '@coreui/icons-vue'
 import { getVenueById } from '@/services/venueService'
 
 const route = useRoute()
+const isDev = import.meta.env.DEV
 const venue = ref(null)
 const providers = ref([])
 const selectedProviderId = ref('')
