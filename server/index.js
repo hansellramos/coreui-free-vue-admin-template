@@ -4462,9 +4462,91 @@ Presta especial atención a comprobantes de Nequi, Daviplata, Bancolombia, y otr
           if (toolCall.function.name === 'check_availability') {
             const args = JSON.parse(toolCall.function.arguments);
             
-            // Call availability check directly (internal function, not HTTP)
+            // Rate limiting: max 5 availability checks per hour per conversation
+            const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000);
+            const recentChecks = await prisma.chat_messages.count({
+              where: {
+                conversation_id: conversation.id,
+                role: 'assistant',
+                content: { contains: '"tool":"check_availability"' },
+                created_at: { gte: oneHourAgo }
+              }
+            });
+            
+            if (recentChecks >= 5) {
+              const availabilityData = {
+                error: true,
+                message: 'Has alcanzado el límite de consultas de disponibilidad (5 por hora). Por favor espera un momento o contacta directamente por WhatsApp para más información.'
+              };
+              const toolResultContent = JSON.stringify(availabilityData);
+              
+              if (chatModelConfig.provider === 'anthropic') {
+                llmMessages.push({
+                  role: 'assistant',
+                  content: [{ type: 'tool_use', id: toolCall.id, name: toolCall.function.name, input: args }]
+                });
+                llmMessages.push({
+                  role: 'user',
+                  content: [{ type: 'tool_result', tool_use_id: toolCall.id, content: toolResultContent }]
+                });
+              } else {
+                llmMessages.push({ role: 'assistant', content: null, tool_calls: llmResponse.tool_calls });
+                llmMessages.push({ role: 'tool', tool_call_id: toolCall.id, content: toolResultContent });
+              }
+              
+              llmResponse = await llmService.callLLMByCode(chatProviderCode, llmMessages, {
+                maxTokens: 1024,
+                temperature: 0.7
+              });
+              continue;
+            }
+            
+            // Validate dates are not in the past and check_out >= check_in
             const checkInDate = new Date(args.check_in);
             const checkOutDate = args.check_out ? new Date(args.check_out) : checkInDate;
+            const today = new Date();
+            today.setUTCHours(0, 0, 0, 0);
+            const checkInDay = new Date(checkInDate.getUTCFullYear(), checkInDate.getUTCMonth(), checkInDate.getUTCDate());
+            const checkOutDay = new Date(checkOutDate.getUTCFullYear(), checkOutDate.getUTCMonth(), checkOutDate.getUTCDate());
+            
+            let dateError = null;
+            if (checkInDay < today) {
+              dateError = 'La fecha de llegada está en el pasado. Por favor proporciona una fecha futura.';
+            } else if (checkOutDay < checkInDay) {
+              dateError = 'La fecha de salida debe ser igual o posterior a la fecha de llegada.';
+            } else if (checkOutDay < today) {
+              dateError = 'La fecha de salida está en el pasado. Por favor proporciona una fecha futura.';
+            }
+            
+            if (dateError) {
+              const availabilityData = {
+                error: true,
+                message: dateError,
+                today: today.toISOString().split('T')[0]
+              };
+              const toolResultContent = JSON.stringify(availabilityData);
+              
+              if (chatModelConfig.provider === 'anthropic') {
+                llmMessages.push({
+                  role: 'assistant',
+                  content: [{ type: 'tool_use', id: toolCall.id, name: toolCall.function.name, input: args }]
+                });
+                llmMessages.push({
+                  role: 'user',
+                  content: [{ type: 'tool_result', tool_use_id: toolCall.id, content: toolResultContent }]
+                });
+              } else {
+                llmMessages.push({ role: 'assistant', content: null, tool_calls: llmResponse.tool_calls });
+                llmMessages.push({ role: 'tool', tool_call_id: toolCall.id, content: toolResultContent });
+              }
+              
+              llmResponse = await llmService.callLLMByCode(chatProviderCode, llmMessages, {
+                maxTokens: 1024,
+                temperature: 0.7
+              });
+              continue;
+            }
+            
             const numAdults = parseInt(args.adults) || 1;
             const numChildren = parseInt(args.children) || 0;
             const totalGuests = numAdults + numChildren;
@@ -4503,6 +4585,22 @@ Presta especial atención a comprobantes de Nequi, Daviplata, Bancolombia, y otr
               child_price: p.child_price
             }));
             
+            // Get next available dates if not available
+            let nextAvailableDates = [];
+            if (!isAvailable) {
+              // Determine if user is looking for weekends (check_in is Sat/Sun)
+              const checkInDayOfWeek = checkInDate.getDay();
+              const preferWeekends = checkInDayOfWeek === 0 || checkInDayOfWeek === 6;
+              // Calculate stay length in days
+              const stayLength = Math.max(1, Math.ceil((checkOutDay - checkInDay) / (1000 * 60 * 60 * 24)) + 1);
+              
+              nextAvailableDates = llmService.getNextAvailableDates(existingAccommodations, checkInDate, {
+                preferWeekends,
+                stayLength,
+                numDays: 30
+              });
+            }
+            
             const availabilityData = {
               venue_name: venue.name,
               check_in: args.check_in,
@@ -4512,11 +4610,12 @@ Presta especial atención a comprobantes de Nequi, Daviplata, Bancolombia, y otr
               total_guests: totalGuests,
               is_available: isAvailable,
               suitable_plans: suitablePlans,
+              next_available_dates: nextAvailableDates,
               message: isAvailable 
                 ? (suitablePlans.length > 0 
                     ? `La cabaña está disponible para ${totalGuests} persona(s). Hay ${suitablePlans.length} plan(es) disponible(s).`
                     : `La cabaña está disponible pero no hay planes para ${totalGuests} persona(s).`)
-                : 'La cabaña no está disponible para esas fechas, ya hay una reservación.'
+                : `La cabaña no está disponible para esas fechas. ${nextAvailableDates.length > 0 ? `Fechas próximas disponibles: ${nextAvailableDates.map(d => d.date + ' (' + d.day_of_week + ')').join(', ')}.` : ''}`
             };
             
             const toolResultContent = JSON.stringify(availabilityData);
@@ -4565,16 +4664,27 @@ Presta especial atención a comprobantes de Nequi, Daviplata, Bancolombia, y otr
               maxTokens: 1024,
               temperature: 0.7
             });
+            
+            // Track that we used check_availability tool (for rate limiting)
+            llmResponse.tools_used = llmResponse.tools_used || [];
+            llmResponse.tools_used.push('check_availability');
           }
         }
       }
       
-      // Save assistant response
+      // Track if we used a tool in this request (for rate limiting)
+      const toolsUsed = llmResponse.tools_used || [];
+      
+      // Save assistant response with tool metadata if applicable
+      const messageContent = toolsUsed.length > 0 
+        ? `${llmResponse.content}\n<!-- {"tool":"${toolsUsed[0]}"} -->`
+        : llmResponse.content;
+      
       const assistantMessage = await prisma.chat_messages.create({
         data: {
           conversation_id: conversation.id,
           role: 'assistant',
-          content: llmResponse.content,
+          content: messageContent,
           provider: chatProviderCode,
           model: llmResponse.model,
           tokens_used: llmResponse.usage?.total_tokens

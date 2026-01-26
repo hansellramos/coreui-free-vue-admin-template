@@ -284,7 +284,19 @@ function buildVenueContext(venue, templates, plans) {
 }
 
 function buildSystemPrompt(venue, context) {
+  // Get current date info for context
+  const now = new Date();
+  const currentYear = now.getFullYear();
+  const currentMonth = now.getMonth() + 1;
+  const currentDay = now.getDate();
+  const dayOfWeek = ['domingo', 'lunes', 'martes', 'miércoles', 'jueves', 'viernes', 'sábado'][now.getDay()];
+  const monthNames = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio', 'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre'];
+  const currentDateStr = `${currentDay} de ${monthNames[now.getMonth()]} de ${currentYear}`;
+  const isoDate = now.toISOString().split('T')[0];
+  
   return `Eres un asistente virtual amable y servicial de "${venue.name || 'la Cabaña'}". Tu trabajo es responder preguntas de clientes potenciales y huéspedes sobre la propiedad.
+
+FECHA ACTUAL: Hoy es ${dayOfWeek}, ${currentDateStr} (${isoDate}).
 
 REGLAS IMPORTANTES:
 1. Responde SOLO basándote en la información proporcionada a continuación. NO inventes información.
@@ -293,19 +305,95 @@ REGLAS IMPORTANTES:
 4. Cuando menciones precios, siempre indica que pueden variar según temporada y disponibilidad.
 5. Responde siempre en español.
 
+INTERPRETACIÓN DE FECHAS:
+- SIEMPRE usa la fecha actual (${isoDate}) como referencia para interpretar fechas relativas.
+- Si el cliente dice "el 12 de febrero", asume el año ${currentYear} o ${currentYear + 1} (el más próximo en el futuro).
+- Si dice "el próximo sábado", calcula la fecha del próximo sábado desde hoy.
+- Si dice "este fin de semana", calcula el próximo sábado y domingo.
+- NUNCA asumas fechas en el pasado. Todas las consultas deben ser para fechas futuras.
+- Si la fecha calculada resulta en el pasado, usa el próximo año.
+
 VERIFICACIÓN DE DISPONIBILIDAD:
 - Tienes acceso a una herramienta para verificar disponibilidad en tiempo real llamada "check_availability".
 - Cuando el cliente pregunte por disponibilidad para una fecha específica, DEBES usar esta herramienta.
 - Antes de verificar disponibilidad, pregunta al cliente:
   * La fecha de llegada (check_in)
-  * La fecha de salida (check_out) - solo si es hospedaje/pasanoche
+  * La fecha de salida (check_out) - SOLO si es hospedaje/pasanoche (más de un día)
   * Cuántos adultos van
   * Cuántos niños van
-- Si el cliente solo menciona una fecha, asume que es pasadía (check_in = check_out).
+- Si el cliente solo menciona una fecha sin especificar hospedaje, asume que es pasadía (check_in = check_out).
+- Si menciona "fin de semana", "pasanoche" u hospedaje, pregunta por la fecha de salida.
 - Las fechas deben estar en formato YYYY-MM-DD.
 - Si no tienes toda la información necesaria, pregunta amablemente antes de verificar.
+- Si la disponibilidad indica que no hay espacio, revisa el campo "next_available_dates" para sugerir fechas alternativas.
+- Si el cliente pregunta por fines de semana, la herramienta priorizará sugerir sábados y domingos disponibles.
+- Cuando sugieras fechas alternativas, menciona el día de la semana para mayor claridad.
 
 ${context}`;
+}
+
+function getNextAvailableDates(existingAccommodations, fromDate, options = {}) {
+  const { numDays = 30, preferWeekends = false, stayLength = 1 } = options;
+  const availableDates = [];
+  const checkDate = new Date(fromDate);
+  
+  for (let i = 0; i < numDays && availableDates.length < 5; i++) {
+    checkDate.setDate(checkDate.getDate() + 1);
+    const checkDay = new Date(checkDate.getUTCFullYear(), checkDate.getUTCMonth(), checkDate.getUTCDate());
+    const isWeekend = checkDate.getDay() === 0 || checkDate.getDay() === 6;
+    
+    // If preferring weekends, skip weekdays
+    if (preferWeekends && !isWeekend) {
+      continue;
+    }
+    
+    // Check if the entire stay period is available
+    let isAvailable = true;
+    for (let dayOffset = 0; dayOffset < stayLength && isAvailable; dayOffset++) {
+      const stayDate = new Date(checkDay);
+      stayDate.setDate(stayDate.getDate() + dayOffset);
+      
+      for (const acc of existingAccommodations) {
+        const accDate = new Date(acc.date);
+        const durationSeconds = parseInt(acc.duration) || 43200;
+        const accEndDate = new Date(accDate.getTime() + durationSeconds * 1000);
+        
+        const accStartDay = new Date(accDate.getUTCFullYear(), accDate.getUTCMonth(), accDate.getUTCDate());
+        const accEndDay = new Date(accEndDate.getUTCFullYear(), accEndDate.getUTCMonth(), accEndDate.getUTCDate());
+        
+        if (accStartDay <= stayDate && accEndDay >= stayDate) {
+          isAvailable = false;
+          break;
+        }
+      }
+    }
+    
+    if (isAvailable) {
+      const dayOfWeek = ['domingo', 'lunes', 'martes', 'miércoles', 'jueves', 'viernes', 'sábado'][checkDate.getDay()];
+      availableDates.push({
+        date: checkDate.toISOString().split('T')[0],
+        day_of_week: dayOfWeek,
+        is_weekend: isWeekend
+      });
+    }
+  }
+  
+  // If preferring weekends but didn't find enough, also get some weekday alternatives
+  if (preferWeekends && availableDates.length < 3) {
+    const weekdayAlternatives = getNextAvailableDates(existingAccommodations, fromDate, { 
+      numDays, 
+      preferWeekends: false, 
+      stayLength 
+    });
+    for (const alt of weekdayAlternatives) {
+      if (!availableDates.find(d => d.date === alt.date)) {
+        availableDates.push(alt);
+        if (availableDates.length >= 5) break;
+      }
+    }
+  }
+  
+  return availableDates;
 }
 
 const CHAT_TOOLS = [
@@ -348,5 +436,6 @@ module.exports = {
   callLLMByCode,
   callLLM,
   buildVenueContext,
-  buildSystemPrompt
+  buildSystemPrompt,
+  getNextAvailableDates
 };
