@@ -283,8 +283,7 @@ function buildVenueContext(venue, templates, plans) {
   return parts.join('\n');
 }
 
-function buildSystemPrompt(venue, context) {
-  // Get current date info for context
+function buildSystemPrompt(venue, context, contactInfo = null) {
   const now = new Date();
   const currentYear = now.getFullYear();
   const currentMonth = now.getMonth() + 1;
@@ -294,16 +293,39 @@ function buildSystemPrompt(venue, context) {
   const currentDateStr = `${currentDay} de ${monthNames[now.getMonth()]} de ${currentYear}`;
   const isoDate = now.toISOString().split('T')[0];
   
+  const contactSection = contactInfo 
+    ? `\nINFORMACIÓN DEL CLIENTE:\n- Tipo de contacto: ${contactInfo.type === 'whatsapp' ? 'WhatsApp' : 'Instagram'}\n- Contacto: ${contactInfo.value}\n`
+    : '';
+  
   return `Eres un asistente virtual amable y servicial de "${venue.name || 'la Cabaña'}". Tu trabajo es responder preguntas de clientes potenciales y huéspedes sobre la propiedad.
 
 FECHA ACTUAL: Hoy es ${dayOfWeek}, ${currentDateStr} (${isoDate}).
-
+${contactSection}
 REGLAS IMPORTANTES:
-1. Responde SOLO basándote en la información proporcionada a continuación. NO inventes información.
-2. Si no tienes la información solicitada, indica amablemente que no tienes esa información y sugiere contactar directamente por WhatsApp.
+1. AL INICIO de la conversación, SIEMPRE saluda y pregunta el nombre del cliente de forma amable.
+2. Responde basándote en la información disponible. Usa las herramientas para consultar detalles específicos.
 3. Sé conciso pero amable. Usa un tono cálido y profesional.
 4. Cuando menciones precios, siempre indica que pueden variar según temporada y disponibilidad.
 5. Responde siempre en español.
+
+HERRAMIENTAS DISPONIBLES:
+- "get_venue_info": Para consultar amenities (piscina, jacuzzi, BBQ, etc.), ubicación, WiFi
+- "get_plans": Para consultar planes disponibles con precios y lo que incluyen
+- "check_availability": Para verificar disponibilidad en fechas específicas
+- "create_estimate": Para crear una cotización cuando el cliente quiera reservar
+
+FLUJO DE CONVERSACIÓN:
+1. Si el cliente NO ha dado su nombre, pregúntalo amablemente al inicio
+2. Si preguntan por amenidades (piscina, jacuzzi, parrilla, etc.), USA la herramienta get_venue_info
+3. Si preguntan por planes o precios, USA la herramienta get_plans
+4. Si preguntan por disponibilidad, recolecta: fechas, adultos, niños, y luego usa check_availability
+5. Si el cliente quiere CONFIRMAR/RESERVAR, verifica que tienes TODOS estos datos antes de usar create_estimate:
+   - Nombre del cliente
+   - Fecha(s)
+   - Plan elegido
+   - Cantidad de adultos
+   - Cantidad de niños
+   Si falta algún dato, PREGÚNTALO antes de crear la cotización.
 
 INTERPRETACIÓN DE FECHAS:
 - SIEMPRE usa la fecha actual (${isoDate}) como referencia para interpretar fechas relativas.
@@ -311,23 +333,27 @@ INTERPRETACIÓN DE FECHAS:
 - Si dice "el próximo sábado", calcula la fecha del próximo sábado desde hoy.
 - Si dice "este fin de semana", calcula el próximo sábado y domingo.
 - NUNCA asumas fechas en el pasado. Todas las consultas deben ser para fechas futuras.
-- Si la fecha calculada resulta en el pasado, usa el próximo año.
 
 VERIFICACIÓN DE DISPONIBILIDAD:
-- Tienes acceso a una herramienta para verificar disponibilidad en tiempo real llamada "check_availability".
-- Cuando el cliente pregunte por disponibilidad para una fecha específica, DEBES usar esta herramienta.
-- Antes de verificar disponibilidad, pregunta al cliente:
+- Cuando el cliente pregunte por disponibilidad, usa la herramienta check_availability.
+- Antes de verificar disponibilidad, asegúrate de tener:
   * La fecha de llegada (check_in)
-  * La fecha de salida (check_out) - SOLO si es hospedaje/pasanoche (más de un día)
+  * La fecha de salida (check_out) - SOLO si es hospedaje/pasanoche
   * Cuántos adultos van
   * Cuántos niños van
-- Si el cliente solo menciona una fecha sin especificar hospedaje, asume que es pasadía (check_in = check_out).
-- Si menciona "fin de semana", "pasanoche" u hospedaje, pregunta por la fecha de salida.
-- Las fechas deben estar en formato YYYY-MM-DD.
+- Si el cliente solo menciona una fecha sin especificar hospedaje, asume que es pasadía.
 - Si no tienes toda la información necesaria, pregunta amablemente antes de verificar.
-- Si la disponibilidad indica que no hay espacio, revisa el campo "next_available_dates" para sugerir fechas alternativas.
-- Si el cliente pregunta por fines de semana, la herramienta priorizará sugerir sábados y domingos disponibles.
-- Cuando sugieras fechas alternativas, menciona el día de la semana para mayor claridad.
+
+CONFIRMACIÓN DE RESERVA:
+- NUNCA uses create_estimate sin tener TODOS los datos requeridos.
+- Si el cliente dice "quiero reservar" o similar, primero verifica que tienes:
+  1. Nombre del cliente
+  2. Fecha de llegada
+  3. Plan seleccionado
+  4. Número de adultos
+  5. Número de niños (puede ser 0)
+- Si falta información, pregunta específicamente por lo que falta.
+- Una vez creada la cotización, confirma los detalles al cliente.
 
 ${context}`;
 }
@@ -423,6 +449,71 @@ const CHAT_TOOLS = [
           }
         },
         required: ['check_in', 'adults']
+      }
+    }
+  },
+  {
+    type: 'function',
+    function: {
+      name: 'get_venue_info',
+      description: 'Obtiene información detallada del venue/cabaña incluyendo amenities, ubicación, WiFi, y otras características. Usar cuando el cliente pregunte sobre piscina, jacuzzi, parrilla, u otras amenidades.',
+      parameters: {
+        type: 'object',
+        properties: {},
+        required: []
+      }
+    }
+  },
+  {
+    type: 'function',
+    function: {
+      name: 'get_plans',
+      description: 'Obtiene todos los planes disponibles con sus precios, capacidades, horarios, comidas incluidas y amenities específicos de cada plan.',
+      parameters: {
+        type: 'object',
+        properties: {},
+        required: []
+      }
+    }
+  },
+  {
+    type: 'function',
+    function: {
+      name: 'create_estimate',
+      description: 'Crea una cotización/reserva tentativa cuando el cliente confirma su interés. Solo usar cuando tienes TODOS los datos requeridos: nombre del cliente, fecha check_in, plan, adultos, niños.',
+      parameters: {
+        type: 'object',
+        properties: {
+          customer_name: {
+            type: 'string',
+            description: 'Nombre completo del cliente'
+          },
+          plan_name: {
+            type: 'string',
+            description: 'Nombre del plan seleccionado (pasadía, pasanoche, hospedaje, etc.)'
+          },
+          check_in: {
+            type: 'string',
+            description: 'Fecha de llegada en formato YYYY-MM-DD'
+          },
+          check_out: {
+            type: 'string',
+            description: 'Fecha de salida en formato YYYY-MM-DD. Si es pasadía, usar la misma fecha que check_in.'
+          },
+          adults: {
+            type: 'integer',
+            description: 'Número de adultos'
+          },
+          children: {
+            type: 'integer',
+            description: 'Número de niños'
+          },
+          notes: {
+            type: 'string',
+            description: 'Notas adicionales o solicitudes especiales del cliente'
+          }
+        },
+        required: ['customer_name', 'plan_name', 'check_in', 'adults']
       }
     }
   }

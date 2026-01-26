@@ -3506,6 +3506,228 @@ async function startServer() {
     }
   });
 
+  // Estimates CRUD
+  app.get('/api/estimates', isAuthenticated, async (req, res) => {
+    try {
+      const { venue_id, status } = req.query;
+      const userId = String(req.user.claims?.sub);
+      const currentUser = await prisma.users.findUnique({ where: { id: userId } });
+      
+      const where = {};
+      if (venue_id) where.venue_id = venue_id;
+      if (status) where.status = status;
+      
+      if (!currentUser?.is_super_admin) {
+        const accessibleOrgIds = await getAccessibleOrganizationIds(req.userPermissions);
+        if (accessibleOrgIds !== null) {
+          const accessibleVenues = await prisma.venues.findMany({
+            where: { organization: { in: accessibleOrgIds } },
+            select: { id: true }
+          });
+          where.venue_id = { in: accessibleVenues.map(v => v.id) };
+        }
+      }
+      
+      const estimates = await prisma.estimates.findMany({
+        where,
+        orderBy: { created_at: 'desc' }
+      });
+      
+      const venueIds = [...new Set(estimates.map(e => e.venue_id))];
+      const planIds = [...new Set(estimates.filter(e => e.plan_id).map(e => e.plan_id))];
+      
+      const venues = venueIds.length > 0 ? await prisma.venues.findMany({
+        where: { id: { in: venueIds } }
+      }) : [];
+      const venueMap = {};
+      venues.forEach(v => { venueMap[v.id] = v; });
+      
+      const plans = planIds.length > 0 ? await prisma.venue_plans.findMany({
+        where: { id: { in: planIds } }
+      }) : [];
+      const planMap = {};
+      plans.forEach(p => { planMap[p.id] = p; });
+      
+      const enriched = estimates.map(e => ({
+        ...e,
+        venue: venueMap[e.venue_id] || null,
+        plan: e.plan_id ? (planMap[e.plan_id] || null) : null
+      }));
+      
+      res.json(enriched);
+    } catch (error) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.get('/api/estimates/:id', isAuthenticated, async (req, res) => {
+    try {
+      const estimate = await prisma.estimates.findUnique({
+        where: { id: req.params.id }
+      });
+      
+      if (!estimate) {
+        return res.status(404).json({ error: 'Cotización no encontrada' });
+      }
+      
+      const venue = await prisma.venues.findUnique({ where: { id: estimate.venue_id } });
+      const plan = estimate.plan_id ? await prisma.venue_plans.findUnique({ where: { id: estimate.plan_id } }) : null;
+      
+      res.json({ ...estimate, venue, plan });
+    } catch (error) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.post('/api/estimates', isAuthenticated, async (req, res) => {
+    try {
+      const userId = String(req.user.claims?.sub);
+      const { venue_id, plan_id, customer_name, contact_type, contact_value, check_in, check_out, adults, children, calculated_price, notes, conversation_id } = req.body;
+      
+      if (!venue_id || !contact_type || !contact_value) {
+        return res.status(400).json({ error: 'venue_id, contact_type y contact_value son requeridos' });
+      }
+      
+      const estimate = await prisma.estimates.create({
+        data: {
+          venue_id,
+          plan_id,
+          customer_name,
+          contact_type,
+          contact_value,
+          check_in: check_in ? new Date(check_in) : null,
+          check_out: check_out ? new Date(check_out) : null,
+          adults: adults || 0,
+          children: children || 0,
+          calculated_price,
+          notes,
+          conversation_id,
+          status: 'pending',
+          created_by: userId
+        }
+      });
+      
+      res.status(201).json(estimate);
+    } catch (error) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.put('/api/estimates/:id', isAuthenticated, async (req, res) => {
+    try {
+      const userId = String(req.user.claims?.sub);
+      const { plan_id, customer_name, contact_type, contact_value, check_in, check_out, adults, children, calculated_price, notes, status } = req.body;
+      
+      const existing = await prisma.estimates.findUnique({ where: { id: req.params.id } });
+      if (!existing) {
+        return res.status(404).json({ error: 'Cotización no encontrada' });
+      }
+      
+      const estimate = await prisma.estimates.update({
+        where: { id: req.params.id },
+        data: {
+          plan_id,
+          customer_name,
+          contact_type,
+          contact_value,
+          check_in: check_in ? new Date(check_in) : existing.check_in,
+          check_out: check_out ? new Date(check_out) : existing.check_out,
+          adults: adults !== undefined ? adults : existing.adults,
+          children: children !== undefined ? children : existing.children,
+          calculated_price,
+          notes,
+          status,
+          updated_at: new Date()
+        }
+      });
+      
+      res.json(estimate);
+    } catch (error) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.delete('/api/estimates/:id', isAuthenticated, async (req, res) => {
+    try {
+      await prisma.estimates.delete({ where: { id: req.params.id } });
+      res.json({ success: true });
+    } catch (error) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.post('/api/estimates/:id/convert', isAuthenticated, async (req, res) => {
+    try {
+      const userId = String(req.user.claims?.sub);
+      const estimate = await prisma.estimates.findUnique({ where: { id: req.params.id } });
+      
+      if (!estimate) {
+        return res.status(404).json({ error: 'Cotización no encontrada' });
+      }
+      
+      if (estimate.status === 'converted') {
+        return res.status(400).json({ error: 'Esta cotización ya fue convertida' });
+      }
+      
+      let customerId = null;
+      if (estimate.customer_name || estimate.contact_value) {
+        const existingContact = await prisma.contacts.findFirst({
+          where: { 
+            OR: [
+              { whatsapp: estimate.contact_type === 'whatsapp' ? parseFloat(estimate.contact_value) : undefined },
+              { fullname: estimate.customer_name }
+            ].filter(c => Object.keys(c).length > 0)
+          }
+        });
+        
+        if (existingContact) {
+          customerId = existingContact.id;
+        } else {
+          const newContact = await prisma.contacts.create({
+            data: {
+              fullname: estimate.customer_name,
+              whatsapp: estimate.contact_type === 'whatsapp' ? parseFloat(estimate.contact_value) : null
+            }
+          });
+          customerId = newContact.id;
+        }
+      }
+      
+      const checkIn = estimate.check_in ? new Date(estimate.check_in) : new Date();
+      const checkOut = estimate.check_out ? new Date(estimate.check_out) : checkIn;
+      const durationMs = checkOut.getTime() - checkIn.getTime();
+      const durationSeconds = Math.max(43200, Math.floor(durationMs / 1000));
+      
+      const accommodation = await prisma.accommodations.create({
+        data: {
+          venue: estimate.venue_id,
+          plan_id: estimate.plan_id,
+          customer: customerId,
+          date: checkIn,
+          duration: durationSeconds.toString(),
+          adults: estimate.adults || 0,
+          children: estimate.children || 0,
+          calculated_price: estimate.calculated_price,
+          agreed_price: estimate.calculated_price
+        }
+      });
+      
+      await prisma.estimates.update({
+        where: { id: req.params.id },
+        data: {
+          status: 'converted',
+          converted_at: new Date(),
+          accommodation_id: accommodation.id,
+          updated_at: new Date()
+        }
+      });
+      
+      res.json({ estimate_id: req.params.id, accommodation_id: accommodation.id, accommodation });
+    } catch (error) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
   // Analytics API
   app.get('/api/analytics/summary', async (req, res) => {
     try {
@@ -4325,7 +4547,7 @@ Presta especial atención a comprobantes de Nequi, Daviplata, Bancolombia, y otr
   app.post('/api/chat/:venue_id', async (req, res) => {
     try {
       const { venue_id } = req.params;
-      const { message, conversation_id, provider_id, source = 'web' } = req.body;
+      const { message, conversation_id, provider_id, source = 'web', contact_type, contact_value } = req.body;
       
       // For Twilio/Meta webhooks, extract message from their format
       let userMessage = message;
@@ -4435,7 +4657,8 @@ Presta especial atención a comprobantes de Nequi, Daviplata, Bancolombia, y otr
       
       // Build context and messages
       const context = llmService.buildVenueContext(venue, templates, plans);
-      const systemPrompt = llmService.buildSystemPrompt(venue, context);
+      const contactInfo = (contact_type && contact_value) ? { type: contact_type, value: contact_value } : null;
+      const systemPrompt = llmService.buildSystemPrompt(venue, context, contactInfo);
       
       const llmMessages = [
         { role: 'system', content: systemPrompt }
@@ -4668,6 +4891,194 @@ Presta especial atención a comprobantes de Nequi, Daviplata, Bancolombia, y otr
             // Track that we used check_availability tool (for rate limiting)
             llmResponse.tools_used = llmResponse.tools_used || [];
             llmResponse.tools_used.push('check_availability');
+          } else if (toolCall.function.name === 'get_venue_info') {
+            // Get venue with amenities
+            const venueAmenities = await prisma.venue_amenities.findMany({
+              where: { venue_id }
+            });
+            const amenityIds = venueAmenities.map(va => va.amenity_id);
+            const amenities = amenityIds.length > 0 ? await prisma.amenities.findMany({
+              where: { id: { in: amenityIds }, is_active: true }
+            }) : [];
+            
+            const venueInfoData = {
+              name: venue.name,
+              address: venue.address,
+              city: venue.city,
+              department: venue.department,
+              address_reference: venue.address_reference,
+              whatsapp: venue.whatsapp,
+              instagram: venue.instagram,
+              wifi_ssid: venue.wifi_ssid,
+              wifi_password: venue.wifi_password,
+              venue_info: venue.venue_info,
+              delivery_info: venue.delivery_info,
+              waze_link: venue.waze_link,
+              google_maps_link: venue.google_maps_link,
+              amenities: amenities.map(a => ({
+                name: a.name,
+                description: a.description,
+                category: a.category
+              }))
+            };
+            
+            const toolResultContent = JSON.stringify(venueInfoData);
+            
+            if (chatModelConfig.provider === 'anthropic') {
+              llmMessages.push({
+                role: 'assistant',
+                content: [{ type: 'tool_use', id: toolCall.id, name: toolCall.function.name, input: {} }]
+              });
+              llmMessages.push({
+                role: 'user',
+                content: [{ type: 'tool_result', tool_use_id: toolCall.id, content: toolResultContent }]
+              });
+            } else {
+              llmMessages.push({ role: 'assistant', content: null, tool_calls: llmResponse.tool_calls });
+              llmMessages.push({ role: 'tool', tool_call_id: toolCall.id, content: toolResultContent });
+            }
+            
+            llmResponse = await llmService.callLLMByCode(chatProviderCode, llmMessages, {
+              maxTokens: 1024,
+              temperature: 0.7
+            });
+            
+            llmResponse.tools_used = llmResponse.tools_used || [];
+            llmResponse.tools_used.push('get_venue_info');
+          } else if (toolCall.function.name === 'get_plans') {
+            // Get plans with their amenities
+            const planAmenities = await prisma.plan_amenities.findMany({
+              where: { plan_id: { in: plans.map(p => p.id) } }
+            });
+            const planAmenityIds = [...new Set(planAmenities.map(pa => pa.amenity_id))];
+            const planAmenitiesData = planAmenityIds.length > 0 ? await prisma.amenities.findMany({
+              where: { id: { in: planAmenityIds }, is_active: true }
+            }) : [];
+            const amenityMap = {};
+            planAmenitiesData.forEach(a => { amenityMap[a.id] = a; });
+            
+            const plansWithAmenities = plans.map(p => {
+              const pAmenities = planAmenities.filter(pa => pa.plan_id === p.id);
+              return {
+                id: p.id,
+                name: p.name,
+                plan_type: p.plan_type,
+                description: p.description,
+                adult_price: p.adult_price,
+                child_price: p.child_price,
+                min_guests: p.min_guests,
+                max_capacity: p.max_capacity,
+                check_in_time: p.check_in_time,
+                check_out_time: p.check_out_time,
+                includes_food: p.includes_food,
+                food_description: p.food_description,
+                includes_beverages: p.includes_beverages,
+                includes_overnight: p.includes_overnight,
+                includes_rooms: p.includes_rooms,
+                amenities: pAmenities.map(pa => {
+                  const am = amenityMap[pa.amenity_id];
+                  return am ? { name: am.name, description: am.description } : null;
+                }).filter(Boolean)
+              };
+            });
+            
+            const toolResultContent = JSON.stringify({ plans: plansWithAmenities });
+            
+            if (chatModelConfig.provider === 'anthropic') {
+              llmMessages.push({
+                role: 'assistant',
+                content: [{ type: 'tool_use', id: toolCall.id, name: toolCall.function.name, input: {} }]
+              });
+              llmMessages.push({
+                role: 'user',
+                content: [{ type: 'tool_result', tool_use_id: toolCall.id, content: toolResultContent }]
+              });
+            } else {
+              llmMessages.push({ role: 'assistant', content: null, tool_calls: llmResponse.tool_calls });
+              llmMessages.push({ role: 'tool', tool_call_id: toolCall.id, content: toolResultContent });
+            }
+            
+            llmResponse = await llmService.callLLMByCode(chatProviderCode, llmMessages, {
+              maxTokens: 1024,
+              temperature: 0.7
+            });
+            
+            llmResponse.tools_used = llmResponse.tools_used || [];
+            llmResponse.tools_used.push('get_plans');
+          } else if (toolCall.function.name === 'create_estimate') {
+            const args = JSON.parse(toolCall.function.arguments);
+            
+            // Find matching plan by name
+            const matchingPlan = plans.find(p => 
+              p.name.toLowerCase().includes(args.plan_name.toLowerCase()) ||
+              args.plan_name.toLowerCase().includes(p.name.toLowerCase())
+            );
+            
+            // Calculate price if plan found
+            let calculatedPrice = null;
+            if (matchingPlan) {
+              const adults = args.adults || 0;
+              const children = args.children || 0;
+              calculatedPrice = (parseFloat(matchingPlan.adult_price) * adults) + 
+                               (parseFloat(matchingPlan.child_price) * children);
+            }
+            
+            // Create the estimate
+            const estimate = await prisma.estimates.create({
+              data: {
+                venue_id,
+                plan_id: matchingPlan?.id || null,
+                customer_name: args.customer_name,
+                contact_type: contact_type || 'whatsapp',
+                contact_value: contact_value || '',
+                check_in: args.check_in ? new Date(args.check_in) : null,
+                check_out: args.check_out ? new Date(args.check_out) : (args.check_in ? new Date(args.check_in) : null),
+                adults: args.adults || 0,
+                children: args.children || 0,
+                calculated_price: calculatedPrice,
+                notes: args.notes || null,
+                conversation_id: conversation.id,
+                status: 'pending',
+                created_by: 'chat_ai'
+              }
+            });
+            
+            const estimateResult = {
+              success: true,
+              estimate_id: estimate.id,
+              customer_name: args.customer_name,
+              plan: matchingPlan?.name || args.plan_name,
+              check_in: args.check_in,
+              check_out: args.check_out || args.check_in,
+              adults: args.adults,
+              children: args.children || 0,
+              calculated_price: calculatedPrice,
+              message: `Cotización creada exitosamente. El cliente ${args.customer_name} recibirá confirmación pronto.`
+            };
+            
+            const toolResultContent = JSON.stringify(estimateResult);
+            
+            if (chatModelConfig.provider === 'anthropic') {
+              llmMessages.push({
+                role: 'assistant',
+                content: [{ type: 'tool_use', id: toolCall.id, name: toolCall.function.name, input: args }]
+              });
+              llmMessages.push({
+                role: 'user',
+                content: [{ type: 'tool_result', tool_use_id: toolCall.id, content: toolResultContent }]
+              });
+            } else {
+              llmMessages.push({ role: 'assistant', content: null, tool_calls: llmResponse.tool_calls });
+              llmMessages.push({ role: 'tool', tool_call_id: toolCall.id, content: toolResultContent });
+            }
+            
+            llmResponse = await llmService.callLLMByCode(chatProviderCode, llmMessages, {
+              maxTokens: 1024,
+              temperature: 0.7
+            });
+            
+            llmResponse.tools_used = llmResponse.tools_used || [];
+            llmResponse.tools_used.push('create_estimate');
           }
         }
       }
