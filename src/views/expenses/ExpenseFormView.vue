@@ -153,31 +153,47 @@
                 <div v-if="uploadError" class="text-danger small mt-2">
                   {{ uploadError }}
                 </div>
-                <div v-if="form.receipt_url" class="position-relative d-inline-block mt-2">
-                  <img 
-                    v-if="!imageLoadError"
-                    :src="form.receipt_url" 
-                    class="img-thumbnail" 
-                    style="max-height: 200px; cursor: pointer;"
-                    @click="showReceiptModal = true"
-                    @error="handleImageError"
-                  />
-                  <div 
-                    v-else
-                    class="receipt-placeholder"
-                    @click="showReceiptModal = true"
-                  >
-                    <CIcon name="cil-image" size="xl" class="text-secondary mb-2" />
-                    <div class="small text-muted">Imagen no disponible</div>
+                <div v-if="form.receipt_url" class="mt-2">
+                  <div class="position-relative d-inline-block">
+                    <img 
+                      v-if="!imageLoadError"
+                      :src="form.receipt_url" 
+                      class="img-thumbnail" 
+                      style="max-height: 200px; cursor: pointer;"
+                      @click="showReceiptModal = true"
+                      @error="handleImageError"
+                    />
+                    <div 
+                      v-else
+                      class="receipt-placeholder"
+                      @click="showReceiptModal = true"
+                    >
+                      <CIcon name="cil-image" size="xl" class="text-secondary mb-2" />
+                      <div class="small text-muted">Imagen no disponible</div>
+                    </div>
+                    <CButton 
+                      color="danger" 
+                      size="sm" 
+                      class="position-absolute top-0 end-0 m-1"
+                      @click.stop="deleteReceipt"
+                    >
+                      <CIcon name="cil-x" />
+                    </CButton>
                   </div>
-                  <CButton 
-                    color="danger" 
-                    size="sm" 
-                    class="position-absolute top-0 end-0 m-1"
-                    @click.stop="deleteReceipt"
-                  >
-                    <CIcon name="cil-x" />
-                  </CButton>
+                  <div class="mt-2">
+                    <CButton 
+                      color="info" 
+                      size="sm"
+                      :disabled="extractingData"
+                      @click="extractReceiptData"
+                    >
+                      <CSpinner v-if="extractingData" size="sm" class="me-2" />
+                      <CIcon v-else name="cil-lightbulb" class="me-2" />
+                      {{ extractingData ? 'Leyendo comprobante...' : 'Leer con IA' }}
+                    </CButton>
+                    <span v-if="extractionError" class="text-danger small ms-2">{{ extractionError }}</span>
+                    <span v-if="extractionSuccess" class="text-success small ms-2">Datos extraídos correctamente</span>
+                  </div>
                 </div>
               </CCol>
             </CRow>
@@ -241,6 +257,9 @@ const showReceiptModal = ref(false)
 const fileInput = ref(null)
 const isDragging = ref(false)
 const uploading = ref(false)
+const extractingData = ref(false)
+const extractionError = ref('')
+const extractionSuccess = ref(false)
 const uploadError = ref('')
 const imageLoadError = ref(false)
 
@@ -388,6 +407,51 @@ const pasteFromClipboard = async () => {
   } catch (error) {
     console.error('Error reading clipboard:', error)
     uploadError.value = 'No se pudo acceder al portapapeles. Intenta con Ctrl+V'
+  }
+}
+
+const extractReceiptData = async () => {
+  if (!form.value.receipt_url) return
+  
+  extractingData.value = true
+  extractionError.value = ''
+  extractionSuccess.value = false
+  
+  try {
+    const response = await fetch('/api/payments/extract-receipt', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify({ imageUrl: form.value.receipt_url })
+    })
+    
+    const result = await response.json()
+    
+    if (!response.ok) {
+      throw new Error(result.error || 'Error al procesar comprobante')
+    }
+    
+    if (result.success && result.data) {
+      const { amount, reference, payment_date } = result.data
+      
+      if (amount !== null) {
+        form.value.amount = amount
+      }
+      if (reference) {
+        form.value.reference = reference
+      }
+      if (payment_date) {
+        form.value.expense_date = payment_date
+      }
+      
+      extractionSuccess.value = true
+      setTimeout(() => { extractionSuccess.value = false }, 3000)
+    }
+  } catch (error) {
+    console.error('Extraction error:', error)
+    extractionError.value = error.message || 'Error al leer el comprobante'
+  } finally {
+    extractingData.value = false
   }
 }
 
