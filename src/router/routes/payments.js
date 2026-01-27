@@ -3,7 +3,7 @@ export default [
     path: '/business/payments',
     name: 'Payments',
     component: () => import('@/views/payments/PaymentListView.vue'),
-    meta: { breadcrumb: 'Lista' }
+    meta: { breadcrumb: 'Reporte de Ingresos' }
   },
   {
     path: '/business/payments/new',

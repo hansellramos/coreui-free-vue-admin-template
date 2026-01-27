@@ -29,12 +29,6 @@ export default [
   },
   {
     component: 'CNavItem',
-    name: 'Organizaciones',
-    to: '/business/organizations',
-    icon: 'cil-briefcase',
-  },
-  {
-    component: 'CNavItem',
     name: 'Cabañas',
     to: '/business/venues',
     icon: 'cil-location-pin',
@@ -47,33 +41,43 @@ export default [
   },
   {
     component: 'CNavItem',
-    name: 'Hospedajes',
-    to: '/business/accommodations',
-    icon: 'cil-calendar',
-  },
-  {
-    component: 'CNavItem',
-    name: 'Pagos',
-    to: '/business/payments',
-    icon: 'cil-dollar',
-  },
-  {
-    component: 'CNavItem',
-    name: 'Depósitos',
-    to: '/business/deposits',
-    icon: 'cil-wallet',
-  },
-  {
-    component: 'CNavItem',
     name: 'Cotizaciones',
     to: '/business/estimates',
     icon: 'cil-notes',
   },
   {
     component: 'CNavItem',
+    name: 'Hospedajes',
+    to: '/business/accommodations',
+    icon: 'cil-calendar',
+  },
+  {
+    component: 'CNavItem',
+    name: 'Organizaciones',
+    to: '/business/organizations',
+    icon: 'cil-briefcase',
+  },
+  {
+    component: 'CNavTitle',
+    name: 'Contabilidad',
+  },
+  {
+    component: 'CNavItem',
+    name: 'Ingresos',
+    to: '/business/payments',
+    icon: 'cil-dollar',
+  },
+  {
+    component: 'CNavItem',
     name: 'Egresos',
     to: '/business/expenses',
     icon: 'cil-cart',
+  },
+  {
+    component: 'CNavItem',
+    name: 'Depósitos',
+    to: '/business/deposits',
+    icon: 'cil-wallet',
   },
   {
     component: 'CNavTitle',

@@ -461,6 +461,7 @@ const routes = [
         path: '/business/expenses',
         name: 'ExpensesList',
         component: () => import('@/views/expenses/ExpensesListView.vue'),
+        meta: { breadcrumb: 'Reporte de Egresos' },
       },
       {
         path: '/business/expenses/create',
@@ -477,6 +478,7 @@ const routes = [
         path: '/business/deposits',
         name: 'DepositsList',
         component: () => import('@/views/deposits/DepositsListView.vue'),
+        meta: { breadcrumb: 'Reporte de Depósitos' },
       },
       {
         path: '/business/deposits/new',
