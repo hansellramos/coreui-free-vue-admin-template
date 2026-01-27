@@ -95,12 +95,42 @@
 
     <CRow class="mb-4">
       <CCol :xs="4" :lg="2">
-        <CCard class="text-white bg-danger h-100">
+        <CCard class="text-white bg-secondary h-100">
+          <CCardBody class="pb-3">
+            <div class="fs-4 fw-semibold">
+              {{ totalAccommodationsLast12 }}
+            </div>
+            <div class="text-white-50 small">Últimos 12M</div>
+          </CCardBody>
+        </CCard>
+      </CCol>
+      <CCol :xs="4" :lg="2">
+        <CCard class="text-white bg-dark h-100">
+          <CCardBody class="pb-3">
+            <div class="fs-4 fw-semibold">
+              {{ totalAccommodationsLast3 }}
+            </div>
+            <div class="text-white-50 small">Últimos 3M</div>
+          </CCardBody>
+        </CCard>
+      </CCol>
+      <CCol :xs="4" :lg="2">
+        <CCard class="text-white bg-info h-100">
+          <CCardBody class="pb-3">
+            <div class="fs-4 fw-semibold">
+              {{ totalAccommodationsPreviousMonth }}
+            </div>
+            <div class="text-white-50 small">Mes Anterior</div>
+          </CCardBody>
+        </CCard>
+      </CCol>
+      <CCol :xs="4" :lg="2">
+        <CCard class="text-white bg-primary h-100">
           <CCardBody class="pb-3">
             <div class="fs-4 fw-semibold">
               {{ totalAccommodationsThisMonth }}
             </div>
-            <div class="text-white-50 small">Reservas Este Mes</div>
+            <div class="text-white-50 small">Este Mes</div>
           </CCardBody>
         </CCard>
       </CCol>
@@ -110,17 +140,17 @@
             <div class="fs-4 fw-semibold">
               {{ totalAccommodationsNext3 }}
             </div>
-            <div class="text-white-50 small">Reservas Próximos 3M</div>
+            <div class="text-white-50 small">Próximos 3M</div>
           </CCardBody>
         </CCard>
       </CCol>
       <CCol :xs="4" :lg="2">
-        <CCard class="text-white bg-info h-100">
+        <CCard class="text-white bg-success h-100">
           <CCardBody class="pb-3">
             <div class="fs-4 fw-semibold">
               {{ totalAccommodationsNext12 }}
             </div>
-            <div class="text-white-50 small">Reservas Próximos 12M</div>
+            <div class="text-white-50 small">Próximos 12M</div>
           </CCardBody>
         </CCard>
       </CCol>
@@ -266,6 +296,24 @@ const totalAccommodationsNext3 = computed(() => {
   if (!accommodationsForecast.value.venues) return 0
   return accommodationsForecast.value.venues.reduce((sum, venue) =>
     sum + venue.counts.slice(0, 3).reduce((s, c) => s + c, 0), 0)
+})
+
+const totalAccommodationsLast12 = computed(() => {
+  if (!accommodationsHistory.value.venues) return 0
+  return accommodationsHistory.value.venues.reduce((sum, venue) =>
+    sum + venue.counts.reduce((s, c) => s + c, 0), 0)
+})
+
+const totalAccommodationsLast3 = computed(() => {
+  if (!accommodationsHistory.value.venues) return 0
+  return accommodationsHistory.value.venues.reduce((sum, venue) =>
+    sum + venue.counts.slice(-3).reduce((s, c) => s + c, 0), 0)
+})
+
+const totalAccommodationsPreviousMonth = computed(() => {
+  if (!accommodationsHistory.value.venues) return 0
+  return accommodationsHistory.value.venues.reduce((sum, venue) =>
+    sum + (venue.counts[venue.counts.length - 1] || 0), 0)
 })
 
 const chartColors = [
