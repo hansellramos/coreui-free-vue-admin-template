@@ -212,6 +212,27 @@ const chartColors = [
   '#6610F2', '#FD7E14', '#20C997', '#6F42C1', '#007BFF'
 ]
 
+// Mapeo de colores Bootstrap/CoreUI a hexadecimales
+const bootstrapColors = {
+  primary: '#321fdb',
+  secondary: '#9da5b1',
+  success: '#2eb85c',
+  danger: '#e55353',
+  warning: '#f9b115',
+  info: '#3399ff',
+  light: '#ebedef',
+  dark: '#4f5d73',
+  indigo: '#6610f2',
+  pink: '#e83e8c',
+  teal: '#20c997'
+}
+
+const getChartColor = (color, index) => {
+  if (!color) return chartColors[index % chartColors.length]
+  if (color.startsWith('#')) return color
+  return bootstrapColors[color] || chartColors[index % chartColors.length]
+}
+
 const barChartData = computed(() => ({
   labels: monthlyTrend.value.map(item => item.monthName),
   datasets: [
@@ -243,8 +264,8 @@ const doughnutChartData = computed(() => ({
   labels: expensesByCategory.value.map(item => item.name),
   datasets: [{
     data: expensesByCategory.value.map(item => item.total),
-    backgroundColor: expensesByCategory.value.map((item, index) => 
-      item.color || chartColors[index % chartColors.length]
+    backgroundColor: expensesByCategory.value.map((item, index) =>
+      getChartColor(item.color, index)
     ),
     borderWidth: 1
   }]

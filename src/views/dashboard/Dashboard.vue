@@ -91,14 +91,65 @@
           </CCardBody>
         </CCard>
       </CCol>
-      <CCol :sm="6" :lg="3">
+    </CRow>
+
+    <CRow class="mb-4">
+      <CCol :xs="4" :lg="2">
+        <CCard class="text-white bg-danger h-100">
+          <CCardBody class="pb-3">
+            <div class="fs-4 fw-semibold">
+              {{ totalAccommodationsThisMonth }}
+            </div>
+            <div class="text-white-50 small">Reservas Este Mes</div>
+          </CCardBody>
+        </CCard>
+      </CCol>
+      <CCol :xs="4" :lg="2">
         <CCard class="text-white bg-warning h-100">
+          <CCardBody class="pb-3">
+            <div class="fs-4 fw-semibold">
+              {{ totalAccommodationsNext3 }}
+            </div>
+            <div class="text-white-50 small">Reservas Próximos 3M</div>
+          </CCardBody>
+        </CCard>
+      </CCol>
+      <CCol :xs="4" :lg="2">
+        <CCard class="text-white bg-info h-100">
           <CCardBody class="pb-3">
             <div class="fs-4 fw-semibold">
               {{ totalAccommodationsNext12 }}
             </div>
-            <div class="text-white-50">Reservas Proximos 12M</div>
-            <small class="text-white-50">{{ accommodationsForecast.venues?.length || 0 }} cabañas</small>
+            <div class="text-white-50 small">Reservas Próximos 12M</div>
+          </CCardBody>
+        </CCard>
+      </CCol>
+    </CRow>
+
+    <CRow>
+      <CCol :md="6">
+        <CCard class="mb-4">
+          <CCardHeader>Hospedajes - Últimos 12 Meses</CCardHeader>
+          <CCardBody>
+            <div v-if="accommodationsHistory.venues?.length > 0" style="height: 300px;">
+              <Bar :data="historyChartData" :options="barChartOptions" />
+            </div>
+            <div v-else class="text-center text-body-secondary py-5">
+              No hay datos de hospedajes históricos
+            </div>
+          </CCardBody>
+        </CCard>
+      </CCol>
+      <CCol :md="6">
+        <CCard class="mb-4">
+          <CCardHeader>Hospedajes - Próximos 12 Meses</CCardHeader>
+          <CCardBody>
+            <div v-if="accommodationsForecast.venues?.length > 0" style="height: 300px;">
+              <Bar :data="forecastChartData" :options="barChartOptions" />
+            </div>
+            <div v-else class="text-center text-body-secondary py-5">
+              No hay datos de hospedajes futuros
+            </div>
           </CCardBody>
         </CCard>
       </CCol>
@@ -140,35 +191,6 @@
             </CTable>
             <div v-else class="text-center text-body-secondary py-5">
               No hay datos de ingresos disponibles
-            </div>
-          </CCardBody>
-        </CCard>
-      </CCol>
-    </CRow>
-
-    <CRow>
-      <CCol :md="6">
-        <CCard class="mb-4">
-          <CCardHeader>Acomodaciones - Últimos 12 Meses</CCardHeader>
-          <CCardBody>
-            <div v-if="accommodationsHistory.venues?.length > 0" style="height: 300px;">
-              <Bar :data="historyChartData" :options="barChartOptions" />
-            </div>
-            <div v-else class="text-center text-body-secondary py-5">
-              No hay datos de acomodaciones históricas
-            </div>
-          </CCardBody>
-        </CCard>
-      </CCol>
-      <CCol :md="6">
-        <CCard class="mb-4">
-          <CCardHeader>Acomodaciones - Próximos 12 Meses</CCardHeader>
-          <CCardBody>
-            <div v-if="accommodationsForecast.venues?.length > 0" style="height: 300px;">
-              <Bar :data="forecastChartData" :options="barChartOptions" />
-            </div>
-            <div v-else class="text-center text-body-secondary py-5">
-              No hay datos de acomodaciones futuras
             </div>
           </CCardBody>
         </CCard>
@@ -230,8 +252,20 @@ const totalIncomeByVenue = computed(() => {
 
 const totalAccommodationsNext12 = computed(() => {
   if (!accommodationsForecast.value.venues) return 0
-  return accommodationsForecast.value.venues.reduce((sum, venue) => 
+  return accommodationsForecast.value.venues.reduce((sum, venue) =>
     sum + venue.counts.reduce((s, c) => s + c, 0), 0)
+})
+
+const totalAccommodationsThisMonth = computed(() => {
+  if (!accommodationsForecast.value.venues) return 0
+  return accommodationsForecast.value.venues.reduce((sum, venue) =>
+    sum + (venue.counts[0] || 0), 0)
+})
+
+const totalAccommodationsNext3 = computed(() => {
+  if (!accommodationsForecast.value.venues) return 0
+  return accommodationsForecast.value.venues.reduce((sum, venue) =>
+    sum + venue.counts.slice(0, 3).reduce((s, c) => s + c, 0), 0)
 })
 
 const chartColors = [
@@ -281,7 +315,11 @@ const barChartOptions = {
   maintainAspectRatio: false,
   scales: {
     x: { stacked: true },
-    y: { stacked: true, beginAtZero: true }
+    y: {
+      stacked: true,
+      beginAtZero: true,
+      ticks: { precision: 0 }
+    }
   },
   plugins: {
     legend: { position: 'top' }
