@@ -5,9 +5,22 @@
         <CCard>
           <CCardBody>
             <div class="d-flex flex-column flex-md-row align-items-start align-items-md-center justify-content-between gap-2">
-              <h4 class="mb-0">Analytics de Ingresos</h4>
-              <div class="organization-filter d-flex align-items-center gap-2 w-100 w-md-auto">
-                <div class="position-relative w-100" style="max-width: 300px;">
+              <h4 class="mb-0">Análisis de Hospedajes</h4>
+              <div class="d-flex align-items-center gap-3 flex-wrap">
+                <div class="d-flex align-items-center gap-2">
+                  <span class="text-body-secondary small text-nowrap">Período:</span>
+                  <CFormSelect
+                    v-model="selectedPeriod"
+                    @change="loadAccommodationsByVenue"
+                    style="width: auto; min-width: 180px;"
+                    size="sm"
+                  >
+                    <option v-for="opt in periodOptions" :key="opt.value" :value="opt.value">
+                      {{ opt.label }}
+                    </option>
+                  </CFormSelect>
+                </div>
+                <div class="position-relative" style="min-width: 200px; max-width: 300px;">
                   <CFormInput
                     v-model="orgSearch"
                     placeholder="Filtrar por organizaciones..."
@@ -188,39 +201,37 @@
     <CRow>
       <CCol :md="6">
         <CCard class="mb-4">
-          <CCardHeader>Ingresos por Cabaña</CCardHeader>
+          <CCardHeader>Hospedajes por Cabaña</CCardHeader>
           <CCardBody>
-            <div v-if="incomeByVenue.length > 0" style="height: 300px;">
-              <Pie :data="pieChartData" :options="pieChartOptions" />
+            <div v-if="accommodationsByVenue.length > 0" style="height: 300px;">
+              <Pie :data="accommodationsPieChartData" :options="pieChartOptions" />
             </div>
             <div v-else class="text-center text-body-secondary py-5">
-              No hay datos de ingresos disponibles
+              No hay datos de hospedajes disponibles
             </div>
           </CCardBody>
         </CCard>
       </CCol>
       <CCol :md="6">
         <CCard class="mb-4">
-          <CCardHeader>Ingresos por Cabaña (Lista)</CCardHeader>
+          <CCardHeader>Hospedajes por Cabaña (Lista)</CCardHeader>
           <CCardBody>
-            <CTable v-if="incomeByVenue.length > 0" small hover>
+            <CTable v-if="accommodationsByVenue.length > 0" small hover>
               <CTableHead>
                 <CTableRow>
                   <CTableHeaderCell>Cabaña</CTableHeaderCell>
-                  <CTableHeaderCell class="text-end">Total</CTableHeaderCell>
-                  <CTableHeaderCell class="text-end">Pagos</CTableHeaderCell>
+                  <CTableHeaderCell class="text-end">Nº Hospedajes</CTableHeaderCell>
                 </CTableRow>
               </CTableHead>
               <CTableBody>
-                <CTableRow v-for="item in incomeByVenue" :key="item.venue_id">
+                <CTableRow v-for="item in accommodationsByVenue" :key="item.venue_id">
                   <CTableDataCell>{{ item.venue_name }}</CTableDataCell>
-                  <CTableDataCell class="text-end">{{ formatCurrency(item.total) }}</CTableDataCell>
                   <CTableDataCell class="text-end">{{ item.count }}</CTableDataCell>
                 </CTableRow>
               </CTableBody>
             </CTable>
             <div v-else class="text-center text-body-secondary py-5">
-              No hay datos de ingresos disponibles
+              No hay datos de hospedajes disponibles
             </div>
           </CCardBody>
         </CCard>
@@ -263,6 +274,18 @@ const incomeSummary = ref({
 const incomeByVenue = ref([])
 const accommodationsHistory = ref({ months: [], venues: [] })
 const accommodationsForecast = ref({ months: [], venues: [] })
+
+// Period filter for accommodations by venue section
+const selectedPeriod = ref('last_12_months')
+const periodOptions = [
+  { value: 'next_12_months', label: 'Próximos 12 meses' },
+  { value: 'next_3_months', label: 'Próximos 3 meses' },
+  { value: 'next_month', label: 'Próximo mes' },
+  { value: 'last_month', label: 'Último mes' },
+  { value: 'last_3_months', label: 'Últimos 3 meses' },
+  { value: 'last_12_months', label: 'Últimos 12 meses' }
+]
+const accommodationsByVenue = ref([])
 
 const filteredOrganizations = computed(() => {
   if (!orgSearch.value) {
@@ -326,6 +349,15 @@ const pieChartData = computed(() => ({
   datasets: [{
     data: incomeByVenue.value.map(item => item.total),
     backgroundColor: chartColors.slice(0, incomeByVenue.value.length),
+    borderWidth: 1
+  }]
+}))
+
+const accommodationsPieChartData = computed(() => ({
+  labels: accommodationsByVenue.value.map(item => item.venue_name),
+  datasets: [{
+    data: accommodationsByVenue.value.map(item => item.count),
+    backgroundColor: chartColors.slice(0, accommodationsByVenue.value.length),
     borderWidth: 1
   }]
 }))
@@ -469,12 +501,26 @@ async function loadAccommodationsForecast() {
   }
 }
 
+async function loadAccommodationsByVenue() {
+  try {
+    const params = new URLSearchParams(getAnalyticsParams())
+    params.append('period', selectedPeriod.value)
+    const response = await fetch(`/api/analytics/accommodations-by-venue?${params.toString()}`, { credentials: 'include' })
+    if (response.ok) {
+      accommodationsByVenue.value = await response.json()
+    }
+  } catch (error) {
+    console.error('Error loading accommodations by venue:', error)
+  }
+}
+
 async function loadAllAnalytics() {
   await Promise.all([
     loadIncomeSummary(),
     loadIncomeByVenue(),
     loadAccommodationsHistory(),
-    loadAccommodationsForecast()
+    loadAccommodationsForecast(),
+    loadAccommodationsByVenue()
   ])
 }
 

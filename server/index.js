@@ -1508,6 +1508,111 @@ async function startServer() {
     }
   });
 
+  // Helper function for date range calculation
+  function calculateDateRange(period) {
+    const now = new Date();
+    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    let startDate, endDate;
+
+    switch (period) {
+      case 'next_12_months':
+        startDate = today;
+        endDate = new Date(now.getFullYear(), now.getMonth() + 12, now.getDate());
+        break;
+      case 'next_3_months':
+        startDate = today;
+        endDate = new Date(now.getFullYear(), now.getMonth() + 3, now.getDate());
+        break;
+      case 'next_month':
+        startDate = today;
+        endDate = new Date(now.getFullYear(), now.getMonth() + 1, now.getDate());
+        break;
+      case 'last_month':
+        startDate = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+        endDate = new Date(now.getFullYear(), now.getMonth(), 0);
+        break;
+      case 'last_3_months':
+        startDate = new Date(now.getFullYear(), now.getMonth() - 3, now.getDate());
+        endDate = today;
+        break;
+      case 'last_12_months':
+      default:
+        startDate = new Date(now.getFullYear() - 1, now.getMonth(), now.getDate());
+        endDate = today;
+        break;
+    }
+
+    return { startDate, endDate };
+  }
+
+  // Accommodations count by venue with flexible date range
+  app.get('/api/analytics/accommodations-by-venue', isAuthenticated, async (req, res) => {
+    try {
+      const { period } = req.query;
+      const orgIds = await getAnalyticsOrgIds(req);
+
+      if (orgIds !== null && orgIds.length === 0) {
+        return res.json([]);
+      }
+
+      const { startDate, endDate } = calculateDateRange(period);
+
+      // Get venue IDs for accessible organizations
+      let venueIds = null;
+      if (orgIds !== null) {
+        const venues = await prisma.venues.findMany({
+          where: { organization: { in: orgIds } },
+          select: { id: true }
+        });
+        venueIds = venues.map(v => v.id);
+        if (venueIds.length === 0) {
+          return res.json([]);
+        }
+      }
+
+      // Build where clause
+      const whereClause = {
+        date: { gte: startDate, lte: endDate }
+      };
+      if (venueIds !== null) {
+        whereClause.venue = { in: venueIds };
+      }
+
+      // Get accommodations grouped by venue
+      const accommodations = await prisma.accommodations.groupBy({
+        by: ['venue'],
+        where: whereClause,
+        _count: { id: true }
+      });
+
+      // Get venue names
+      const venueIdsFromResults = accommodations
+        .filter(a => a.venue)
+        .map(a => a.venue);
+
+      const venues = venueIdsFromResults.length > 0
+        ? await prisma.venues.findMany({
+            where: { id: { in: venueIdsFromResults } }
+          })
+        : [];
+
+      const venueMap = Object.fromEntries(venues.map(v => [v.id, v.name]));
+
+      const result = accommodations
+        .filter(a => a.venue)
+        .map(a => ({
+          venue_id: a.venue,
+          venue_name: venueMap[a.venue] || 'Sin nombre',
+          count: a._count.id
+        }))
+        .sort((a, b) => b.count - a.count);
+
+      res.json(result);
+    } catch (error) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
   app.get('/api/countries', async (req, res) => {
     try {
       const countries = await prisma.countries.findMany({
