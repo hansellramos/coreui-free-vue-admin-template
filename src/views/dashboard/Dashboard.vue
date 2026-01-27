@@ -7,19 +7,6 @@
             <div class="d-flex flex-column flex-md-row align-items-start align-items-md-center justify-content-between gap-2">
               <h4 class="mb-0">Análisis de Hospedajes</h4>
               <div class="d-flex align-items-center gap-3 flex-wrap">
-                <div class="d-flex align-items-center gap-2">
-                  <span class="text-body-secondary small text-nowrap">Período:</span>
-                  <CFormSelect
-                    v-model="selectedPeriod"
-                    @change="loadAccommodationsByVenue"
-                    style="width: auto; min-width: 180px;"
-                    size="sm"
-                  >
-                    <option v-for="opt in periodOptions" :key="opt.value" :value="opt.value">
-                      {{ opt.label }}
-                    </option>
-                  </CFormSelect>
-                </div>
                 <div class="position-relative" style="min-width: 200px; max-width: 300px;">
                   <CFormInput
                     v-model="orgSearch"
@@ -201,7 +188,19 @@
     <CRow>
       <CCol :md="6">
         <CCard class="mb-4">
-          <CCardHeader>Hospedajes por Cabaña</CCardHeader>
+          <CCardHeader class="d-flex justify-content-between align-items-center">
+            <span>Hospedajes por Cabaña</span>
+            <CFormSelect
+              v-model="selectedPeriod"
+              @change="loadAccommodationsByVenue"
+              style="width: auto; min-width: 160px;"
+              size="sm"
+            >
+              <option v-for="opt in periodOptions" :key="opt.value" :value="opt.value">
+                {{ opt.label }}
+              </option>
+            </CFormSelect>
+          </CCardHeader>
           <CCardBody>
             <div v-if="accommodationsByVenue.length > 0" style="height: 300px;">
               <Pie :data="accommodationsPieChartData" :options="pieChartOptions" />
