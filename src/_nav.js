@@ -1,15 +1,7 @@
 export default [
   {
-    component: 'CNavItem',
+    component: 'CNavTitle',
     name: 'Inicio',
-    to: '/dashboard',
-    icon: 'cil-home',
-  },
-  {
-    component: 'CNavItem',
-    name: 'Análisis',
-    to: '/analytics',
-    icon: 'cil-chart-pie',
   },
   {
     component: 'CNavItem',
@@ -22,6 +14,22 @@ export default [
     name: 'Disponibilidad',
     to: '/availability',
     icon: 'cil-check-circle',
+  },
+  {
+    component: 'CNavTitle',
+    name: 'Análisis',
+  },
+  {
+    component: 'CNavItem',
+    name: 'Análisis de Hospedajes',
+    to: '/dashboard',
+    icon: 'cil-home',
+  },
+  {
+    component: 'CNavItem',
+    name: 'Análisis Financiero',
+    to: '/analytics',
+    icon: 'cil-chart-pie',
   },
   {
     component: 'CNavTitle',

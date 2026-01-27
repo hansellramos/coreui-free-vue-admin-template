@@ -29,6 +29,7 @@ const routes = [
           import(
             /* webpackChunkName: "dashboard" */ '@/views/dashboard/Dashboard.vue'
           ),
+        meta: { breadcrumb: 'Análisis de Hospedajes' },
       },
       {
         path: '/users',
@@ -70,6 +71,7 @@ const routes = [
         path: '/availability',
         name: 'Availability',
         component: () => import('@/views/availability/AvailabilityView.vue'),
+        meta: { breadcrumb: 'Disponibilidad' },
       },
       {
         path: '/no-subscription',
@@ -501,6 +503,7 @@ const routes = [
         path: '/analytics',
         name: 'Analytics',
         component: () => import('@/views/analytics/AnalyticsView.vue'),
+        meta: { breadcrumb: 'Análisis Financiero' },
       },
       {
         path: '/business/estimates',
