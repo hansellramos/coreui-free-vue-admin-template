@@ -106,10 +106,12 @@ import { useRoute } from 'vue-router'
 import { CRow, CCol, CCard, CCardHeader, CCardBody, CButton, CSpinner, CBadge } from '@coreui/vue'
 import { CIcon } from '@coreui/icons-vue'
 import { getVenueById } from '@/services/venueService'
+import { useBreadcrumbStore } from '@/stores/breadcrumb.js'
 import mapboxgl from 'mapbox-gl'
 import 'mapbox-gl/dist/mapbox-gl.css'
 
 const route = useRoute()
+const breadcrumbStore = useBreadcrumbStore()
 const venue = ref(null)
 const venueAmenities = ref([])
 const mapContainer = ref(null)
@@ -152,16 +154,19 @@ onMounted(async () => {
 })
 
 watch(venue, async (val) => {
-  if (val && val.latitude && val.longitude) {
-    await nextTick()
-    mapboxgl.accessToken = token
-    const map = new mapboxgl.Map({
-      style: 'mapbox://styles/mapbox/streets-v11',
-      container: mapContainer.value,
-      center: [val.longitude, val.latitude],
-      zoom: 12
-    })
-    new mapboxgl.Marker().setLngLat([val.longitude, val.latitude]).addTo(map)
+  if (val) {
+    breadcrumbStore.setTitle(`Detalle ${val.name}`)
+    if (val.latitude && val.longitude) {
+      await nextTick()
+      mapboxgl.accessToken = token
+      const map = new mapboxgl.Map({
+        style: 'mapbox://styles/mapbox/streets-v11',
+        container: mapContainer.value,
+        center: [val.longitude, val.latitude],
+        zoom: 12
+      })
+      new mapboxgl.Marker().setLngLat([val.longitude, val.latitude]).addTo(map)
+    }
   }
 })
 </script>

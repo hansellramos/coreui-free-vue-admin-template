@@ -37,13 +37,16 @@ onMounted(() => {
       </CHeaderToggler>
       <CHeaderNav class="d-none d-md-flex">
         <CNavItem>
-          <RouterLink to="/dashboard" class="nav-link">Panel</RouterLink>
-        </CNavItem>
-        <CNavItem>
-          <RouterLink to="/business/accommodations" class="nav-link">Calendario</RouterLink>
-        </CNavItem>
-        <CNavItem>
           <RouterLink to="/next" class="nav-link">Próximos</RouterLink>
+        </CNavItem>
+        <CNavItem>
+          <RouterLink to="/availability" class="nav-link">Disponibilidad</RouterLink>
+        </CNavItem>
+        <CNavItem>
+          <RouterLink to="/dashboard" class="nav-link">Análisis de Hospedajes</RouterLink>
+        </CNavItem>
+        <CNavItem>
+          <RouterLink to="/analytics" class="nav-link">Análisis Financiero</RouterLink>
         </CNavItem>
       </CHeaderNav>
       <CHeaderNav class="ms-auto">
