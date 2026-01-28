@@ -119,6 +119,35 @@
       </CCol>
     </CRow>
 
+    <CRow class="mb-4">
+      <CCol :md="6">
+        <CCard class="h-100">
+          <CCardHeader>Hospedajes - Últimos 12 Meses</CCardHeader>
+          <CCardBody>
+            <div v-if="accommodationsHistory.venues?.length > 0" style="height: 300px;">
+              <Bar :data="historyChartData" :options="barChartOptions" />
+            </div>
+            <div v-else class="text-center text-body-secondary py-5">
+              No hay datos de hospedajes históricos
+            </div>
+          </CCardBody>
+        </CCard>
+      </CCol>
+      <CCol :md="6">
+        <CCard class="h-100">
+          <CCardHeader>Hospedajes - Próximos 12 Meses</CCardHeader>
+          <CCardBody>
+            <div v-if="accommodationsForecast.venues?.length > 0" style="height: 300px;">
+              <Bar :data="forecastChartData" :options="barChartOptions" />
+            </div>
+            <div v-else class="text-center text-body-secondary py-5">
+              No hay datos de hospedajes futuros
+            </div>
+          </CCardBody>
+        </CCard>
+      </CCol>
+    </CRow>
+
     <CRow class="mb-2">
       <CCol :xs="12">
         <div class="d-flex align-items-center gap-2">
@@ -169,35 +198,6 @@
             </div>
             <div class="text-white-50">Ingresos Totales</div>
             <small class="text-white-50">{{ incomeByVenue.length }} cabañas con ingresos</small>
-          </CCardBody>
-        </CCard>
-      </CCol>
-    </CRow>
-
-    <CRow>
-      <CCol :md="6">
-        <CCard class="mb-4">
-          <CCardHeader>Hospedajes - Últimos 12 Meses</CCardHeader>
-          <CCardBody>
-            <div v-if="accommodationsHistory.venues?.length > 0" style="height: 300px;">
-              <Bar :data="historyChartData" :options="barChartOptions" />
-            </div>
-            <div v-else class="text-center text-body-secondary py-5">
-              No hay datos de hospedajes históricos
-            </div>
-          </CCardBody>
-        </CCard>
-      </CCol>
-      <CCol :md="6">
-        <CCard class="mb-4">
-          <CCardHeader>Hospedajes - Próximos 12 Meses</CCardHeader>
-          <CCardBody>
-            <div v-if="accommodationsForecast.venues?.length > 0" style="height: 300px;">
-              <Bar :data="forecastChartData" :options="barChartOptions" />
-            </div>
-            <div v-else class="text-center text-body-secondary py-5">
-              No hay datos de hospedajes futuros
-            </div>
           </CCardBody>
         </CCard>
       </CCol>
