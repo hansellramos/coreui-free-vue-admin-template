@@ -154,7 +154,7 @@
           <span class="text-body-secondary">Período de Ingresos:</span>
           <CFormSelect
             v-model="selectedIncomePeriod"
-            @change="loadIncomeByVenue"
+            @change="loadPeriodData"
             style="width: auto; min-width: 180px;"
             size="sm"
           >
@@ -206,19 +206,7 @@
     <CRow>
       <CCol :md="6">
         <CCard class="mb-4">
-          <CCardHeader class="d-flex justify-content-between align-items-center">
-            <span>Hospedajes por Cabaña</span>
-            <CFormSelect
-              v-model="selectedPeriod"
-              @change="loadAccommodationsByVenue"
-              style="width: auto; min-width: 160px;"
-              size="sm"
-            >
-              <option v-for="opt in periodOptions" :key="opt.value" :value="opt.value">
-                {{ opt.label }}
-              </option>
-            </CFormSelect>
-          </CCardHeader>
+          <CCardHeader>Hospedajes por Cabaña</CCardHeader>
           <CCardBody>
             <div v-if="accommodationsByVenue.length > 0" style="height: 300px;">
               <Pie :data="accommodationsPieChartData" :options="pieChartOptions" />
@@ -302,11 +290,8 @@ const periodOptions = [
   { value: 'last_12_months', label: 'Últimos 12 meses' }
 ]
 
-// Period filter for income section
+// Period filter for income and accommodations by venue sections
 const selectedIncomePeriod = ref('last_12_months')
-
-// Period filter for accommodations by venue section
-const selectedPeriod = ref('last_12_months')
 const accommodationsByVenue = ref([])
 
 const filteredOrganizations = computed(() => {
@@ -528,7 +513,7 @@ async function loadAccommodationsForecast() {
 async function loadAccommodationsByVenue() {
   try {
     const params = new URLSearchParams(getAnalyticsParams())
-    params.append('period', selectedPeriod.value)
+    params.append('period', selectedIncomePeriod.value)
     const response = await fetch(`/api/analytics/accommodations-by-venue?${params.toString()}`, { credentials: 'include' })
     if (response.ok) {
       accommodationsByVenue.value = await response.json()
@@ -536,6 +521,13 @@ async function loadAccommodationsByVenue() {
   } catch (error) {
     console.error('Error loading accommodations by venue:', error)
   }
+}
+
+async function loadPeriodData() {
+  await Promise.all([
+    loadIncomeByVenue(),
+    loadAccommodationsByVenue()
+  ])
 }
 
 async function loadAllAnalytics() {
