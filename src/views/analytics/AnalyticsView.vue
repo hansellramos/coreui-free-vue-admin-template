@@ -108,11 +108,21 @@
     </CRow>
 
     <CRow v-if="expensesByCategory.length > 0">
-      <CCol :xs="12">
-        <CCard class="mb-4">
+      <CCol :md="6">
+        <CCard class="mb-4 h-100">
+          <CCardHeader>Egresos por Categoría</CCardHeader>
+          <CCardBody>
+            <div style="height: 300px;">
+              <CChartBar :data="expensesByCategoryBarData" :options="expensesByCategoryBarOptions" />
+            </div>
+          </CCardBody>
+        </CCard>
+      </CCol>
+      <CCol :md="6">
+        <CCard class="mb-4 h-100">
           <CCardHeader>Detalle de Egresos por Categoría</CCardHeader>
           <CCardBody>
-            <CTable hover responsive>
+            <CTable hover responsive small>
               <CTableHead>
                 <CTableRow>
                   <CTableHeaderCell>Categoría</CTableHeaderCell>
@@ -247,6 +257,30 @@ const doughnutChartOptions = {
   maintainAspectRatio: false,
   plugins: {
     legend: { position: 'right' }
+  }
+}
+
+const expensesByCategoryBarData = computed(() => ({
+  labels: expensesByCategory.value.map(item => item.name),
+  datasets: [{
+    label: 'Total',
+    data: expensesByCategory.value.map(item => item.total),
+    backgroundColor: expensesByCategory.value.map((item, index) =>
+      getChartColor(item.color, index)
+    ),
+    borderWidth: 1
+  }]
+}))
+
+const expensesByCategoryBarOptions = {
+  indexAxis: 'y',
+  responsive: true,
+  maintainAspectRatio: false,
+  plugins: {
+    legend: { display: false }
+  },
+  scales: {
+    x: { beginAtZero: true }
   }
 }
 
