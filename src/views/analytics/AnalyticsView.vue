@@ -123,7 +123,7 @@
               <CTableBody>
                 <CTableRow v-for="category in expensesByCategory" :key="category.id">
                   <CTableDataCell>
-                    <span v-if="category.icon" class="me-2">{{ category.icon }}</span>
+                    <CIcon v-if="category.icon" :icon="category.icon" class="me-2" />
                     {{ category.name }}
                   </CTableDataCell>
                   <CTableDataCell class="text-end">{{ formatCurrency(category.total) }}</CTableDataCell>
