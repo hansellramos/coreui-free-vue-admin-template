@@ -1537,12 +1537,29 @@ async function startServer() {
         startDate = today;
         endDate = new Date(now.getFullYear(), now.getMonth() + 1, now.getDate());
         break;
+      case 'this_month':
+        startDate = new Date(now.getFullYear(), now.getMonth(), 1);
+        endDate = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+        break;
       case 'last_month':
         startDate = new Date(now.getFullYear(), now.getMonth() - 1, 1);
         endDate = new Date(now.getFullYear(), now.getMonth(), 0);
         break;
+      case 'this_quarter':
+        const quarterStart = Math.floor(now.getMonth() / 3) * 3;
+        startDate = new Date(now.getFullYear(), quarterStart, 1);
+        endDate = new Date(now.getFullYear(), quarterStart + 3, 0);
+        break;
+      case 'this_year':
+        startDate = new Date(now.getFullYear(), 0, 1);
+        endDate = new Date(now.getFullYear(), 11, 31);
+        break;
       case 'last_3_months':
         startDate = new Date(now.getFullYear(), now.getMonth() - 3, now.getDate());
+        endDate = today;
+        break;
+      case 'last_6_months':
+        startDate = new Date(now.getFullYear(), now.getMonth() - 6, now.getDate());
         endDate = today;
         break;
       case 'last_12_months':
@@ -4023,26 +4040,21 @@ async function startServer() {
         return res.json({ income: 0, expenses: 0, depositsHeld: 0, depositsClaimed: 0, profit: 0 });
       }
       
-      // Build date range
-      let startDate, endDate;
+      // Build date range using calculateDateRange helper
       const now = new Date();
-      
-      if (period === 'month') {
-        startDate = new Date(now.getFullYear(), now.getMonth(), 1);
-        endDate = new Date(now.getFullYear(), now.getMonth() + 1, 0);
-      } else if (period === 'quarter') {
-        const quarter = Math.floor(now.getMonth() / 3);
-        startDate = new Date(now.getFullYear(), quarter * 3, 1);
-        endDate = new Date(now.getFullYear(), quarter * 3 + 3, 0);
-      } else if (period === 'year') {
-        startDate = new Date(now.getFullYear(), 0, 1);
-        endDate = new Date(now.getFullYear(), 11, 31);
+      let startDate, endDate;
+
+      if (period && typeof calculateDateRange === 'function') {
+        const range = calculateDateRange(period);
+        startDate = range.startDate;
+        endDate = range.endDate;
       } else if (from_date && to_date) {
         startDate = new Date(from_date);
         endDate = new Date(to_date);
       } else {
-        startDate = new Date(now.getFullYear(), now.getMonth(), 1);
-        endDate = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+        // Default to last 12 months
+        startDate = new Date(now.getFullYear() - 1, now.getMonth(), now.getDate());
+        endDate = now;
       }
       
       // Build where clauses
@@ -4133,27 +4145,23 @@ async function startServer() {
         return res.json([]);
       }
       
-      let startDate, endDate;
+      // Build date range using calculateDateRange helper
       const now = new Date();
-      
-      if (period === 'month') {
-        startDate = new Date(now.getFullYear(), now.getMonth(), 1);
-        endDate = new Date(now.getFullYear(), now.getMonth() + 1, 0);
-      } else if (period === 'quarter') {
-        const quarter = Math.floor(now.getMonth() / 3);
-        startDate = new Date(now.getFullYear(), quarter * 3, 1);
-        endDate = new Date(now.getFullYear(), quarter * 3 + 3, 0);
-      } else if (period === 'year') {
-        startDate = new Date(now.getFullYear(), 0, 1);
-        endDate = new Date(now.getFullYear(), 11, 31);
+      let startDate, endDate;
+
+      if (period) {
+        const range = calculateDateRange(period);
+        startDate = range.startDate;
+        endDate = range.endDate;
       } else if (from_date && to_date) {
         startDate = new Date(from_date);
         endDate = new Date(to_date);
       } else {
-        startDate = new Date(now.getFullYear(), now.getMonth(), 1);
-        endDate = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+        // Default to last 12 months
+        startDate = new Date(now.getFullYear() - 1, now.getMonth(), now.getDate());
+        endDate = now;
       }
-      
+
       const whereClause = {
         expense_date: { gte: startDate, lte: endDate }
       };
@@ -4191,16 +4199,50 @@ async function startServer() {
 
   app.get('/api/analytics/monthly-trend', async (req, res) => {
     try {
-      const { venue_id, organization_id, months, viewAll } = req.query;
+      const { venue_id, organization_id, period, viewAll } = req.query;
       const viewAllFlag = viewAll === 'true';
-      const numMonths = parseInt(months) || 6;
-      
+
+      // Calculate number of months based on period
+      let numMonths = 6;
+      const now = new Date();
+      let startFromMonth = now.getMonth();
+      let startFromYear = now.getFullYear();
+
+      switch (period) {
+        case 'last_12_months':
+          numMonths = 12;
+          break;
+        case 'last_6_months':
+          numMonths = 6;
+          break;
+        case 'last_3_months':
+          numMonths = 3;
+          break;
+        case 'last_month':
+          numMonths = 1;
+          break;
+        case 'this_month':
+          numMonths = 1;
+          break;
+        case 'this_quarter':
+          numMonths = 3;
+          const quarterStartMonth = Math.floor(now.getMonth() / 3) * 3;
+          startFromMonth = now.getMonth();
+          numMonths = now.getMonth() - quarterStartMonth + 1;
+          break;
+        case 'this_year':
+          numMonths = now.getMonth() + 1;
+          break;
+        default:
+          numMonths = 6;
+      }
+
       let accessibleOrgIds = null;
-      
+
       if (req.user) {
         const userId = String(req.user.claims?.sub);
         const currentUser = await prisma.users.findUnique({ where: { id: userId } });
-        
+
         if (viewAllFlag && currentUser?.is_super_admin) {
           accessibleOrgIds = null;
         } else if (currentUser?.is_super_admin) {
@@ -4214,10 +4256,9 @@ async function startServer() {
       } else {
         return res.json([]);
       }
-      
-      const now = new Date();
+
       const result = [];
-      
+
       for (let i = numMonths - 1; i >= 0; i--) {
         const startDate = new Date(now.getFullYear(), now.getMonth() - i, 1);
         const endDate = new Date(now.getFullYear(), now.getMonth() - i + 1, 0);

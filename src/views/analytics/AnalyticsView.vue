@@ -3,50 +3,13 @@
     <CCard class="mb-4">
       <CCardBody>
         <CRow class="g-3 align-items-end">
-          <CCol :xs="12" :md="6" :lg="3">
+          <CCol :xs="6" :md="3" :lg="2">
             <label class="form-label">Período</label>
-            <div class="d-flex gap-2">
-              <CButton
-                :color="selectedPeriod === 'month' ? 'primary' : 'secondary'"
-                :variant="selectedPeriod === 'month' ? undefined : 'outline'"
-                size="sm"
-                @click="setPeriod('month')"
-              >
-                Este Mes
-              </CButton>
-              <CButton
-                :color="selectedPeriod === 'quarter' ? 'primary' : 'secondary'"
-                :variant="selectedPeriod === 'quarter' ? undefined : 'outline'"
-                size="sm"
-                @click="setPeriod('quarter')"
-              >
-                Este Trimestre
-              </CButton>
-              <CButton
-                :color="selectedPeriod === 'year' ? 'primary' : 'secondary'"
-                :variant="selectedPeriod === 'year' ? undefined : 'outline'"
-                size="sm"
-                @click="setPeriod('year')"
-              >
-                Este Año
-              </CButton>
-            </div>
-          </CCol>
-          <CCol :xs="6" :md="3" :lg="2">
-            <label class="form-label">Desde</label>
-            <CFormInput
-              type="date"
-              v-model="fromDate"
-              @change="onCustomDateChange"
-            />
-          </CCol>
-          <CCol :xs="6" :md="3" :lg="2">
-            <label class="form-label">Hasta</label>
-            <CFormInput
-              type="date"
-              v-model="toDate"
-              @change="onCustomDateChange"
-            />
+            <CFormSelect v-model="selectedPeriod" @change="loadAllData">
+              <option v-for="opt in periodOptions" :key="opt.value" :value="opt.value">
+                {{ opt.label }}
+              </option>
+            </CFormSelect>
           </CCol>
           <CCol :xs="6" :md="3" :lg="2">
             <label class="form-label">Cabaña</label>
@@ -184,9 +147,17 @@ import { useAuth } from '@/composables/useAuth'
 const settingsStore = useSettingsStore()
 const { user } = useAuth()
 
-const selectedPeriod = ref('month')
-const fromDate = ref('')
-const toDate = ref('')
+const periodOptions = [
+  { value: 'last_12_months', label: 'Últimos 12 meses' },
+  { value: 'last_6_months', label: 'Últimos 6 meses' },
+  { value: 'last_3_months', label: 'Últimos 3 meses' },
+  { value: 'last_month', label: 'Último mes' },
+  { value: 'this_month', label: 'Este mes' },
+  { value: 'this_quarter', label: 'Este trimestre' },
+  { value: 'this_year', label: 'Este año' }
+]
+
+const selectedPeriod = ref('last_12_months')
 const selectedVenueId = ref('')
 const selectedOrganizationId = ref('')
 
@@ -280,40 +251,18 @@ const doughnutChartOptions = {
 }
 
 function formatCurrency(amount) {
-  return new Intl.NumberFormat('es-CO', { 
-    style: 'currency', 
-    currency: 'COP', 
-    minimumFractionDigits: 0 
+  return new Intl.NumberFormat('es-CO', {
+    style: 'currency',
+    currency: 'COP',
+    minimumFractionDigits: 0
   }).format(amount || 0)
-}
-
-function setPeriod(period) {
-  selectedPeriod.value = period
-  fromDate.value = ''
-  toDate.value = ''
-  loadAllData()
-}
-
-function onCustomDateChange() {
-  if (fromDate.value && toDate.value) {
-    selectedPeriod.value = 'custom'
-    loadAllData()
-  }
 }
 
 function getQueryParams() {
   const viewAll = user.value?.is_super_admin ? settingsStore.godModeViewAll : false
   const params = new URLSearchParams()
-  
-  if (selectedPeriod.value !== 'custom') {
-    params.append('period', selectedPeriod.value)
-  }
-  if (fromDate.value) {
-    params.append('from_date', fromDate.value)
-  }
-  if (toDate.value) {
-    params.append('to_date', toDate.value)
-  }
+
+  params.append('period', selectedPeriod.value)
   if (selectedVenueId.value) {
     params.append('venue_id', selectedVenueId.value)
   }
@@ -321,7 +270,7 @@ function getQueryParams() {
     params.append('organization_id', selectedOrganizationId.value)
   }
   params.append('viewAll', viewAll.toString())
-  
+
   return params.toString()
 }
 
@@ -363,18 +312,7 @@ async function loadSummary() {
 async function loadMonthlyTrend() {
   loadingTrend.value = true
   try {
-    const params = new URLSearchParams()
-    params.append('months', '6')
-    if (selectedVenueId.value) {
-      params.append('venue_id', selectedVenueId.value)
-    }
-    if (selectedOrganizationId.value) {
-      params.append('organization_id', selectedOrganizationId.value)
-    }
-    const viewAll = user.value?.is_super_admin ? settingsStore.godModeViewAll : false
-    params.append('viewAll', viewAll.toString())
-    
-    const response = await fetch(`/api/analytics/monthly-trend?${params.toString()}`, { credentials: 'include' })
+    const response = await fetch(`/api/analytics/monthly-trend?${getQueryParams()}`, { credentials: 'include' })
     if (response.ok) {
       monthlyTrend.value = await response.json()
     }
