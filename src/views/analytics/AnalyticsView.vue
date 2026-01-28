@@ -76,9 +76,9 @@
       </CCol>
     </CRow>
 
-    <CRow>
+    <CRow class="mb-4">
       <CCol :md="6">
-        <CCard class="mb-4 h-100">
+        <CCard class="h-100">
           <CCardHeader>Tendencia Mensual de Ingresos vs Egresos</CCardHeader>
           <CCardBody>
             <div v-if="monthlyTrend.length > 0" style="height: 300px;">
@@ -92,7 +92,7 @@
         </CCard>
       </CCol>
       <CCol :md="6">
-        <CCard class="mb-4 h-100">
+        <CCard class="h-100">
           <CCardHeader>Egresos por Categoría</CCardHeader>
           <CCardBody>
             <div v-if="expensesByCategory.length > 0" style="height: 300px;">
