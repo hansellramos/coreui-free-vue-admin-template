@@ -1317,14 +1317,24 @@ async function startServer() {
   // Income breakdown by venue for pie chart
   app.get('/api/analytics/income-by-venue', isAuthenticated, async (req, res) => {
     try {
+      const { period } = req.query;
       const orgIds = await getAnalyticsOrgIds(req);
-      
+
       if (orgIds !== null && orgIds.length === 0) {
         return res.json([]);
       }
-      
+
       const whereClause = orgIds !== null ? { organization_id: { in: orgIds } } : {};
-      
+
+      // Add date filter if period is specified
+      if (period) {
+        const { startDate, endDate } = calculateDateRange(period);
+        whereClause.date = {
+          gte: startDate,
+          lte: endDate
+        };
+      }
+
       // Get all incomes grouped by venue
       const incomes = await prisma.incomes.findMany({
         where: whereClause

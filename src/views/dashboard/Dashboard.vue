@@ -56,43 +56,6 @@
       </CCol>
     </CRow>
 
-    <CRow class="mb-4 g-3">
-      <CCol :sm="6" :lg="3">
-        <CCard class="text-white bg-primary h-100">
-          <CCardBody class="pb-3">
-            <div class="fs-4 fw-semibold">
-              {{ formatCurrency(incomeSummary.currentMonth.total) }}
-              <span v-if="incomeSummary.percentChange !== 0" class="fs-6 fw-normal ms-2" :class="incomeSummary.percentChange >= 0 ? 'text-white' : 'text-danger'">
-                {{ incomeSummary.percentChange >= 0 ? '+' : '' }}{{ incomeSummary.percentChange }}%
-              </span>
-            </div>
-            <div class="text-white-50">Ingresos Este Mes</div>
-          </CCardBody>
-        </CCard>
-      </CCol>
-      <CCol :sm="6" :lg="3">
-        <CCard class="text-white bg-info h-100">
-          <CCardBody class="pb-3">
-            <div class="fs-4 fw-semibold">
-              {{ formatCurrency(incomeSummary.previousMonth.total) }}
-            </div>
-            <div class="text-white-50">Ingresos Mes Anterior</div>
-          </CCardBody>
-        </CCard>
-      </CCol>
-      <CCol :sm="6" :lg="3">
-        <CCard class="text-white bg-success h-100">
-          <CCardBody class="pb-3">
-            <div class="fs-4 fw-semibold">
-              {{ totalIncomeByVenue }}
-            </div>
-            <div class="text-white-50">Ingresos Totales</div>
-            <small class="text-white-50">{{ incomeByVenue.length }} cabañas con ingresos</small>
-          </CCardBody>
-        </CCard>
-      </CCol>
-    </CRow>
-
     <CRow class="mb-4">
       <CCol :xs="4" :lg="2">
         <CCard class="text-white bg-secondary h-100">
@@ -151,6 +114,61 @@
               {{ totalAccommodationsNext12 }}
             </div>
             <div class="text-white-50 small">Próximos 12M</div>
+          </CCardBody>
+        </CCard>
+      </CCol>
+    </CRow>
+
+    <CRow class="mb-2">
+      <CCol :xs="12">
+        <div class="d-flex align-items-center gap-2">
+          <span class="text-body-secondary">Período de Ingresos:</span>
+          <CFormSelect
+            v-model="selectedIncomePeriod"
+            @change="loadIncomeByVenue"
+            style="width: auto; min-width: 180px;"
+            size="sm"
+          >
+            <option v-for="opt in periodOptions" :key="opt.value" :value="opt.value">
+              {{ opt.label }}
+            </option>
+          </CFormSelect>
+        </div>
+      </CCol>
+    </CRow>
+
+    <CRow class="mb-4 g-3">
+      <CCol :sm="6" :lg="3">
+        <CCard class="text-white bg-primary h-100">
+          <CCardBody class="pb-3">
+            <div class="fs-4 fw-semibold">
+              {{ formatCurrency(incomeSummary.currentMonth.total) }}
+              <span v-if="incomeSummary.percentChange !== 0" class="fs-6 fw-normal ms-2" :class="incomeSummary.percentChange >= 0 ? 'text-white' : 'text-danger'">
+                {{ incomeSummary.percentChange >= 0 ? '+' : '' }}{{ incomeSummary.percentChange }}%
+              </span>
+            </div>
+            <div class="text-white-50">Ingresos Este Mes</div>
+          </CCardBody>
+        </CCard>
+      </CCol>
+      <CCol :sm="6" :lg="3">
+        <CCard class="text-white bg-info h-100">
+          <CCardBody class="pb-3">
+            <div class="fs-4 fw-semibold">
+              {{ formatCurrency(incomeSummary.previousMonth.total) }}
+            </div>
+            <div class="text-white-50">Ingresos Mes Anterior</div>
+          </CCardBody>
+        </CCard>
+      </CCol>
+      <CCol :sm="6" :lg="3">
+        <CCard class="text-white bg-success h-100">
+          <CCardBody class="pb-3">
+            <div class="fs-4 fw-semibold">
+              {{ totalIncomeByVenue }}
+            </div>
+            <div class="text-white-50">Ingresos Totales</div>
+            <small class="text-white-50">{{ incomeByVenue.length }} cabañas con ingresos</small>
           </CCardBody>
         </CCard>
       </CCol>
@@ -274,8 +292,7 @@ const incomeByVenue = ref([])
 const accommodationsHistory = ref({ months: [], venues: [] })
 const accommodationsForecast = ref({ months: [], venues: [] })
 
-// Period filter for accommodations by venue section
-const selectedPeriod = ref('last_12_months')
+// Period filter options
 const periodOptions = [
   { value: 'next_12_months', label: 'Próximos 12 meses' },
   { value: 'next_3_months', label: 'Próximos 3 meses' },
@@ -284,6 +301,12 @@ const periodOptions = [
   { value: 'last_3_months', label: 'Últimos 3 meses' },
   { value: 'last_12_months', label: 'Últimos 12 meses' }
 ]
+
+// Period filter for income section
+const selectedIncomePeriod = ref('last_12_months')
+
+// Period filter for accommodations by venue section
+const selectedPeriod = ref('last_12_months')
 const accommodationsByVenue = ref([])
 
 const filteredOrganizations = computed(() => {
@@ -469,7 +492,9 @@ async function loadIncomeSummary() {
 
 async function loadIncomeByVenue() {
   try {
-    const response = await fetch(`/api/analytics/income-by-venue?${getAnalyticsParams()}`, { credentials: 'include' })
+    const params = new URLSearchParams(getAnalyticsParams())
+    params.append('period', selectedIncomePeriod.value)
+    const response = await fetch(`/api/analytics/income-by-venue?${params.toString()}`, { credentials: 'include' })
     if (response.ok) {
       incomeByVenue.value = await response.json()
     }
