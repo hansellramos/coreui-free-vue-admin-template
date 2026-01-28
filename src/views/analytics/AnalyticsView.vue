@@ -77,7 +77,7 @@
     </CRow>
 
     <CRow>
-      <CCol :md="7">
+      <CCol :xs="12">
         <CCard class="mb-4">
           <CCardHeader>Tendencia Mensual de Ingresos vs Egresos</CCardHeader>
           <CCardBody>
@@ -91,8 +91,11 @@
           </CCardBody>
         </CCard>
       </CCol>
-      <CCol :md="5">
-        <CCard class="mb-4">
+    </CRow>
+
+    <CRow>
+      <CCol :md="6">
+        <CCard class="mb-4 h-100">
           <CCardHeader>Egresos por Categoría</CCardHeader>
           <CCardBody>
             <div v-if="expensesByCategory.length > 0" style="height: 300px;">
@@ -105,14 +108,11 @@
           </CCardBody>
         </CCard>
       </CCol>
-    </CRow>
-
-    <CRow v-if="expensesByCategory.length > 0">
-      <CCol :xs="12">
-        <CCard class="mb-4">
+      <CCol :md="6">
+        <CCard class="mb-4 h-100">
           <CCardHeader>Detalle de Egresos por Categoría</CCardHeader>
           <CCardBody>
-            <CTable hover responsive>
+            <CTable v-if="expensesByCategory.length > 0" hover responsive small>
               <CTableHead>
                 <CTableRow>
                   <CTableHeaderCell>Categoría</CTableHeaderCell>
@@ -131,6 +131,9 @@
                 </CTableRow>
               </CTableBody>
             </CTable>
+            <div v-else class="text-center text-body-secondary py-5">
+              No hay datos de egresos por categoría
+            </div>
           </CCardBody>
         </CCard>
       </CCol>
