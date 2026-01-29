@@ -63,6 +63,25 @@
               </CRow>
             </div>
             
+            <!-- Galería de imágenes -->
+            <div v-if="venueImages.length > 0" class="mb-4">
+              <strong>Fotos:</strong>
+              <div class="mt-2">
+                <div v-if="coverImage" class="cover-image-wrapper mb-3">
+                  <img :src="coverImage.image_url" class="img-fluid rounded" alt="Portada" />
+                </div>
+                <div v-if="thumbnailImages.length > 0" class="venue-thumbnails">
+                  <img
+                    v-for="image in thumbnailImages"
+                    :key="image.id"
+                    :src="image.image_url"
+                    class="img-thumbnail venue-thumb"
+                    alt="Foto de la cabaña"
+                  />
+                </div>
+              </div>
+            </div>
+
             <div v-if="venueAmenities.length > 0" class="mb-4">
               <strong>Amenidades:</strong>
               <div class="d-flex flex-wrap gap-1 mt-2">
@@ -114,6 +133,7 @@ const route = useRoute()
 const breadcrumbStore = useBreadcrumbStore()
 const venue = ref(null)
 const venueAmenities = ref([])
+const venueImages = ref([])
 const mapContainer = ref(null)
 const token = import.meta.env.VITE_MAPBOX_ACCESS_TOKEN
 
@@ -125,6 +145,15 @@ const instagramUrl = computed(() => {
 const instagramDisplay = computed(() => {
   const ig = venue.value?.instagram || ''
   return ig.startsWith('@') ? ig.slice(1) : ig
+})
+
+const coverImage = computed(() => {
+  return venueImages.value.find(img => img.is_cover) || venueImages.value[0] || null
+})
+
+const thumbnailImages = computed(() => {
+  if (!coverImage.value) return []
+  return venueImages.value.filter(img => img.id !== coverImage.value.id)
 })
 
 const googleMapsUrl = computed(() => {
@@ -148,9 +177,23 @@ const loadVenueAmenities = async () => {
   }
 }
 
+const loadVenueImages = async () => {
+  try {
+    const response = await fetch(`/api/venues/${route.params.id}/images`, { credentials: 'include' })
+    if (response.ok) {
+      venueImages.value = await response.json()
+    }
+  } catch (error) {
+    console.error('Error loading venue images:', error)
+  }
+}
+
 onMounted(async () => {
   venue.value = await getVenueById(route.params.id)
-  await loadVenueAmenities()
+  await Promise.all([
+    loadVenueAmenities(),
+    loadVenueImages()
+  ])
 })
 
 watch(venue, async (val) => {
@@ -173,6 +216,22 @@ watch(venue, async (val) => {
 
 <style scoped>
 .map-container { width: 100%; height: 300px; border: 1px solid #ccc; border-radius: 4px; }
+.cover-image-wrapper img {
+  max-height: 400px;
+  width: 100%;
+  object-fit: cover;
+}
+.venue-thumbnails {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.venue-thumb {
+  width: 100px;
+  height: 100px;
+  object-fit: cover;
+  cursor: default;
+}
 .navigation-card {
   transition: transform 0.2s, box-shadow 0.2s;
   cursor: pointer;
