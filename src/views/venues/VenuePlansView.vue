@@ -327,9 +327,11 @@ import {
 } from '@coreui/vue'
 import { CIcon } from '@coreui/icons-vue'
 import ImageUploader from '@/components/ImageUploader.vue'
+import { useBreadcrumbStore } from '@/stores/breadcrumb.js'
 
 const route = useRoute()
 const router = useRouter()
+const breadcrumbStore = useBreadcrumbStore()
 const venueId = computed(() => route.params.id)
 
 const plans = ref([])
@@ -466,6 +468,7 @@ const loadVenue = async () => {
     if (response.ok) {
       const venue = await response.json()
       venueName.value = venue.name || 'Sin nombre'
+      breadcrumbStore.setTitle(`Planes ${venueName.value}`)
     }
   } catch (error) {
     console.error('Error loading venue:', error)

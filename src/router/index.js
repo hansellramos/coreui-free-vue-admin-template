@@ -468,12 +468,14 @@ const routes = [
         name: 'VenueChat',
         component: () => import('@/views/venues/VenueChatView.vue'),
         props: true,
+        meta: { breadcrumb: 'Chat de Cabaña' },
       },
       {
         path: '/business/venues/:id/plans',
         name: 'VenuePlans',
         component: () => import('@/views/venues/VenuePlansView.vue'),
         props: true,
+        meta: { breadcrumb: 'Planes de Cabaña' },
       },
       {
         path: '/business/expenses',

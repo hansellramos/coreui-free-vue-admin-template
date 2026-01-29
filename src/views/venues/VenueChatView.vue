@@ -87,10 +87,50 @@
       <div class="text-center mb-4">
         <RouterLink :to="`/business/venues/${$route.params.id}`">
           <CButton color="secondary" variant="outline" size="sm">
-            <CIcon name="cil-arrow-left" class="me-1" /> Volver al Venue
+            <CIcon name="cil-arrow-left" class="me-1" /> Volver a la Cabaña
           </CButton>
         </RouterLink>
       </div>
+
+      <CCard class="mb-4">
+        <CCardHeader>
+          <strong>Conversaciones Anteriores</strong>
+        </CCardHeader>
+        <CCardBody>
+          <CSpinner v-if="loadingConversations" />
+          <div v-else-if="conversations.length === 0" class="text-center text-muted py-3">
+            No hay conversaciones anteriores
+          </div>
+          <CTable v-else hover responsive small>
+            <CTableHead>
+              <CTableRow>
+                <CTableHeaderCell>Fecha</CTableHeaderCell>
+                <CTableHeaderCell>Fuente</CTableHeaderCell>
+                <CTableHeaderCell>Contacto</CTableHeaderCell>
+                <CTableHeaderCell></CTableHeaderCell>
+              </CTableRow>
+            </CTableHead>
+            <CTableBody>
+              <CTableRow
+                v-for="conv in conversations"
+                :key="conv.id"
+                :class="{ 'table-active': conversationId === conv.id }"
+              >
+                <CTableDataCell>{{ formatDate(conv.updated_at || conv.created_at) }}</CTableDataCell>
+                <CTableDataCell>
+                  <CBadge :color="getSourceColor(conv.source)">{{ conv.source }}</CBadge>
+                </CTableDataCell>
+                <CTableDataCell>{{ conv.phone || conv.name || '-' }}</CTableDataCell>
+                <CTableDataCell class="text-end">
+                  <CButton size="sm" color="primary" variant="ghost" @click="resumeConversation(conv)">
+                    Reanudar
+                  </CButton>
+                </CTableDataCell>
+              </CTableRow>
+            </CTableBody>
+          </CTable>
+        </CCardBody>
+      </CCard>
     </CCol>
   </CRow>
 
@@ -107,14 +147,18 @@ import { useRoute } from 'vue-router'
 import {
   CRow, CCol, CCard, CCardHeader, CCardBody, CButton, CSpinner,
   CFormSelect, CFormInput, CInputGroup,
-  CToaster, CToast, CToastBody
+  CToaster, CToast, CToastBody,
+  CTable, CTableHead, CTableBody, CTableRow, CTableHeaderCell, CTableDataCell,
+  CBadge
 } from '@coreui/vue'
 import { CIcon } from '@coreui/icons-vue'
 import { getVenueById } from '@/services/venueService'
 import { useSettingsStore } from '@/stores/settings'
+import { useBreadcrumbStore } from '@/stores/breadcrumb.js'
 
 const route = useRoute()
 const settingsStore = useSettingsStore()
+const breadcrumbStore = useBreadcrumbStore()
 const isDev = settingsStore.developmentMode
 const venue = ref(null)
 const providers = ref([])
@@ -126,6 +170,8 @@ const conversationId = ref(null)
 const messagesContainer = ref(null)
 const contactType = ref('whatsapp')
 const contactValue = ref('')
+const conversations = ref([])
+const loadingConversations = ref(false)
 
 const toast = ref({
   visible: false,
@@ -140,9 +186,12 @@ const showToast = (message, color = 'success') => {
 const loadVenue = async () => {
   try {
     venue.value = await getVenueById(route.params.id)
+    if (venue.value?.name) {
+      breadcrumbStore.setTitle(`Chat ${venue.value.name}`)
+    }
   } catch (error) {
     console.error('Error loading venue:', error)
-    showToast('Error al cargar el venue', 'danger')
+    showToast('Error al cargar la cabaña', 'danger')
   }
 }
 
@@ -216,6 +265,7 @@ const sendMessage = async () => {
           tokens: result.tokens || result.usage?.total_tokens
         }
       })
+      loadConversations()
     } else {
       showToast(result.error || 'Error al enviar mensaje', 'danger')
       messages.value.pop()
@@ -234,6 +284,51 @@ const clearConversation = () => {
   messages.value = []
   conversationId.value = null
   showToast('Conversación reiniciada')
+  loadConversations()
+}
+
+const loadConversations = async () => {
+  loadingConversations.value = true
+  try {
+    const response = await fetch(`/api/chat/${route.params.id}/conversations`, { credentials: 'include' })
+    if (response.ok) {
+      conversations.value = await response.json()
+    }
+  } catch (error) {
+    console.error('Error loading conversations:', error)
+  } finally {
+    loadingConversations.value = false
+  }
+}
+
+const resumeConversation = async (conv) => {
+  try {
+    const response = await fetch(`/api/chat/conversation/${conv.id}`, { credentials: 'include' })
+    if (response.ok) {
+      const data = await response.json()
+      conversationId.value = data.id
+      messages.value = data.messages.map(m => ({
+        role: m.role,
+        content: m.content,
+        meta: m.role === 'assistant' ? { model: m.model, tokens: m.tokens_used } : undefined
+      }))
+    }
+  } catch (error) {
+    console.error('Error resuming conversation:', error)
+    showToast('Error al cargar la conversación', 'danger')
+  }
+}
+
+const formatDate = (dateStr) => {
+  return new Date(dateStr).toLocaleString('es-CO', {
+    day: '2-digit', month: 'short', year: 'numeric',
+    hour: '2-digit', minute: '2-digit'
+  })
+}
+
+const getSourceColor = (source) => {
+  const colors = { web: 'primary', whatsapp: 'success', twilio: 'info', meta: 'dark' }
+  return colors[source] || 'secondary'
 }
 
 watch(messages, () => {
@@ -243,6 +338,7 @@ watch(messages, () => {
 onMounted(() => {
   loadVenue()
   loadProviders()
+  loadConversations()
 })
 </script>
 
