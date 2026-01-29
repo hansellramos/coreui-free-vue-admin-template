@@ -1,5 +1,44 @@
 <template>
   <div>
+    <div v-if="images.length > 0" class="image-gallery mb-3">
+      <div
+        v-for="(image, index) in images"
+        :key="image.id || index"
+        class="image-item"
+        :class="{ 'is-cover': image.is_cover }"
+      >
+        <img
+          :src="image.image_url"
+          class="img-thumbnail"
+          @click="previewImage = image"
+        />
+        <div class="image-actions">
+          <CButton
+            v-if="showCoverButton && !image.is_cover"
+            color="primary"
+            size="sm"
+            variant="ghost"
+            title="Establecer como portada"
+            @click.stop="$emit('set-cover', image)"
+          >
+            <CIcon name="cil-star" />
+          </CButton>
+          <CButton
+            color="danger"
+            size="sm"
+            variant="ghost"
+            title="Eliminar imagen"
+            @click.stop="$emit('delete', image)"
+          >
+            <CIcon name="cil-trash" />
+          </CButton>
+        </div>
+        <CBadge v-if="image.is_cover" color="primary" class="cover-badge">
+          Portada
+        </CBadge>
+      </div>
+    </div>
+
     <div
       v-if="images.length < maxImages"
       class="image-upload-area"
@@ -39,50 +78,35 @@
       {{ uploadError }}
     </div>
 
-    <div v-if="images.length > 0" class="image-gallery mt-3">
-      <div 
-        v-for="(image, index) in images" 
-        :key="image.id || index"
-        class="image-item"
-        :class="{ 'is-cover': image.is_cover }"
-      >
-        <img 
-          :src="image.image_url" 
-          class="img-thumbnail"
-          @click="$emit('preview', image)"
-        />
-        <div class="image-actions">
-          <CButton 
-            v-if="showCoverButton && !image.is_cover"
-            color="primary" 
-            size="sm" 
-            variant="ghost"
-            title="Establecer como portada"
-            @click.stop="$emit('set-cover', image)"
-          >
-            <CIcon name="cil-star" />
-          </CButton>
-          <CButton 
-            color="danger" 
-            size="sm" 
-            variant="ghost"
-            title="Eliminar imagen"
-            @click.stop="$emit('delete', image)"
-          >
-            <CIcon name="cil-trash" />
-          </CButton>
-        </div>
-        <CBadge v-if="image.is_cover" color="primary" class="cover-badge">
-          Portada
-        </CBadge>
-      </div>
-    </div>
+    <CModal
+      :visible="!!previewImage"
+      @close="previewImage = null"
+      size="xl"
+      :keyboard="true"
+      backdrop="true"
+    >
+      <CModalHeader close-button>
+        <CModalTitle>Vista previa</CModalTitle>
+      </CModalHeader>
+      <CModalBody class="text-center p-4">
+        <img v-if="previewImage" :src="previewImage.image_url" class="img-fluid rounded" style="max-height: 70vh;" />
+      </CModalBody>
+      <CModalFooter class="justify-content-center">
+        <CButton color="danger" @click="$emit('delete', previewImage); previewImage = null">
+          <CIcon name="cil-trash" class="me-2" />
+          Eliminar
+        </CButton>
+        <CButton color="secondary" variant="outline" @click="previewImage = null">
+          Cerrar
+        </CButton>
+      </CModalFooter>
+    </CModal>
   </div>
 </template>
 
 <script setup>
 import { ref } from 'vue'
-import { CButton, CSpinner, CBadge } from '@coreui/vue'
+import { CButton, CSpinner, CBadge, CModal, CModalHeader, CModalTitle, CModalBody, CModalFooter } from '@coreui/vue'
 import { CIcon } from '@coreui/icons-vue'
 
 const props = defineProps({
@@ -118,6 +142,7 @@ const fileInput = ref(null)
 const isDragging = ref(false)
 const uploading = ref(false)
 const uploadError = ref('')
+const previewImage = ref(null)
 
 const triggerFileInput = () => {
   fileInput.value?.click()
