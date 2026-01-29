@@ -1,6 +1,6 @@
 <template>
   <div>
-    <div 
+    <div
       v-if="images.length < maxImages"
       class="image-upload-area"
       :class="{ 'is-dragging': isDragging, 'is-uploading': uploading }"
@@ -8,7 +8,6 @@
       @drop.prevent="handleDrop"
       @dragover.prevent="isDragging = true"
       @dragleave="isDragging = false"
-      @click="triggerFileInput"
       tabindex="0"
     >
       <div v-if="uploading" class="text-center">
@@ -17,14 +16,21 @@
       </div>
       <div v-else class="text-center">
         <CIcon name="cil-cloud-upload" size="xl" class="mb-2 text-secondary" />
-        <div>{{ placeholder }}</div>
-        <div class="small text-muted mt-1">Soporta capturas de pantalla y archivos de imagen</div>
+        <div class="mb-2">{{ placeholder }}</div>
+        <div class="d-flex justify-content-center gap-2">
+          <CButton color="primary" size="sm" @click.stop="triggerFileInput">
+            <CIcon name="cil-folder-open" class="me-1" /> Seleccionar archivo
+          </CButton>
+          <CButton color="secondary" size="sm" @click.stop="pasteFromClipboard">
+            <CIcon name="cil-clipboard" class="me-1" /> Pegar
+          </CButton>
+        </div>
       </div>
-      <input 
-        ref="fileInput" 
-        type="file" 
-        accept="image/*" 
-        class="d-none" 
+      <input
+        ref="fileInput"
+        type="file"
+        accept="image/*"
+        class="d-none"
         :multiple="multiple"
         @change="handleFileSelect"
       />
@@ -127,6 +133,25 @@ const handlePaste = (event) => {
       if (file) uploadFile(file)
       break
     }
+  }
+}
+
+const pasteFromClipboard = async () => {
+  try {
+    const clipboardItems = await navigator.clipboard.read()
+    for (const item of clipboardItems) {
+      const imageType = item.types.find(type => type.startsWith('image/'))
+      if (imageType) {
+        const blob = await item.getType(imageType)
+        const file = new File([blob], 'pasted-image.png', { type: imageType })
+        uploadFile(file)
+        return
+      }
+    }
+    uploadError.value = 'No hay imagen en el portapapeles'
+  } catch (error) {
+    console.error('Clipboard error:', error)
+    uploadError.value = 'No se pudo acceder al portapapeles. Usa Ctrl+V en el área de carga.'
   }
 }
 
