@@ -3,7 +3,7 @@
     <CCol :xs="12" :lg="8" class="mx-auto">
       <CCard class="mb-4">
         <CCardHeader class="d-flex justify-content-between align-items-center">
-          <strong>{{ isNew ? 'Nueva Cotización' : 'Detalle de Cotización' }}</strong>
+          <strong>{{ isNew ? 'Nueva Cotización' : 'Editar Cotización' }}</strong>
           <CBadge v-if="!isNew && form.status" :color="getStatusColor(form.status)">
             {{ getStatusLabel(form.status) }}
           </CBadge>
@@ -160,11 +160,13 @@ import { useRoute, useRouter } from 'vue-router'
 import { CIcon } from '@coreui/icons-vue'
 import { cilCheckCircle } from '@coreui/icons'
 import { getEstimateById, updateEstimate, createEstimate, convertEstimate } from '@/services/estimateService'
+import { useBreadcrumbStore } from '@/stores/breadcrumb.js'
 
 const route = useRoute()
 const router = useRouter()
+const breadcrumbStore = useBreadcrumbStore()
 
-const isNew = computed(() => route.params.id === 'new')
+const isNew = computed(() => !route.params.id)
 const saving = ref(false)
 const venues = ref([])
 const plans = ref([])
@@ -242,6 +244,9 @@ const loadEstimate = async () => {
     }
     if (form.value.venue_id) {
       await loadPlans()
+    }
+    if (data.customer_name) {
+      breadcrumbStore.setTitle(`Editar ${data.customer_name}`)
     }
   } catch (error) {
     console.error('Error loading estimate:', error)

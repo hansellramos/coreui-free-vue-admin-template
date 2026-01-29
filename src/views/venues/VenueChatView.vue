@@ -106,6 +106,7 @@
               <CTableRow>
                 <CTableHeaderCell>Fecha</CTableHeaderCell>
                 <CTableHeaderCell>Fuente</CTableHeaderCell>
+                <CTableHeaderCell>Teléfono</CTableHeaderCell>
                 <CTableHeaderCell>Contacto</CTableHeaderCell>
                 <CTableHeaderCell></CTableHeaderCell>
               </CTableRow>
@@ -120,7 +121,8 @@
                 <CTableDataCell>
                   <CBadge :color="getSourceColor(conv.source)">{{ conv.source }}</CBadge>
                 </CTableDataCell>
-                <CTableDataCell>{{ conv.phone || conv.name || '-' }}</CTableDataCell>
+                <CTableDataCell>{{ conv.phone || '-' }}</CTableDataCell>
+                <CTableDataCell>{{ conv.name || '-' }}</CTableDataCell>
                 <CTableDataCell class="text-end">
                   <CButton size="sm" color="primary" variant="ghost" @click="resumeConversation(conv)">
                     Reanudar

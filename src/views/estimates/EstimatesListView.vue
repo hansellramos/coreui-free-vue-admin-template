@@ -4,6 +4,9 @@
       <CCard class="mb-4">
         <CCardHeader class="d-flex justify-content-between align-items-center">
           <strong>Cotizaciones</strong>
+          <RouterLink to="/business/estimates/create">
+            <CButton color="success" size="sm">+ Nueva Cotización</CButton>
+          </RouterLink>
         </CCardHeader>
         <CCardBody>
           <CRow class="mb-3">
@@ -65,6 +68,15 @@
                     <CIcon :icon="cilZoom" />
                   </CButton>
                   <CButton
+                    color="primary"
+                    size="sm"
+                    variant="ghost"
+                    @click="$router.push(`/business/estimates/${estimate.id}/edit`)"
+                    title="Editar"
+                  >
+                    <CIcon :icon="cilPencil" />
+                  </CButton>
+                  <CButton
                     v-if="estimate.status === 'pending' || estimate.status === 'confirmed'"
                     color="success"
                     size="sm"
@@ -97,9 +109,9 @@
 
 <script setup>
 import { ref, onMounted } from 'vue'
-import { useRouter } from 'vue-router'
+import { RouterLink, useRouter } from 'vue-router'
 import { CIcon } from '@coreui/icons-vue'
-import { cilZoom, cilCheckCircle, cilPhone, cilUser } from '@coreui/icons'
+import { cilZoom, cilPencil, cilCheckCircle, cilPhone, cilUser } from '@coreui/icons'
 import { getEstimates, convertEstimate } from '@/services/estimateService'
 
 const router = useRouter()
