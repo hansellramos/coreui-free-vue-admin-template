@@ -84,15 +84,20 @@
         </CCardBody>
       </CCard>
 
-      <div class="text-center mb-4">
+      <div class="text-center mb-4 d-flex justify-content-center gap-2">
         <RouterLink :to="`/business/venues/${$route.params.id}`">
           <CButton color="secondary" variant="outline" size="sm">
             <CIcon name="cil-arrow-left" class="me-1" /> Volver a la Cabaña
           </CButton>
         </RouterLink>
+        <RouterLink v-if="estimateId" :to="`/business/estimates/${estimateId}`">
+          <CButton color="info" variant="outline" size="sm">
+            <CIcon name="cil-arrow-left" class="me-1" /> Volver a la Cotización
+          </CButton>
+        </RouterLink>
       </div>
 
-      <CCard class="mb-4">
+      <CCard v-if="!arrivedWithConversation" class="mb-4">
         <CCardHeader>
           <strong>Conversaciones Anteriores</strong>
         </CCardHeader>
@@ -174,6 +179,8 @@ const contactType = ref('whatsapp')
 const contactValue = ref('')
 const conversations = ref([])
 const loadingConversations = ref(false)
+const estimateId = ref(null)
+const arrivedWithConversation = ref(false)
 
 const toast = ref({
   visible: false,
@@ -337,10 +344,20 @@ watch(messages, () => {
   scrollToBottom()
 }, { deep: true })
 
-onMounted(() => {
+onMounted(async () => {
   loadVenue()
   loadProviders()
   loadConversations()
+
+  const qConversationId = route.query.conversation_id
+  const qEstimateId = route.query.estimate_id
+  if (qEstimateId) {
+    estimateId.value = qEstimateId
+  }
+  if (qConversationId) {
+    arrivedWithConversation.value = true
+    await resumeConversation({ id: qConversationId })
+  }
 })
 </script>
 

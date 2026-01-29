@@ -140,7 +140,7 @@
         <CCardBody>
           <p class="text-muted mb-0">
             Esta cotización fue creada desde una conversación de chat.
-            <RouterLink :to="`/business/venues/${form.venue_id}/chat`">Ver conversación</RouterLink>
+            <RouterLink :to="{ path: `/venues/${form.venue_id}/chat`, query: { conversation_id: form.conversation_id, estimate_id: route.params.id } }">Ver conversación</RouterLink>
           </p>
         </CCardBody>
       </CCard>
