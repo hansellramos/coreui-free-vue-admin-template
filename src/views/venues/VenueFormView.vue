@@ -247,7 +247,7 @@ const handleImageUpload = async (objectPath) => {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       credentials: 'include',
-      body: JSON.stringify({ object_path: objectPath })
+      body: JSON.stringify({ image_url: objectPath })
     })
     if (response.ok) {
       await loadVenueImages()
