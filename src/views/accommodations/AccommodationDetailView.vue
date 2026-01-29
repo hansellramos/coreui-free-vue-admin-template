@@ -8,6 +8,9 @@
             <CButton color="warning" size="sm" @click="$router.push(`/business/accommodations/${route.params.id}/edit`)">
               Editar
             </CButton>
+            <CButton color="danger" size="sm" @click="onDelete">
+              Eliminar
+            </CButton>
             <CButton color="secondary" size="sm" variant="outline" @click="$router.push('/business/accommodations')">
               Volver
             </CButton>
@@ -523,11 +526,10 @@
 
 <script setup>
 import { ref, computed, onMounted } from 'vue'
-import { useRoute } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import { CIcon } from '@coreui/icons-vue'
 import MessageSuggestions from '@/components/accommodations/MessageSuggestions.vue'
-
-import { useRouter } from 'vue-router'
+import { deleteAccommodation } from '@/services/accommodationService'
 
 const route = useRoute()
 const router = useRouter()
@@ -559,6 +561,13 @@ const claimForm = ref({
   damage_amount: '',
   damage_notes: ''
 })
+
+async function onDelete() {
+  if (confirm('¿Estás seguro de eliminar este hospedaje?')) {
+    await deleteAccommodation(route.params.id)
+    router.push('/business/accommodations')
+  }
+}
 
 function openReceipt(payment) {
   selectedPayment.value = payment

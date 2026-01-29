@@ -9,12 +9,13 @@
           <template v-if="organization">
             <p class="d-none"><strong>ID:</strong> <span class="text-body-secondary">{{ organization.id }}</span></p>
             <p><strong>Nombre:</strong> <span class="text-body-secondary">{{ organization.name }}</span></p>
-            <div class="mt-4">
+            <div class="mt-4 d-flex flex-wrap gap-2">
               <RouterLink :to="`/business/organizations/${organization.id}/edit`">
                 <CButton color="primary" size="sm">Editar</CButton>
               </RouterLink>
+              <CButton color="danger" size="sm" @click="onDelete">Eliminar</CButton>
               <RouterLink to="/business/organizations">
-                <CButton color="secondary" size="sm" variant="outline" class="ms-2">Volver a la Lista</CButton>
+                <CButton color="secondary" size="sm" variant="outline">Volver a la Lista</CButton>
               </RouterLink>
             </div>
             <hr />
@@ -46,13 +47,21 @@
 
 <script setup>
 import { ref, onMounted } from 'vue'
-import { useRoute } from 'vue-router'
-import { getOrganizationById } from '@/services/organizationService'
+import { useRoute, useRouter } from 'vue-router'
+import { getOrganizationById, deleteOrganization } from '@/services/organizationService'
 import { fetchUsersByOrganization } from '@/services/userOrganizationService'
 
 const route = useRoute()
+const router = useRouter()
 const organization = ref(null)
 const users = ref([])
+
+const onDelete = async () => {
+  if (confirm(`¿Estás seguro de eliminar la organización "${organization.value.name}"?`)) {
+    await deleteOrganization(organization.value.id)
+    router.push('/business/organizations')
+  }
+}
 
 async function loadUsers() {
   users.value = await fetchUsersByOrganization(route.params.id)

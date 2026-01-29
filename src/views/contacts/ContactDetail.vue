@@ -23,6 +23,7 @@
               <RouterLink :to="`/business/contacts/${contact.id}/edit`">
                 <CButton color="primary" size="sm">Editar</CButton>
               </RouterLink>
+              <CButton color="danger" size="sm" @click="onDelete">Eliminar</CButton>
               <RouterLink to="/business/contacts">
                 <CButton color="secondary" size="sm" variant="outline">Volver a la Lista</CButton>
               </RouterLink>
@@ -39,11 +40,19 @@
 
 <script setup>
 import { ref, onMounted } from 'vue'
-import { useRoute } from 'vue-router'
-import { getContactById } from '@/services/contactService'
+import { useRoute, useRouter } from 'vue-router'
+import { getContactById, deleteContact } from '@/services/contactService'
 
 const route = useRoute()
+const router = useRouter()
 const contact = ref(null)
+
+const onDelete = async () => {
+  if (confirm(`¿Estás seguro de eliminar el contacto "${contact.value.fullname}"?`)) {
+    await deleteContact(contact.value.id)
+    router.push('/business/contacts')
+  }
+}
 
 onMounted(async () => {
   contact.value = await getContactById(route.params.id)

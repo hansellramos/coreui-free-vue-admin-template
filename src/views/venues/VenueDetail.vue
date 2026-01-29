@@ -95,16 +95,19 @@
               <RouterLink :to="`/business/venues/${venue.id}/edit`">
                 <CButton color="primary" size="sm">Editar</CButton>
               </RouterLink>
-              <RouterLink :to="`/venues/${venue.id}/chat`">
-                <CButton color="info" size="sm">
-                  <CIcon icon="cil-comment-square" class="me-1" /> Chat IA
-                </CButton>
+              <RouterLink :to="`/business/venues/${venue.id}/plans`">
+                <CButton color="success" size="sm">Planes</CButton>
               </RouterLink>
               <RouterLink :to="{ path: '/business/expenses', query: { venue_id: venue.id } }">
-                <CButton color="warning" size="sm">
-                  <CIcon icon="cil-wallet" class="me-1" /> Egresos
-                </CButton>
+                <CButton color="warning" size="sm">Egresos</CButton>
               </RouterLink>
+              <RouterLink :to="{ path: '/next', query: { venues: venue.id } }">
+                <CButton color="info" size="sm">Próximos</CButton>
+              </RouterLink>
+              <RouterLink :to="`/venues/${venue.id}/chat`">
+                <CButton color="dark" size="sm">Chat IA</CButton>
+              </RouterLink>
+              <CButton color="danger" size="sm" @click="onDelete">Eliminar</CButton>
               <RouterLink to="/business/venues">
                 <CButton color="secondary" size="sm" variant="outline">Volver a la Lista</CButton>
               </RouterLink>
@@ -121,15 +124,16 @@
 
 <script setup>
 import { ref, onMounted, watch, nextTick, computed } from 'vue'
-import { useRoute } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import { CRow, CCol, CCard, CCardHeader, CCardBody, CButton, CSpinner, CBadge } from '@coreui/vue'
 import { CIcon } from '@coreui/icons-vue'
-import { getVenueById } from '@/services/venueService'
+import { getVenueById, deleteVenue } from '@/services/venueService'
 import { useBreadcrumbStore } from '@/stores/breadcrumb.js'
 import mapboxgl from 'mapbox-gl'
 import 'mapbox-gl/dist/mapbox-gl.css'
 
 const route = useRoute()
+const router = useRouter()
 const breadcrumbStore = useBreadcrumbStore()
 const venue = ref(null)
 const venueAmenities = ref([])
@@ -195,6 +199,13 @@ onMounted(async () => {
     loadVenueImages()
   ])
 })
+
+const onDelete = async () => {
+  if (confirm(`¿Estás seguro de eliminar la cabaña "${venue.value.name}"?`)) {
+    await deleteVenue(venue.value.id)
+    router.push('/business/venues')
+  }
+}
 
 watch(venue, async (val) => {
   if (val) {

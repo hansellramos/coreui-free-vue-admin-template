@@ -53,9 +53,9 @@
                   </div>
                 </CTableDataCell>
                 <CTableDataCell class="d-mobile-none">
-                  <a v-if="payment.receipt_url" :href="payment.receipt_url" target="_blank" class="btn btn-sm btn-outline-info">
+                  <CButton v-if="payment.receipt_url" color="info" size="sm" variant="outline" @click="openReceipt(payment)">
                     <CIcon :icon="cilImage" /> Ver
-                  </a>
+                  </CButton>
                   <span v-else class="text-muted">—</span>
                 </CTableDataCell>
                 <CTableDataCell>
@@ -115,6 +115,60 @@
     </CCol>
   </CRow>
 
+  <CModal
+    :visible="showReceiptModal"
+    @close="showReceiptModal = false"
+    size="xl"
+    :keyboard="true"
+    backdrop="true"
+  >
+    <CModalHeader close-button>
+      <CModalTitle>Comprobante de Pago</CModalTitle>
+    </CModalHeader>
+    <CModalBody class="p-4">
+      <div v-if="selectedPayment" class="mb-3 p-3 border rounded">
+        <CRow>
+          <CCol :md="4">
+            <div class="small text-muted">Monto</div>
+            <div class="fw-bold">{{ formatCurrency(selectedPayment.amount) }}</div>
+          </CCol>
+          <CCol :md="4">
+            <div class="small text-muted">Método</div>
+            <div>{{ selectedPayment.payment_method || '—' }}</div>
+          </CCol>
+          <CCol :md="4">
+            <div class="small text-muted">Fecha</div>
+            <div>{{ formatDate(selectedPayment.payment_date) }}</div>
+          </CCol>
+        </CRow>
+        <CRow class="mt-2" v-if="selectedPayment.reference">
+          <CCol>
+            <div class="small text-muted">Referencia</div>
+            <div>{{ selectedPayment.reference }}</div>
+          </CCol>
+        </CRow>
+      </div>
+      <div class="text-center">
+        <img
+          v-if="!receiptLoadError"
+          :src="selectedReceiptUrl"
+          class="img-fluid rounded"
+          style="max-height: 60vh;"
+          @error="receiptLoadError = true"
+        />
+        <div v-else class="text-muted py-5">
+          <CIcon :icon="cilImage" size="3xl" class="mb-3" />
+          <p>No se pudo cargar la imagen</p>
+        </div>
+      </div>
+    </CModalBody>
+    <CModalFooter>
+      <CButton color="secondary" variant="outline" @click="showReceiptModal = false">
+        Cerrar
+      </CButton>
+    </CModalFooter>
+  </CModal>
+
   <CModal :visible="showDeleteModal" @close="showDeleteModal = false">
     <CModalHeader>
       <CModalTitle>Confirmar eliminación</CModalTitle>
@@ -140,6 +194,10 @@ const payments = ref([])
 const searchQuery = ref('')
 const showDeleteModal = ref(false)
 const paymentToDelete = ref(null)
+const showReceiptModal = ref(false)
+const selectedPayment = ref(null)
+const selectedReceiptUrl = ref('')
+const receiptLoadError = ref(false)
 
 const filteredPayments = computed(() => {
   if (!searchQuery.value) return payments.value
@@ -214,6 +272,13 @@ const unverifyPayment = async (payment) => {
   } catch (error) {
     console.error('Error unverifying payment:', error)
   }
+}
+
+const openReceipt = (payment) => {
+  selectedPayment.value = payment
+  selectedReceiptUrl.value = payment.receipt_url
+  receiptLoadError.value = false
+  showReceiptModal.value = true
 }
 
 const confirmDelete = (payment) => {
