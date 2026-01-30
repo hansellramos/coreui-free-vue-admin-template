@@ -69,6 +69,14 @@
           <div v-else-if="getState(template.id).status === 'generated'">
             <div class="message-preview text-muted small mb-3" style="white-space: pre-wrap;">{{ getState(template.id).message }}</div>
 
+            <div v-if="isDev" class="d-flex flex-wrap gap-1 mb-2 small text-muted">
+              <span>{{ getState(template.id).model }}</span>
+              <span>&middot;</span>
+              <span>{{ (getState(template.id).usage.response_time_ms / 1000).toFixed(1) }}s</span>
+              <span>&middot;</span>
+              <span>{{ getState(template.id).usage.input_tokens }} in / {{ getState(template.id).usage.output_tokens }} out</span>
+            </div>
+
             <div class="d-flex flex-column flex-sm-row gap-2 align-items-start">
               <CButton
                 color="success"
@@ -111,6 +119,10 @@
 <script setup>
 import { ref, reactive, computed, watch } from 'vue'
 import { CIcon } from '@coreui/icons-vue'
+import { useSettingsStore } from '@/stores/settings'
+
+const settingsStore = useSettingsStore()
+const isDev = computed(() => settingsStore.developmentMode)
 
 const props = defineProps({
   accommodation: { type: Object, required: true }
@@ -149,7 +161,9 @@ function getState(templateId) {
       status: 'idle',
       message: '',
       additionalInstructions: '',
-      error: ''
+      error: '',
+      model: '',
+      usage: {}
     }
   }
   return templateStates[templateId]
@@ -174,7 +188,9 @@ async function loadTemplates() {
             status: 'idle',
             message: '',
             additionalInstructions: '',
-            error: ''
+            error: '',
+            model: '',
+            usage: {}
           }
         }
       }
@@ -210,6 +226,8 @@ async function generateMessage(template, additionalInstructions = '') {
     if (response.ok) {
       const data = await response.json()
       state.message = data.message
+      state.model = data.model || ''
+      state.usage = data.usage || {}
       state.status = 'generated'
     } else {
       const errorData = await response.json()

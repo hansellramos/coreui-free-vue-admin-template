@@ -4659,15 +4659,22 @@ REGLAS:
         { role: 'user', content: 'Genera el mensaje.' }
       ];
 
+      const llmStart = Date.now();
       const result = await llmService.callLLMByCode(providerCode, messages, {
         maxTokens: 1024,
         temperature: 0.7
       });
+      const llmTime = Date.now() - llmStart;
 
       res.json({
         message: result.content,
         model: result.model,
-        tokens: result.usage?.total_tokens || 0
+        usage: {
+          input_tokens: result.usage?.prompt_tokens || 0,
+          output_tokens: result.usage?.completion_tokens || 0,
+          total_tokens: result.usage?.total_tokens || 0,
+          response_time_ms: llmTime
+        }
       });
     } catch (error) {
       console.error('Error generating message from template:', error);
