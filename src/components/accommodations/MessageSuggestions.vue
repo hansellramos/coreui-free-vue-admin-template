@@ -34,8 +34,9 @@
             </div>
           </div>
 
-          <!-- idle: show generate button -->
-          <div v-if="getState(template.id).status === 'idle'" class="text-center py-2">
+          <!-- idle: show instruction + generate button -->
+          <div v-if="getState(template.id).status === 'idle'" class="py-2">
+            <div class="text-muted small mb-2" style="white-space: pre-wrap;">{{ template.content }}</div>
             <CButton
               color="primary"
               size="sm"
