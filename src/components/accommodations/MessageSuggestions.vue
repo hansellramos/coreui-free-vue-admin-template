@@ -8,25 +8,99 @@
       <div v-if="!customerWhatsapp" class="text-muted text-center py-3">
         El cliente no tiene número de WhatsApp registrado
       </div>
+      <div v-else-if="loadingTemplates" class="text-center py-3">
+        <CSpinner size="sm" color="primary" class="me-2" />
+        Cargando templates...
+      </div>
+      <div v-else-if="templates.length === 0" class="text-muted text-center py-3">
+        No hay templates de mensajes configurados para este venue
+      </div>
       <div v-else class="d-grid gap-3">
-        <div 
-          v-for="(message, index) in messages" 
-          :key="index"
+        <div
+          v-for="template in templates"
+          :key="template.id"
           class="message-suggestion p-3 border rounded"
         >
           <div class="d-flex flex-column flex-sm-row justify-content-between align-items-start gap-2 mb-2">
-            <strong>{{ message.title }}</strong>
-            <CButton 
-              color="success" 
+            <div>
+              <strong>{{ template.name }}</strong>
+              <CBadge
+                v-if="template.category"
+                :color="categoryColor(template.category)"
+                class="ms-2"
+              >
+                {{ categoryLabel(template.category) }}
+              </CBadge>
+            </div>
+          </div>
+
+          <!-- idle: show generate button -->
+          <div v-if="getState(template.id).status === 'idle'" class="text-center py-2">
+            <CButton
+              color="primary"
               size="sm"
-              class="flex-shrink-0"
-              @click="openWhatsApp(message.text)"
+              @click="generateMessage(template)"
             >
-              <CIcon name="cib-whatsapp" class="me-1" />
-              Enviar
+              <CIcon name="cil-sparkles" class="me-1" />
+              Generar mensaje
             </CButton>
           </div>
-          <div class="message-preview text-muted small" style="white-space: pre-wrap;">{{ message.text }}</div>
+
+          <!-- generating: show spinner -->
+          <div v-else-if="getState(template.id).status === 'generating'" class="text-center py-3">
+            <CSpinner size="sm" color="primary" class="me-2" />
+            Generando mensaje...
+          </div>
+
+          <!-- error: show error -->
+          <div v-else-if="getState(template.id).status === 'error'" class="py-2">
+            <div class="text-danger small mb-2">{{ getState(template.id).error }}</div>
+            <CButton
+              color="primary"
+              size="sm"
+              @click="generateMessage(template)"
+            >
+              Reintentar
+            </CButton>
+          </div>
+
+          <!-- generated: show message + actions -->
+          <div v-else-if="getState(template.id).status === 'generated'">
+            <div class="message-preview text-muted small mb-3" style="white-space: pre-wrap;">{{ getState(template.id).message }}</div>
+
+            <div class="d-flex flex-column flex-sm-row gap-2 align-items-start">
+              <CButton
+                color="success"
+                size="sm"
+                class="flex-shrink-0"
+                @click="openWhatsApp(getState(template.id).message)"
+              >
+                <CIcon name="cib-whatsapp" class="me-1" />
+                Enviar por WhatsApp
+              </CButton>
+
+              <div class="d-flex flex-grow-1 gap-2 align-items-center w-100">
+                <CFormInput
+                  v-model="getState(template.id).additionalInstructions"
+                  size="sm"
+                  placeholder="Instrucciones adicionales (opcional)"
+                  class="flex-grow-1"
+                  @keyup.enter="regenerateMessage(template)"
+                />
+                <CButton
+                  color="primary"
+                  size="sm"
+                  variant="outline"
+                  class="flex-shrink-0"
+                  :disabled="getState(template.id).status === 'generating'"
+                  @click="regenerateMessage(template)"
+                >
+                  <CIcon name="cil-reload" class="me-1" />
+                  Regenerar
+                </CButton>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
     </CCardBody>
@@ -34,116 +108,124 @@
 </template>
 
 <script setup>
-import { computed } from 'vue'
+import { ref, reactive, computed, watch } from 'vue'
 import { CIcon } from '@coreui/icons-vue'
 
 const props = defineProps({
   accommodation: { type: Object, required: true }
 })
 
+const templates = ref([])
+const loadingTemplates = ref(false)
+const templateStates = reactive({})
+
+const categoryLabels = {
+  ubicacion: 'Ubicación',
+  wifi: 'WiFi',
+  domicilios: 'Domicilios',
+  planes: 'Planes',
+  general: 'General'
+}
+
+const categoryColors = {
+  ubicacion: 'primary',
+  wifi: 'info',
+  domicilios: 'warning',
+  planes: 'success',
+  general: 'secondary'
+}
+
+const categoryLabel = (category) => categoryLabels[category] || category
+const categoryColor = (category) => categoryColors[category] || 'secondary'
+
 const customerWhatsapp = computed(() => {
   return props.accommodation?.customer_data?.whatsapp
 })
 
-const customerName = computed(() => {
-  const customer = props.accommodation?.customer_data
-  if (!customer) return 'Cliente'
-  return customer.fullname?.split(' ')[0] || customer.user_data?.email?.split('@')[0] || 'Cliente'
-})
-
-const venueName = computed(() => {
-  return props.accommodation?.venue_data?.name || 'nuestra cabaña'
-})
-
-const venueWhatsapp = computed(() => {
-  return props.accommodation?.venue_data?.whatsapp || ''
-})
-
-const formattedDate = computed(() => {
-  if (!props.accommodation?.date) return 'la fecha de tu reserva'
-  const d = new Date(props.accommodation.date)
-  return d.toLocaleDateString('es-CO', { 
-    weekday: 'long', 
-    day: 'numeric', 
-    month: 'long',
-    timeZone: 'UTC'
-  })
-})
-
-const formattedTime = computed(() => {
-  const timeStr = props.accommodation?.time
-  if (!timeStr) return ''
-  if (timeStr.includes('T')) {
-    const d = new Date(timeStr)
-    return `${String(d.getUTCHours()).padStart(2, '0')}:${String(d.getUTCMinutes()).padStart(2, '0')}`
+function getState(templateId) {
+  if (!templateStates[templateId]) {
+    templateStates[templateId] = {
+      status: 'idle',
+      message: '',
+      additionalInstructions: '',
+      error: ''
+    }
   }
-  return timeStr.slice(0, 5)
-})
+  return templateStates[templateId]
+}
 
-const wazeLink = computed(() => {
-  return props.accommodation?.venue_data?.waze_link || ''
-})
+async function loadTemplates() {
+  const venueId = props.accommodation?.venue_data?.id || props.accommodation?.venue
+  if (!venueId) return
 
-const googleMapsLink = computed(() => {
-  const venue = props.accommodation?.venue_data
-  if (venue?.latitude && venue?.longitude) {
-    return `https://www.google.com/maps/search/?api=1&query=${venue.latitude},${venue.longitude}`
+  loadingTemplates.value = true
+  try {
+    const response = await fetch(`/api/message-templates?venue_id=${venueId}`, {
+      credentials: 'include'
+    })
+    if (response.ok) {
+      const allTemplates = await response.json()
+      templates.value = allTemplates.filter(t => t.is_active)
+      // Initialize states for each template
+      for (const t of templates.value) {
+        if (!templateStates[t.id]) {
+          templateStates[t.id] = {
+            status: 'idle',
+            message: '',
+            additionalInstructions: '',
+            error: ''
+          }
+        }
+      }
+    }
+  } catch (error) {
+    console.error('Error loading message templates:', error)
+  } finally {
+    loadingTemplates.value = false
   }
-  return ''
-})
+}
 
-const messages = computed(() => {
-  const msgs = []
-  
-  msgs.push({
-    title: 'Recordatorio previo al evento',
-    text: `¡Hola ${customerName.value}! 👋
+async function generateMessage(template, additionalInstructions = '') {
+  const state = getState(template.id)
+  state.status = 'generating'
+  state.error = ''
 
-Solo te queríamos escribir para decirte que se acerca tu evento en ${venueName.value} y estamos emocionados por tenerte pronto con nosotros.
+  try {
+    const body = {
+      template_id: template.id,
+      accommodation_id: props.accommodation.id
+    }
+    if (additionalInstructions) {
+      body.additional_instructions = additionalInstructions
+    }
 
-📅 *Fecha:* ${formattedDate.value}
-⏰ *Hora de llegada:* ${formattedTime.value || 'Por confirmar'}
-👥 *Asistentes:* ${(props.accommodation?.adults || 0) + (props.accommodation?.children || 0)} personas
+    const response = await fetch('/api/message-templates/generate', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify(body)
+    })
 
-Te recordamos algunas cosas importantes:
-${wazeLink.value ? `\n🗺️ *Cómo llegar (Waze):* ${wazeLink.value}` : ''}${googleMapsLink.value ? `\n📍 *Google Maps:* ${googleMapsLink.value}` : ''}
-${venueWhatsapp.value ? `\n📱 *WhatsApp de la cabaña:* ${venueWhatsapp.value}` : ''}
+    if (response.ok) {
+      const data = await response.json()
+      state.message = data.message
+      state.status = 'generated'
+    } else {
+      const errorData = await response.json()
+      state.error = errorData.error || 'Error al generar el mensaje'
+      state.status = 'error'
+    }
+  } catch (error) {
+    console.error('Error generating message:', error)
+    state.error = 'Error de conexión al generar el mensaje'
+    state.status = 'error'
+  }
+}
 
-¡Te esperamos! 🎉`
-  })
-  
-  msgs.push({
-    title: 'Confirmación de reserva',
-    text: `¡Hola ${customerName.value}! 👋
-
-Te confirmamos tu reserva en ${venueName.value}:
-
-📅 *Fecha:* ${formattedDate.value}
-⏰ *Hora:* ${formattedTime.value || 'Por confirmar'}
-👥 *Asistentes:* ${(props.accommodation?.adults || 0) + (props.accommodation?.children || 0)} personas
-
-Si tienes alguna pregunta, no dudes en escribirnos.
-
-¡Gracias por tu confianza! 🙌`
-  })
-  
-  msgs.push({
-    title: 'Instrucciones de llegada',
-    text: `¡Hola ${customerName.value}! 👋
-
-Te compartimos las instrucciones para llegar a ${venueName.value}:
-${wazeLink.value ? `\n🗺️ *Link de Waze:* ${wazeLink.value}` : ''}${googleMapsLink.value ? `\n📍 *Google Maps:* ${googleMapsLink.value}` : ''}
-
-*Recomendaciones:*
-- Llegar 15 minutos antes de la hora acordada
-- Traer documento de identidad
-- Cualquier duda, escríbenos
-
-¡Te esperamos! 🚗`
-  })
-  
-  return msgs
-})
+function regenerateMessage(template) {
+  const state = getState(template.id)
+  generateMessage(template, state.additionalInstructions)
+}
 
 function openWhatsApp(text) {
   const phone = `57${customerWhatsapp.value}`
@@ -155,6 +237,14 @@ function openWhatsApp(text) {
     .replace(/\*/g, '%2A')
   window.open(`https://wa.me/${phone}?text=${encodedText}`, '_blank')
 }
+
+watch(
+  () => props.accommodation?.venue_data?.id || props.accommodation?.venue,
+  (newVal) => {
+    if (newVal) loadTemplates()
+  },
+  { immediate: true }
+)
 </script>
 
 <style scoped>
@@ -169,7 +259,7 @@ function openWhatsApp(text) {
 }
 
 .message-preview {
-  max-height: 150px;
+  max-height: 200px;
   overflow-y: auto;
   font-family: inherit;
 }

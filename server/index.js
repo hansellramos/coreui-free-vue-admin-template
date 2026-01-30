@@ -4545,6 +4545,135 @@ Presta especial atención a comprobantes de Nequi, Daviplata, Bancolombia, y otr
     }
   });
 
+  // POST /api/message-templates/generate - Generate message from template using AI
+  app.post('/api/message-templates/generate', isAuthenticated, async (req, res) => {
+    try {
+      const { template_id, accommodation_id, additional_instructions } = req.body;
+
+      if (!template_id || !accommodation_id) {
+        return res.status(400).json({ error: 'template_id y accommodation_id son requeridos' });
+      }
+
+      // Fetch template
+      const template = await prisma.message_templates.findUnique({
+        where: { id: template_id }
+      });
+      if (!template) {
+        return res.status(404).json({ error: 'Template no encontrado' });
+      }
+
+      // Fetch accommodation
+      const accommodation = await prisma.accommodations.findUnique({
+        where: { id: accommodation_id }
+      });
+      if (!accommodation) {
+        return res.status(404).json({ error: 'Hospedaje no encontrado' });
+      }
+
+      // Fetch venue
+      const venue = accommodation.venue
+        ? await prisma.venues.findUnique({ where: { id: accommodation.venue } })
+        : null;
+      if (!venue) {
+        return res.status(404).json({ error: 'Venue no encontrado para este hospedaje' });
+      }
+
+      // Fetch customer
+      const customer = accommodation.customer
+        ? await prisma.contacts.findUnique({ where: { id: accommodation.customer } })
+        : null;
+
+      // Fetch venue plans
+      const plans = await prisma.venue_plans.findMany({
+        where: { venue_id: venue.id, is_active: true }
+      });
+
+      // Fetch accommodation plan name
+      const accPlan = accommodation.plan_id
+        ? await prisma.venue_plans.findUnique({ where: { id: accommodation.plan_id } })
+        : null;
+
+      // Build venue context
+      const venueContext = llmService.buildVenueContext(venue, [], plans);
+
+      // Format accommodation date
+      let dateStr = 'No definida';
+      if (accommodation.date) {
+        const d = new Date(accommodation.date);
+        const dayNames = ['domingo', 'lunes', 'martes', 'miércoles', 'jueves', 'viernes', 'sábado'];
+        const monthNames = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio', 'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre'];
+        dateStr = `${dayNames[d.getUTCDay()]}, ${d.getUTCDate()} de ${monthNames[d.getUTCMonth()]} de ${d.getUTCFullYear()}`;
+      }
+
+      // Format time
+      let timeStr = 'No definida';
+      if (accommodation.time) {
+        const t = accommodation.time;
+        if (typeof t === 'string' && t.includes('T')) {
+          const td = new Date(t);
+          timeStr = `${String(td.getUTCHours()).padStart(2, '0')}:${String(td.getUTCMinutes()).padStart(2, '0')}`;
+        } else if (typeof t === 'string') {
+          timeStr = t.slice(0, 5);
+        }
+      }
+
+      const customerName = customer?.fullname || 'Cliente';
+      const firstName = customerName.split(' ')[0];
+
+      // Build system prompt
+      const systemPrompt = `Eres un asistente que genera mensajes de WhatsApp listos para enviar a clientes de "${venue.name || 'la Cabaña'}".
+
+${venueContext}
+
+## Datos del Hospedaje
+- Cliente: ${customerName}
+- Nombre de pila: ${firstName}
+- Fecha: ${dateStr}
+- Hora de llegada: ${timeStr}
+- Adultos: ${accommodation.adults || 0}
+- Niños: ${accommodation.children || 0}
+- Plan: ${accPlan?.name || 'No asignado'}
+- Precio acordado: ${accommodation.agreed_price ? `$${accommodation.agreed_price}` : 'No definido'}
+
+## Instrucción del Template
+${template.content}
+${additional_instructions ? `\n## Instrucciones Adicionales\n${additional_instructions}` : ''}
+
+REGLAS:
+- Responde SOLO con el texto del mensaje listo para enviar por WhatsApp.
+- No incluyas explicaciones, encabezados, comillas, ni nada adicional.
+- Usa un tono cálido y profesional.
+- Puedes usar emojis con moderación.
+- Usa formato de WhatsApp (*negritas*, _cursivas_) cuando sea apropiado.`;
+
+      // Get AI model config
+      const chatSetting = await prisma.ai_settings.findUnique({
+        where: { setting_key: 'customer_chat' }
+      });
+      const providerCode = chatSetting?.provider_code || 'anthropic_claude';
+
+      // Call LLM
+      const messages = [
+        { role: 'system', content: systemPrompt },
+        { role: 'user', content: 'Genera el mensaje.' }
+      ];
+
+      const result = await llmService.callLLMByCode(providerCode, messages, {
+        maxTokens: 1024,
+        temperature: 0.7
+      });
+
+      res.json({
+        message: result.content,
+        model: result.model,
+        tokens: result.usage?.total_tokens || 0
+      });
+    } catch (error) {
+      console.error('Error generating message from template:', error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
   // DELETE /api/message-templates/:id - Delete template (only if not is_system)
   app.delete('/api/message-templates/:id', isAuthenticated, async (req, res) => {
     try {

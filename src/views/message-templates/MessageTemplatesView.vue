@@ -36,6 +36,7 @@
                   <CTableHeaderCell>Categoría</CTableHeaderCell>
                   <CTableHeaderCell>Venue</CTableHeaderCell>
                   <CTableHeaderCell>Estado</CTableHeaderCell>
+                  <CTableHeaderCell v-if="isDev">Twilio</CTableHeaderCell>
                   <CTableHeaderCell class="text-end">Acciones</CTableHeaderCell>
                 </CTableRow>
               </CTableHead>
@@ -60,6 +61,10 @@
                     <CBadge :color="template.is_active ? 'success' : 'secondary'">
                       {{ template.is_active ? 'Activo' : 'Inactivo' }}
                     </CBadge>
+                  </CTableDataCell>
+                  <CTableDataCell v-if="isDev">
+                    <code v-if="template.twilio_template">{{ template.twilio_template }}</code>
+                    <span v-else class="text-muted">&mdash;</span>
                   </CTableDataCell>
                   <CTableDataCell class="text-end">
                     <CButton 
@@ -162,10 +167,17 @@
         </CRow>
         <CRow class="mb-3">
           <CCol :md="12">
-            <CFormCheck 
-              v-model="form.is_active" 
-              label="Activo" 
+            <CFormCheck
+              v-model="form.is_active"
+              label="Activo"
             />
+          </CCol>
+        </CRow>
+        <CRow v-if="isDev" class="mb-3">
+          <CCol :md="6">
+            <CFormLabel>Twilio Template</CFormLabel>
+            <CFormInput v-model="form.twilio_template" placeholder="SID del template de Twilio" />
+            <div class="small text-muted mt-1">ID del template aprobado en Twilio</div>
           </CCol>
         </CRow>
       </CForm>
@@ -242,7 +254,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import {
   CRow, CCol, CCard, CCardHeader, CCardBody, CButton, CSpinner,
   CTable, CTableHead, CTableRow, CTableHeaderCell, CTableBody, CTableDataCell,
@@ -251,6 +263,10 @@ import {
 } from '@coreui/vue'
 import { CIcon } from '@coreui/icons-vue'
 import { fetchVenues } from '@/services/venueService'
+import { useSettingsStore } from '@/stores/settings'
+
+const settingsStore = useSettingsStore()
+const isDev = computed(() => settingsStore.developmentMode)
 
 const messageTemplates = ref([])
 const venues = ref([])
@@ -287,7 +303,8 @@ const form = ref({
   category: '',
   content: '',
   venue_id: '',
-  is_active: true
+  is_active: true,
+  twilio_template: ''
 })
 
 const categoryLabel = (category) => {
@@ -331,7 +348,8 @@ const resetForm = () => {
     category: '',
     content: '',
     venue_id: '',
-    is_active: true
+    is_active: true,
+    twilio_template: ''
   }
   editingTemplate.value = null
 }
@@ -354,7 +372,8 @@ const editMessageTemplate = (template) => {
     category: template.category || '',
     content: template.content || '',
     venue_id: template.venue_id || '',
-    is_active: template.is_active !== false
+    is_active: template.is_active !== false,
+    twilio_template: template.twilio_template || ''
   }
   showFormModal.value = true
 }
