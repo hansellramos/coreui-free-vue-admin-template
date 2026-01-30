@@ -4642,6 +4642,7 @@ ${additional_instructions ? `\n## Instrucciones Adicionales\n${additional_instru
 REGLAS:
 - Responde SOLO con el texto del mensaje listo para enviar por WhatsApp.
 - No incluyas explicaciones, encabezados, comillas, ni nada adicional.
+- Usa SOLO la información que sea relevante según la instrucción del template. No menciones datos del hospedaje (fecha, hora, precio, número de personas, plan, etc.) a menos que la instrucción del template lo requiera explícitamente.
 - Usa un tono cálido y profesional.
 - Puedes usar emojis con moderación.
 - Usa formato de WhatsApp (*negritas*, _cursivas_) cuando sea apropiado.`;

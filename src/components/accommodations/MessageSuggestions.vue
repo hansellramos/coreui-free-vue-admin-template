@@ -2,7 +2,7 @@
   <CCard class="mb-4">
     <CCardHeader class="d-flex justify-content-between align-items-center">
       <strong>Mensajes Sugeridos</strong>
-      <CIcon name="cil-chat-bubble" />
+      <CIcon icon="cil-speech" />
     </CCardHeader>
     <CCardBody>
       <div v-if="!customerWhatsapp" class="text-muted text-center py-3">
@@ -42,7 +42,7 @@
               size="sm"
               @click="generateMessage(template)"
             >
-              <CIcon name="cil-sparkles" class="me-1" />
+              <CIcon icon="cil-bolt" class="me-1" />
               Generar mensaje
             </CButton>
           </div>
@@ -76,7 +76,7 @@
                 class="flex-shrink-0"
                 @click="openWhatsApp(getState(template.id).message)"
               >
-                <CIcon name="cib-whatsapp" class="me-1" />
+                <CIcon icon="cib-whatsapp" class="me-1" />
                 Enviar por WhatsApp
               </CButton>
 
@@ -96,7 +96,7 @@
                   :disabled="getState(template.id).status === 'generating'"
                   @click="regenerateMessage(template)"
                 >
-                  <CIcon name="cil-reload" class="me-1" />
+                  <CIcon icon="cil-reload" class="me-1" />
                   Regenerar
                 </CButton>
               </div>
