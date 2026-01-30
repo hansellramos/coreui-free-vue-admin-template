@@ -48,16 +48,18 @@ async function callLLMByCode(providerCode, messages, options = {}) {
   if (!config) {
     throw new Error(`Modelo no encontrado: ${providerCode}`);
   }
-  
+
   const apiKey = getApiKeyForProvider(providerCode);
   if (!apiKey) {
     throw new Error(`API key no configurada para ${config.name} (${config.env_key})`);
   }
-  
+
+  const model = options.model || config.model;
+
   if (config.provider === 'anthropic') {
-    return callAnthropicAPI(apiKey, config.model, messages, options);
+    return callAnthropicAPI(apiKey, model, messages, options);
   } else {
-    return callOpenAICompatibleAPI(apiKey, config.base_url, config.model, messages, options);
+    return callOpenAICompatibleAPI(apiKey, config.base_url, model, messages, options);
   }
 }
 

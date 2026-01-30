@@ -4652,6 +4652,7 @@ REGLAS:
         where: { setting_key: 'customer_chat' }
       });
       const providerCode = chatSetting?.provider_code || 'anthropic_claude';
+      const modelOverride = chatSetting?.model || undefined;
 
       // Call LLM
       const messages = [
@@ -4662,7 +4663,8 @@ REGLAS:
       const llmStart = Date.now();
       const result = await llmService.callLLMByCode(providerCode, messages, {
         maxTokens: 1024,
-        temperature: 0.7
+        temperature: 0.7,
+        model: modelOverride
       });
       const llmTime = Date.now() - llmStart;
 
