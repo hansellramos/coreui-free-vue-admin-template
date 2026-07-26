@@ -91,6 +91,100 @@
         </CCardBody>
       </CCard>
 
+      <!-- Cloud API Config (super_admin only) -->
+      <CCard v-if="isSuperAdmin" class="mb-4">
+        <CCardHeader>
+          <strong>Canal de WhatsApp</strong>
+        </CCardHeader>
+        <CCardBody>
+          <div class="mb-3">
+            <label class="form-label small fw-semibold">Canal</label>
+            <CFormSelect v-model="cloudConfig.channel" size="sm" @change="saveCloudConfig">
+              <option value="baileys">Baileys (QR / no oficial)</option>
+              <option value="cloud_api">Cloud API (Meta oficial)</option>
+            </CFormSelect>
+          </div>
+
+          <div v-if="cloudConfig.channel === 'cloud_api'">
+            <div class="mb-3">
+              <label class="form-label small fw-semibold">Phone Number ID</label>
+              <CFormInput
+                v-model="cloudConfig.meta_phone_number_id"
+                placeholder="Ej: 977827948755668"
+                size="sm"
+              />
+            </div>
+            <div class="mb-3">
+              <label class="form-label small fw-semibold">Access Token</label>
+              <CFormInput
+                v-model="cloudConfig.meta_access_token"
+                type="password"
+                placeholder="Token de acceso de Meta"
+                size="sm"
+              />
+            </div>
+            <div class="mb-3">
+              <label class="form-label small fw-semibold">Verify Token (webhook)</label>
+              <div class="d-flex gap-2">
+                <CFormInput
+                  v-model="cloudConfig.meta_verify_token"
+                  placeholder="Token de verificación"
+                  size="sm"
+                />
+                <CButton color="secondary" variant="outline" size="sm" @click="generateVerifyToken" style="white-space: nowrap;">
+                  Generar
+                </CButton>
+              </div>
+            </div>
+
+            <CAlert color="info" class="small py-2 mb-3">
+              <strong>Webhook URL:</strong><br />
+              <code>https://cabania.app/api/webhook/whatsapp</code><br />
+              Configura esta URL en Meta Developer Console &rarr; WhatsApp &rarr; Configuration.
+            </CAlert>
+
+            <div class="d-flex gap-2">
+              <CButton color="primary" size="sm" @click="saveCloudConfig" :disabled="savingCloud">
+                <CSpinner v-if="savingCloud" size="sm" class="me-1" />
+                Guardar
+              </CButton>
+              <CButton color="success" variant="outline" size="sm" @click="showTestModal = true" :disabled="!cloudConfig.meta_phone_number_id">
+                Enviar prueba
+              </CButton>
+            </div>
+
+            <CAlert v-if="cloudSaveMsg" :color="cloudSaveMsg.type" class="mt-3 small py-2">
+              {{ cloudSaveMsg.text }}
+            </CAlert>
+          </div>
+        </CCardBody>
+      </CCard>
+
+      <!-- Test Message Modal -->
+      <CModal :visible="showTestModal" @close="showTestModal = false" alignment="center">
+        <CModalHeader>
+          <CModalTitle>Enviar mensaje de prueba</CModalTitle>
+        </CModalHeader>
+        <CModalBody>
+          <p class="text-body-secondary small">
+            Se enviará el template <strong>hello_world</strong> al número indicado.
+            El número debe estar verificado en la app de Meta.
+          </p>
+          <CFormInput
+            v-model="testPhone"
+            placeholder="Número destino (ej: 573001234567)"
+            size="sm"
+          />
+        </CModalBody>
+        <CModalFooter>
+          <CButton color="secondary" variant="outline" size="sm" @click="showTestModal = false">Cancelar</CButton>
+          <CButton color="success" size="sm" @click="sendTestMessage" :disabled="!testPhone || sendingTest">
+            <CSpinner v-if="sendingTest" size="sm" class="me-1" />
+            Enviar
+          </CButton>
+        </CModalFooter>
+      </CModal>
+
       <!-- Excluded phones -->
       <CCard v-if="status === 'connected' || status === 'disconnected' || status === 'not_configured'" class="mb-4">
         <CCardHeader class="d-flex justify-content-between align-items-center">
@@ -331,12 +425,15 @@
 </template>
 
 <script setup>
-import { ref, onMounted, onUnmounted, watch, nextTick } from 'vue'
+import { ref, onMounted, onUnmounted, watch, nextTick, computed } from 'vue'
 import { useRoute } from 'vue-router'
 import QRCode from 'qrcode'
+import { useAuth } from '@/composables/useAuth'
 
 const route = useRoute()
 const venueId = route.params.id
+const { user } = useAuth()
+const isSuperAdmin = computed(() => user.value?.is_super_admin === true)
 
 const venueName = ref('')
 const loading = ref(true)
@@ -371,6 +468,19 @@ const escConfig = ref({
   auto_resume_hour: 3
 })
 const escSaveMsg = ref(null)
+
+// Cloud API config
+const cloudConfig = ref({
+  channel: 'baileys',
+  meta_phone_number_id: '',
+  meta_access_token: '',
+  meta_verify_token: ''
+})
+const savingCloud = ref(false)
+const cloudSaveMsg = ref(null)
+const showTestModal = ref(false)
+const testPhone = ref('')
+const sendingTest = ref(false)
 
 let pollInterval = null
 
@@ -567,6 +677,88 @@ async function saveEscalationConfig() {
   }
 }
 
+// Cloud API config
+async function fetchCloudConfig() {
+  try {
+    const res = await fetch(`/api/venues/${venueId}/whatsapp/cloud-config`, { credentials: 'include' })
+    if (res.ok) {
+      const data = await res.json()
+      cloudConfig.value = {
+        channel: data.channel || 'baileys',
+        meta_phone_number_id: data.meta_phone_number_id || '',
+        meta_access_token: data.has_token ? '••••••' : '',
+        meta_verify_token: data.meta_verify_token || ''
+      }
+      // If channel is cloud_api and connected, update status display
+      if (data.channel === 'cloud_api' && data.meta_phone_number_id && data.has_token) {
+        status.value = 'connected'
+        phoneNumber.value = data.meta_phone_number_id
+      }
+    }
+  } catch (err) {
+    console.error('[whatsapp-ui] Error fetching cloud config:', err)
+  }
+}
+
+async function saveCloudConfig() {
+  savingCloud.value = true
+  cloudSaveMsg.value = null
+  try {
+    const res = await fetch(`/api/venues/${venueId}/whatsapp/cloud-config`, {
+      method: 'PUT',
+      credentials: 'include',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(cloudConfig.value)
+    })
+    if (res.ok) {
+      cloudSaveMsg.value = { type: 'success', text: 'Configuración Cloud API guardada' }
+      // Refresh status
+      await fetchStatus()
+    } else {
+      const data = await res.json()
+      cloudSaveMsg.value = { type: 'danger', text: data.error || 'Error al guardar' }
+    }
+    setTimeout(() => { cloudSaveMsg.value = null }, 4000)
+  } catch (err) {
+    cloudSaveMsg.value = { type: 'danger', text: 'Error al guardar' }
+    setTimeout(() => { cloudSaveMsg.value = null }, 4000)
+  } finally {
+    savingCloud.value = false
+  }
+}
+
+function generateVerifyToken() {
+  const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789'
+  let token = ''
+  for (let i = 0; i < 32; i++) token += chars.charAt(Math.floor(Math.random() * chars.length))
+  cloudConfig.value.meta_verify_token = token
+}
+
+async function sendTestMessage() {
+  sendingTest.value = true
+  try {
+    const res = await fetch(`/api/venues/${venueId}/whatsapp/cloud-test`, {
+      method: 'POST',
+      credentials: 'include',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ to: testPhone.value.replace(/\D/g, '') })
+    })
+    const data = await res.json()
+    if (res.ok) {
+      cloudSaveMsg.value = { type: 'success', text: `Mensaje de prueba enviado (ID: ${data.message_id})` }
+      showTestModal.value = false
+    } else {
+      cloudSaveMsg.value = { type: 'danger', text: data.error || 'Error al enviar' }
+    }
+    setTimeout(() => { cloudSaveMsg.value = null }, 5000)
+  } catch (err) {
+    cloudSaveMsg.value = { type: 'danger', text: 'Error al enviar mensaje de prueba' }
+    setTimeout(() => { cloudSaveMsg.value = null }, 5000)
+  } finally {
+    sendingTest.value = false
+  }
+}
+
 async function fetchStats() {
   loadingStats.value = true
   try {
@@ -649,6 +841,7 @@ onMounted(async () => {
   await fetchStatus()
   await fetchExcludedPhones()
   await fetchEscalationConfig()
+  if (isSuperAdmin.value) fetchCloudConfig()
   fetchStats()
   fetchEvents()
   // Start polling if QR pending

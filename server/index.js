@@ -12,6 +12,7 @@ const llmService = require('./llm-service');
 
 // WhatsApp service — proxied to external Baileys microservice via HTTP
 const whatsappClient = require('./services/whatsappClient');
+const metaWhatsApp = require('./services/metaWhatsApp');
 
 /**
  * Calculate the next resume time at given hour in America/Bogota timezone.
@@ -2076,11 +2077,11 @@ async function startServer() {
             const conv = await prisma.chat_conversations.findUnique({
               where: { id: linkedEstimate.conversation_id }
             });
-            if (conv?.phone && conv?.venue_id && whatsappClient.isAvailable()) {
+            if (conv?.phone && conv?.venue_id) {
               try {
                 const venueForNotif = await prisma.venues.findUnique({ where: { id: conv.venue_id } });
                 const confirmMsg = `✅ *¡Pago Verificado!*\n\n¡Hola ${conv.name || ''}! Tu pago ha sido verificado exitosamente. Tu reserva en *${venueForNotif?.name || 'la cabaña'}* está confirmada.\n\n¡Te esperamos! 🎉`;
-                await whatsappClient.sendMessage(conv.venue_id, conv.phone, confirmMsg);
+                await sendWhatsAppReply(conv.venue_id, conv.phone, confirmMsg);
               } catch (notifErr) {
                 console.error('[payment-verify] Failed to notify client:', notifErr.message);
               }
@@ -6903,10 +6904,10 @@ REGLAS:
         }
       });
 
-      // Send greeting to client if baileys conversation
-      if (conversation.phone && conversation.source === 'baileys' && whatsappClient.isAvailable()) {
+      // Send greeting to client if WhatsApp conversation
+      if (conversation.phone && (conversation.source === 'baileys' || conversation.source === 'cloud_api')) {
         try {
-          await whatsappClient.sendMessage(
+          await sendWhatsAppReply(
             venue_id,
             conversation.phone,
             '¡Hola! 👋 CabanIA está disponible nuevamente para ayudarte. ¿En qué puedo asistirte?'
@@ -7014,9 +7015,9 @@ REGLAS:
     try {
       const { id } = req.params;
 
-      // Get conversations for this venue with source baileys
+      // Get conversations for this venue with source baileys or cloud_api
       const conversations = await prisma.chat_conversations.findMany({
-        where: { venue_id: id, source: 'baileys' },
+        where: { venue_id: id, source: { in: ['baileys', 'cloud_api'] } },
         select: { id: true }
       });
       const convIds = conversations.map(c => c.id);
@@ -7135,6 +7136,384 @@ REGLAS:
       res.status(500).json({ error: error.message });
     }
   });
+
+  // ==================== Meta WhatsApp Cloud API Webhook ====================
+
+  // GET /api/webhook/whatsapp — Meta verification challenge
+  app.get('/api/webhook/whatsapp', (req, res) => {
+    const mode = req.query['hub.mode'];
+    const token = req.query['hub.verify_token'];
+    const challenge = req.query['hub.challenge'];
+
+    const verifyToken = process.env.META_WEBHOOK_VERIFY_TOKEN;
+    if (mode === 'subscribe' && token === verifyToken) {
+      console.log('[meta-webhook] Verification successful');
+      return res.status(200).send(challenge);
+    }
+    console.warn('[meta-webhook] Verification failed', { mode, token: token?.slice(0, 6) });
+    res.sendStatus(403);
+  });
+
+  // POST /api/webhook/whatsapp — Incoming messages & status updates from Meta
+  app.post('/api/webhook/whatsapp', (req, res) => {
+    // Respond 200 immediately — Meta retries if >20s
+    res.sendStatus(200);
+
+    // Process async
+    (async () => {
+      try {
+        const entry = req.body?.entry?.[0];
+        const changes = entry?.changes?.[0];
+        const value = changes?.value;
+        if (!value) return;
+
+        const phoneNumberId = value.metadata?.phone_number_id;
+        if (!phoneNumberId) return;
+
+        // Find venue by meta_phone_number_id
+        const conn = await prisma.whatsapp_connections.findFirst({
+          where: { meta_phone_number_id: phoneNumberId, channel: 'cloud_api' }
+        });
+        if (!conn) {
+          console.warn(`[meta-webhook] No venue found for phone_number_id=${phoneNumberId}`);
+          return;
+        }
+        const venue_id = conn.venue_id;
+
+        // Handle incoming messages
+        if (value.messages && value.messages.length > 0) {
+          for (const msg of value.messages) {
+            try {
+              const from = msg.from; // sender phone
+              const wamid = msg.id;
+
+              // Check excluded phones
+              const excludedPhones = conn.excluded_phones || [];
+              if (excludedPhones.some(e => from.includes(e.phone) || e.phone.includes(from))) {
+                console.log(`[meta-webhook] Skipping excluded phone ${from}`);
+                continue;
+              }
+
+              // Extract message content
+              let userMessage = '';
+              let media_url = null;
+              let media_type = null;
+
+              if (msg.type === 'text') {
+                userMessage = msg.text?.body || '';
+              } else if (msg.type === 'image') {
+                // Download image and upload to Cloudinary
+                try {
+                  const imageBuffer = await metaWhatsApp.downloadMedia(msg.image.id, conn.meta_access_token);
+                  const { uploadImage } = require('./upload-service');
+                  const uploaded = await uploadImage(imageBuffer, { type: 'chat_media', mimetype: msg.image.mime_type || 'image/jpeg' });
+                  media_url = uploaded.secure_url;
+                  media_type = 'image';
+                  userMessage = msg.image.caption || '[Imagen]';
+                } catch (dlErr) {
+                  console.error('[meta-webhook] Failed to download/upload image:', dlErr.message);
+                  userMessage = '[Imagen no disponible]';
+                }
+              } else if (msg.type === 'audio') {
+                userMessage = '[Audio recibido - no procesable]';
+              } else if (msg.type === 'document') {
+                userMessage = '[Documento recibido]';
+              } else if (msg.type === 'location') {
+                userMessage = `[Ubicación: ${msg.location?.latitude}, ${msg.location?.longitude}]`;
+              } else if (msg.type === 'contacts') {
+                userMessage = '[Contacto compartido]';
+              } else if (msg.type === 'sticker') {
+                userMessage = '[Sticker]';
+              } else if (msg.type === 'reaction') {
+                // Ignore reactions
+                continue;
+              } else {
+                userMessage = `[${msg.type || 'mensaje'} no soportado]`;
+              }
+
+              // Find or create conversation
+              let conversation = await prisma.chat_conversations.findFirst({
+                where: { venue_id, phone: from, source: 'cloud_api' },
+                include: { messages: { orderBy: { created_at: 'asc' }, take: 20 } }
+              });
+
+              if (!conversation) {
+                // Get contact name from webhook data
+                const contactName = value.contacts?.[0]?.profile?.name || null;
+                conversation = await prisma.chat_conversations.create({
+                  data: {
+                    venue_id,
+                    phone: from,
+                    name: contactName,
+                    source: 'cloud_api',
+                    status: 'active',
+                    external_id: wamid
+                  }
+                });
+                conversation.messages = [];
+              }
+
+              // Check if conversation is escalated
+              if (conversation.status === 'human_attention') {
+                console.log(`[meta-webhook] Conversation ${conversation.id} is escalated, skipping AI`);
+                // Still save the message
+                await prisma.chat_messages.create({
+                  data: {
+                    conversation_id: conversation.id,
+                    role: 'user',
+                    content: userMessage,
+                    media_url,
+                    media_type,
+                    status: 'delivered',
+                    external_id: wamid
+                  }
+                });
+                // Mark as read
+                await metaWhatsApp.markAsRead(phoneNumberId, conn.meta_access_token, wamid).catch(() => {});
+                continue;
+              }
+
+              // Save user message
+              await prisma.chat_messages.create({
+                data: {
+                  conversation_id: conversation.id,
+                  role: 'user',
+                  content: userMessage,
+                  media_url,
+                  media_type,
+                  status: 'delivered',
+                  external_id: wamid
+                }
+              });
+
+              // Update conversation timestamp
+              await prisma.chat_conversations.update({
+                where: { id: conversation.id },
+                data: { updated_at: new Date() }
+              });
+
+              // Process with AI
+              const result = await processChat({
+                venue_id,
+                userMessage,
+                conversation,
+                source: 'cloud_api',
+                media_url,
+                media_type
+              });
+
+              // Send AI response
+              if (result?.llmResponse?.content) {
+                try {
+                  const sendResult = await metaWhatsApp.sendText(
+                    phoneNumberId, conn.meta_access_token, from, result.llmResponse.content
+                  );
+                  await prisma.chat_messages.update({
+                    where: { id: result.assistantMessage.id },
+                    data: {
+                      status: 'sent',
+                      external_id: sendResult.messages?.[0]?.id || null
+                    }
+                  });
+                } catch (sendErr) {
+                  console.error('[meta-webhook] Failed to send reply:', sendErr.message);
+                  await prisma.chat_messages.update({
+                    where: { id: result.assistantMessage.id },
+                    data: { status: 'failed', error_details: sendErr.message }
+                  });
+                }
+              }
+
+              // Mark incoming message as read
+              await metaWhatsApp.markAsRead(phoneNumberId, conn.meta_access_token, wamid).catch(() => {});
+
+            } catch (msgErr) {
+              console.error('[meta-webhook] Error processing message:', msgErr.message);
+            }
+          }
+        }
+
+        // Handle status updates
+        if (value.statuses && value.statuses.length > 0) {
+          for (const status of value.statuses) {
+            try {
+              const statusMap = { sent: 'sent', delivered: 'delivered', read: 'read', failed: 'failed' };
+              const mappedStatus = statusMap[status.status];
+              if (!mappedStatus) continue;
+
+              const wamid = status.id;
+              // Find message by external_id
+              const message = await prisma.chat_messages.findFirst({
+                where: { external_id: wamid }
+              });
+              if (message) {
+                const updateData = { status: mappedStatus };
+                if (mappedStatus === 'failed' && status.errors?.[0]) {
+                  updateData.error_details = `${status.errors[0].code}: ${status.errors[0].title}`;
+                }
+                await prisma.chat_messages.update({
+                  where: { id: message.id },
+                  data: updateData
+                });
+              }
+            } catch (stErr) {
+              console.error('[meta-webhook] Error processing status:', stErr.message);
+            }
+          }
+        }
+
+      } catch (err) {
+        console.error('[meta-webhook] Unhandled error:', err);
+      }
+    })();
+  });
+
+  // ==================== WhatsApp Cloud API Config ====================
+
+  // GET /api/venues/:id/whatsapp/cloud-config — Get Cloud API config (super_admin only)
+  app.get('/api/venues/:id/whatsapp/cloud-config', isAuthenticated, async (req, res) => {
+    try {
+      const userId = String(req.user.claims.sub);
+      const currentUser = await prisma.users.findUnique({ where: { id: userId } });
+      if (!currentUser?.is_super_admin) {
+        return res.status(403).json({ error: 'Solo super admin' });
+      }
+
+      const conn = await prisma.whatsapp_connections.findUnique({
+        where: { venue_id: req.params.id }
+      });
+
+      res.json({
+        channel: conn?.channel || 'baileys',
+        meta_phone_number_id: conn?.meta_phone_number_id || '',
+        meta_access_token: conn?.meta_access_token ? '••••••' : '',
+        meta_verify_token: conn?.meta_verify_token || '',
+        has_token: !!conn?.meta_access_token
+      });
+    } catch (error) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // PUT /api/venues/:id/whatsapp/cloud-config — Save Cloud API config (super_admin only)
+  app.put('/api/venues/:id/whatsapp/cloud-config', isAuthenticated, async (req, res) => {
+    try {
+      const userId = String(req.user.claims.sub);
+      const currentUser = await prisma.users.findUnique({ where: { id: userId } });
+      if (!currentUser?.is_super_admin) {
+        return res.status(403).json({ error: 'Solo super admin' });
+      }
+
+      const { channel, meta_phone_number_id, meta_access_token, meta_verify_token } = req.body;
+      const venue_id = req.params.id;
+
+      const updateData = {
+        channel: channel || 'baileys',
+        meta_phone_number_id: meta_phone_number_id || null,
+        meta_verify_token: meta_verify_token || null,
+        updated_at: new Date()
+      };
+
+      // Only update token if a new one is provided (not the masked placeholder)
+      if (meta_access_token && meta_access_token !== '••••••') {
+        updateData.meta_access_token = meta_access_token;
+      }
+
+      // If switching to cloud_api and status is disconnected, set to connected
+      if (channel === 'cloud_api' && meta_phone_number_id && (meta_access_token || updateData.meta_access_token)) {
+        updateData.status = 'connected';
+      }
+
+      await prisma.whatsapp_connections.upsert({
+        where: { venue_id },
+        update: updateData,
+        create: {
+          venue_id,
+          ...updateData,
+          excluded_phones: [],
+          escalation_config: {}
+        }
+      });
+
+      res.json({ success: true });
+    } catch (error) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // POST /api/venues/:id/whatsapp/cloud-test — Send test template message (super_admin only)
+  app.post('/api/venues/:id/whatsapp/cloud-test', isAuthenticated, async (req, res) => {
+    try {
+      const userId = String(req.user.claims.sub);
+      const currentUser = await prisma.users.findUnique({ where: { id: userId } });
+      if (!currentUser?.is_super_admin) {
+        return res.status(403).json({ error: 'Solo super admin' });
+      }
+
+      const { to } = req.body;
+      if (!to) return res.status(400).json({ error: 'Se requiere número de destino (to)' });
+
+      const conn = await prisma.whatsapp_connections.findUnique({
+        where: { venue_id: req.params.id }
+      });
+      if (!conn?.meta_phone_number_id || !conn?.meta_access_token) {
+        return res.status(400).json({ error: 'Cloud API no configurada para este venue' });
+      }
+
+      const result = await metaWhatsApp.sendTemplate(
+        conn.meta_phone_number_id, conn.meta_access_token, to, 'hello_world', 'en_US'
+      );
+
+      res.json({ success: true, message_id: result.messages?.[0]?.id });
+    } catch (error) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // ==================== WhatsApp Send Helpers ====================
+
+  /**
+   * Send a text reply via the appropriate WhatsApp channel (Cloud API or Baileys).
+   * Returns the send result or null if no channel is available.
+   */
+  async function sendWhatsAppReply(venue_id, phone, text, messageId) {
+    const conn = await prisma.whatsapp_connections.findUnique({ where: { venue_id } });
+    if (conn?.channel === 'cloud_api' && conn.meta_phone_number_id && conn.meta_access_token) {
+      const result = await metaWhatsApp.sendText(conn.meta_phone_number_id, conn.meta_access_token, phone, text);
+      if (messageId) {
+        await prisma.chat_messages.update({
+          where: { id: messageId },
+          data: { status: 'sent', external_id: result.messages?.[0]?.id || null }
+        });
+      }
+      return result;
+    } else if (whatsappClient.isAvailable()) {
+      return whatsappClient.sendMessage(venue_id, phone, text);
+    }
+    return null;
+  }
+
+  /**
+   * Send an image via the appropriate WhatsApp channel.
+   */
+  async function sendWhatsAppImage(venue_id, phone, imageUrl, caption) {
+    const conn = await prisma.whatsapp_connections.findUnique({ where: { venue_id } });
+    if (conn?.channel === 'cloud_api' && conn.meta_phone_number_id && conn.meta_access_token) {
+      return metaWhatsApp.sendImage(conn.meta_phone_number_id, conn.meta_access_token, phone, imageUrl, caption);
+    } else if (whatsappClient.isAvailable()) {
+      return whatsappClient.sendImage(venue_id, phone, imageUrl, caption);
+    }
+    return null;
+  }
+
+  /**
+   * Check if any WhatsApp channel is available for a venue.
+   */
+  async function isWhatsAppAvailable(venue_id) {
+    const conn = await prisma.whatsapp_connections.findUnique({ where: { venue_id } });
+    if (conn?.channel === 'cloud_api' && conn.meta_phone_number_id && conn.meta_access_token) return true;
+    return whatsappClient.isAvailable();
+  }
 
   // ==================== Chat API ====================
 
@@ -7752,13 +8131,13 @@ REGLAS:
             if (paymentMethod.instructions) caption += `\n\n📝 ${paymentMethod.instructions}`;
             caption += '\n\n📸 Una vez realices el pago, envía la foto del comprobante por este chat.';
 
-            // Send QR image or text via WhatsApp if source is baileys
-            if (source === 'baileys' && conversation.phone && whatsappClient.isAvailable()) {
+            // Send QR image or text via WhatsApp if source is baileys or cloud_api
+            if ((source === 'baileys' || source === 'cloud_api') && conversation.phone) {
               try {
                 if (paymentMethod.qr_image_url) {
-                  await whatsappClient.sendImage(venue_id, conversation.phone, paymentMethod.qr_image_url, caption);
+                  await sendWhatsAppImage(venue_id, conversation.phone, paymentMethod.qr_image_url, caption);
                 } else {
-                  await whatsappClient.sendMessage(venue_id, conversation.phone, caption);
+                  await sendWhatsAppReply(venue_id, conversation.phone, caption);
                 }
               } catch (sendErr) {
                 console.error('[payment] Failed to send payment info via WhatsApp:', sendErr.message);
@@ -8108,7 +8487,7 @@ REGLAS:
           content: userMessage,
           media_url: media_url || null,
           media_type: media_type || null,
-          status: source === 'baileys' ? 'delivered' : null
+          status: (source === 'baileys' || source === 'cloud_api') ? 'delivered' : null
         }
       });
 
@@ -8204,15 +8583,10 @@ REGLAS:
         userId: req.user?.id
       });
 
-      // If source is baileys, send the response via WhatsApp
-      if (source === 'baileys' && conversation.phone && whatsappClient.isAvailable()) {
+      // If source is WhatsApp (baileys or cloud_api), send the response
+      if ((source === 'baileys' || source === 'cloud_api') && conversation.phone) {
         try {
-          await whatsappClient.sendMessage(venue_id, conversation.phone, result.llmResponse.content);
-          // Update status to sent
-          await prisma.chat_messages.update({
-            where: { id: result.assistantMessage.id },
-            data: { status: 'sent' }
-          });
+          await sendWhatsAppReply(venue_id, conversation.phone, result.llmResponse.content, result.assistantMessage.id);
         } catch (sendErr) {
           console.error('[reprocess] Failed to send via WhatsApp:', sendErr.message);
           await prisma.chat_messages.update({
@@ -8261,19 +8635,13 @@ REGLAS:
         return res.status(400).json({ error: 'La conversación no tiene número de teléfono asociado' });
       }
 
-      if (!whatsappClient.isAvailable()) {
+      if (!(await isWhatsAppAvailable(venue_id))) {
         return res.status(503).json({ error: 'Servicio de WhatsApp no disponible' });
       }
 
       try {
-        const result = await whatsappClient.sendMessage(venue_id, phone, message.content);
-        const updated = await prisma.chat_messages.update({
-          where: { id: message_id },
-          data: {
-            status: 'sent',
-            external_id: result?.messageId || result?.id || null
-          }
-        });
+        await sendWhatsAppReply(venue_id, phone, message.content, message_id);
+        const updated = await prisma.chat_messages.findUnique({ where: { id: message_id } });
         res.json({ status: updated.status, external_id: updated.external_id });
       } catch (sendErr) {
         console.error('[send-whatsapp] Failed:', sendErr.message);
@@ -8289,18 +8657,65 @@ REGLAS:
     }
   });
 
-  // GET /api/chat/:venue_id/conversations - List conversations for a venue
+  // GET /api/chat/:venue_id/conversations - List conversations for a venue (inbox)
   app.get('/api/chat/:venue_id/conversations', isAuthenticated, async (req, res) => {
     try {
       const { venue_id } = req.params;
-      
+      const { search, source } = req.query;
+
+      const where = { venue_id };
+
+      // Filter by source channels (comma-separated)
+      if (source) {
+        where.source = { in: source.split(',').map(s => s.trim()) };
+      }
+
+      // Search by name or phone
+      if (search) {
+        where.OR = [
+          { name: { contains: search, mode: 'insensitive' } },
+          { phone: { contains: search } }
+        ];
+      }
+
       const conversations = await prisma.chat_conversations.findMany({
-        where: { venue_id },
+        where,
         orderBy: { updated_at: 'desc' },
-        take: 50
+        take: 50,
+        include: {
+          messages: {
+            orderBy: { created_at: 'desc' },
+            take: 1,
+            select: { content: true, role: true, created_at: true, provider: true }
+          }
+        }
       });
-      
-      res.json(conversations);
+
+      // Add last_message preview and unread_count
+      const result = await Promise.all(conversations.map(async (conv) => {
+        const lastMsg = conv.messages[0] || null;
+        // Count user messages after last_read_at
+        let unread_count = 0;
+        const unreadWhere = { conversation_id: conv.id, role: 'user' };
+        if (conv.last_read_at) {
+          unreadWhere.created_at = { gt: conv.last_read_at };
+        }
+        unread_count = await prisma.chat_messages.count({ where: unreadWhere });
+
+        const { messages, ...convData } = conv;
+        return {
+          ...convData,
+          last_message: lastMsg ? {
+            content: (lastMsg.content || '').substring(0, 100),
+            role: lastMsg.role,
+            created_at: lastMsg.created_at,
+            provider: lastMsg.provider
+          } : null,
+          unread_count
+        };
+      }));
+
+      res.json(result);
     } catch (error) {
       res.status(500).json({ error: error.message });
     }
@@ -8313,9 +8728,93 @@ REGLAS:
         where: { id: req.params.id },
         include: { messages: { orderBy: { created_at: 'asc' } } }
       });
-      
+
+      // Mark as read
+      if (conversation) {
+        await prisma.chat_conversations.update({
+          where: { id: req.params.id },
+          data: { last_read_at: new Date() }
+        });
+      }
+
       res.json(conversation);
     } catch (error) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // POST /api/chat/:venue_id/conversations/:id/admin-reply - Send manual admin reply
+  app.post('/api/chat/:venue_id/conversations/:id/admin-reply', isAuthenticated, async (req, res) => {
+    try {
+      const { venue_id, id } = req.params;
+      const { text } = req.body;
+      if (!text || !text.trim()) {
+        return res.status(400).json({ error: 'Text is required' });
+      }
+
+      const conversation = await prisma.chat_conversations.findUnique({ where: { id } });
+      if (!conversation || conversation.venue_id !== venue_id) {
+        return res.status(404).json({ error: 'Conversation not found' });
+      }
+
+      // Save as assistant message with provider 'admin'
+      const message = await prisma.chat_messages.create({
+        data: {
+          conversation_id: id,
+          role: 'assistant',
+          content: text.trim(),
+          provider: 'admin',
+          status: 'pending'
+        }
+      });
+
+      // Update conversation timestamp
+      await prisma.chat_conversations.update({
+        where: { id },
+        data: { updated_at: new Date(), last_read_at: new Date() }
+      });
+
+      // Send via WhatsApp if the conversation has a phone number
+      if (conversation.phone && conversation.source !== 'web') {
+        try {
+          await sendWhatsAppReply(venue_id, conversation.phone, text.trim(), message.id);
+        } catch (waError) {
+          console.error('Admin reply WhatsApp send error:', waError);
+          await prisma.chat_messages.update({
+            where: { id: message.id },
+            data: { status: 'failed', error_details: waError.message }
+          });
+          return res.json({ ...message, status: 'failed', error_details: waError.message });
+        }
+      } else {
+        // Web channel — just mark as sent (user will see on page reload)
+        await prisma.chat_messages.update({
+          where: { id: message.id },
+          data: { status: 'sent' }
+        });
+        message.status = 'sent';
+      }
+
+      res.json(message);
+    } catch (error) {
+      console.error('Admin reply error:', error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // DELETE /api/chat/:venue_id/conversations/:id - Delete a conversation and its messages
+  app.delete('/api/chat/:venue_id/conversations/:id', isAuthenticated, async (req, res) => {
+    try {
+      const { venue_id, id } = req.params;
+      const conversation = await prisma.chat_conversations.findUnique({ where: { id } });
+      if (!conversation || conversation.venue_id !== venue_id) {
+        return res.status(404).json({ error: 'Conversation not found' });
+      }
+      // Messages cascade-delete via schema relation (onDelete: Cascade)
+      await prisma.chat_conversations.delete({ where: { id } });
+      res.json({ success: true });
+    } catch (error) {
+      console.error('Delete conversation error:', error);
       res.status(500).json({ error: error.message });
     }
   });

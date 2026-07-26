@@ -499,6 +499,7 @@ model chat_conversations {
   escalated_at     DateTime?       @db.Timestamptz(6)
   escalated_reason String?         @db.VarChar(50)
   resume_at        DateTime?       @db.Timestamptz(6)
+  last_read_at     DateTime?       @db.Timestamptz(6)
   created_at       DateTime        @default(now()) @db.Timestamptz(6)
   updated_at       DateTime?       @db.Timestamptz(6)
   messages         chat_messages[]
@@ -951,18 +952,22 @@ model app_settings {
 // ========================================
 
 model whatsapp_connections {
-  id                 String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  venue_id           String    @unique @db.Uuid
-  phone_number       String?   @db.VarChar(50)
-  status             String    @default("disconnected") @db.VarChar(30) // disconnected | qr_pending | connected | banned
-  session_data       Json?     @db.Json
-  qr_code            String?   @db.Text
-  excluded_phones    Json      @default("[]") @db.Json // Array of {phone, label} objects
-  notification_phone String?   @db.VarChar(50)
-  escalation_config  Json      @default("{}") @db.Json
-  last_connected     DateTime? @db.Timestamptz(6)
-  created_at         DateTime  @default(now()) @db.Timestamptz(6)
-  updated_at         DateTime? @db.Timestamptz(6)
+  id                   String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  venue_id             String    @unique @db.Uuid
+  phone_number         String?   @db.VarChar(50)
+  status               String    @default("disconnected") @db.VarChar(30) // disconnected | qr_pending | connected | banned
+  session_data         Json?     @db.Json
+  qr_code              String?   @db.Text
+  excluded_phones      Json      @default("[]") @db.Json // Array of {phone, label} objects
+  notification_phone   String?   @db.VarChar(50)
+  escalation_config    Json      @default("{}") @db.Json
+  last_connected       DateTime? @db.Timestamptz(6)
+  created_at           DateTime  @default(now()) @db.Timestamptz(6)
+  updated_at           DateTime? @db.Timestamptz(6)
+  channel              String    @default("baileys") @db.VarChar(20)
+  meta_phone_number_id String?   @db.VarChar(50)
+  meta_access_token    String?
+  meta_verify_token    String?   @db.VarChar(100)
 }
 
 model system_whatsapp_connection {
